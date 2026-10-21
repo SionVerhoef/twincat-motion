@@ -1,7 +1,0 @@
-{
-  "database": "dolt",
-  "backend": "dolt",
-  "dolt_mode": "server",
-  "dolt_database": "twincat_motion",
-  "project_id": "ad953202-abc7-4230-802b-f37d75a906ed"
-}
