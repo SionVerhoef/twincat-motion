@@ -1,6 +1,6 @@
 ---
 name: twincat-motion
-description: "Use for Beckhoff TwinCAT 3 motion control: NC axis configuration and parameters, Tc2_MC2 / PLCopen MC_ function blocks (MC_Power, MC_Home, MC_MoveAbsolute, MC_Reset), homing, gearing and cam coupling, axis errors and why an axis will not enable or move. Not for the CiA 402 drive state machine on its own (use cia402-motion), EtherCAT network faults (use ecat-diagnostics), or general Structured Text (use twincat-st). DRAFT: under development."
+description: "Use for Beckhoff TwinCAT 3 motion control: NC axis configuration and parameters, Tc2_MC2 / PLCopen MC_ function blocks (MC_Power, MC_Home, MC_MoveAbsolute, MC_Reset), homing, gearing and cam coupling, axis errors and why an axis will not enable or move. Not for the CiA 402 drive state machine on its own (use cia402-motion), EtherCAT network faults (use ethercat-diagnostics), or general Structured Text (use twincat-st). DRAFT: under development."
 ---
 
 # twincat-motion
