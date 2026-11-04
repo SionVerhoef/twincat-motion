@@ -12,16 +12,48 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
       # The frontmatter is what decides whether the skill loads and triggers at all.
       - name: SKILL.md frontmatter is valid
-        run: python3 scripts/check_skill.py
+        run: python scripts/check_skill.py
 
       # This repository is public: no real AMS NetId, IP or MAC address (see CLAUDE.md).
       - name: no real network identities committed
-        run: python3 scripts/check_private.py
+        run: python scripts/check_private.py
 
       # Manuals and specs are copyrighted and must never land here (see CLAUDE.md).
       - name: no PDFs committed
         run: |
           found=$(git ls-files '*.pdf' '*.PDF')
           [ -z "$found" ] || { echo "PDF files committed:"; echo "$found"; exit 1; }
+
+      # Runs before anything is installed: the tool must need nothing but Python.
+      - name: tests
+        run: python -m unittest discover -s tests -v
+
+      # SKILL.md promises Python 3.8. setup-python may no longer offer it; uv does.
+      - uses: astral-sh/setup-uv@v5
+      - name: tests, on Python 3.8
+        run: uv run --no-project --python 3.8 python -m unittest discover -s tests
+
+      - name: standalone contract
+        # Nothing may point outside this repository. The bracket around a first letter
+        # keeps each pattern from matching this file's own source.
+        run: |
+          ! grep -rn '\.\./\.\.' --include='*.md' --include='*.py' . || exit 1
+          ! grep -rnE '/[h]ome/|/[p]rojects/|[C]:\\Users' \
+              --include='*.md' --include='*.py' --include='*.yml' . || exit 1
+
+  # Engineers run the tool on Windows, where stdout is a legacy code page.
+  test-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: tests, on Windows
+        run: python -m unittest discover -s tests -v
