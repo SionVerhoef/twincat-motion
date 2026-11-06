@@ -1,16 +1,19 @@
 # Proposing axis configuration changes
 
-This skill reads axis configuration directly (`scripts/axis_xti.py`) but **never writes it**.
-A change goes out in one of two forms, and a person applies it:
+This skill reads axis configuration directly (`scripts/axis_xti.py`). A change goes out in
+one of three forms:
 
 1. **A parameter-change table** that someone applies by hand in XAE. This is the default.
 2. **An Automation Interface script** that someone runs on the engineering PC, for many axes
    or a repeatable change.
+3. **A direct edit of the `.xti` file**, only after the user has explicitly agreed to it
+   (section 3).
 
-**Never edit an `.xti` file directly**, not even "only one value". XAE owns that file: it
-rewrites it on save, it keeps only non-default values, and the running system takes nothing
-from it until someone activates the configuration. A hand edit can be overwritten without
-warning, rejected when XAE loads the project, or activated without anyone reviewing it.
+Default to 1 or 2. XAE owns the `.xti` file: it rewrites it on save, it keeps only non-default
+values, and the running system takes nothing from it until someone activates the
+configuration. A hand edit can be overwritten without warning, rejected when XAE loads the
+project, or activated without anyone reviewing it. So **never edit an `.xti` without an
+explicit go-ahead** for that file and those changes.
 
 **Never activate a configuration, write parameters to a running NC over ADS, or move an
 axis.** Propose; the person at the machine decides when, and stays in reach of the stop.
@@ -18,9 +21,11 @@ axis.** Propose; the person at the machine decides when, and stays in reach of t
 ## 1. Parameter-change table
 
 One row per parameter. Give the old value from the current file (`axis_xti.py show`; an
-absent parameter is "default"), so the person can see they are editing the right axis.
+absent parameter is "default"), so the person can see they are editing the right axis. The
+`.xti` path column is there to find and check the parameter with `axis_xti.py`, not to edit
+the file.
 
-| Axis | Page | Parameter (as XAE shows it) | `.xti` path | Old | New | Why |
+| Axis | Page | Parameter (as XAE shows it) | `.xti` path (to check) | Old | New | Why |
 |---|---|---|---|---|---|---|
 | Axis_X | Encoder | Scaling Factor Numerator | `Encoder/EncPara@ScaleFactorNumerator` | 0.0001 | 10 | exact ratio: 10 mm lead |
 | Axis_X | Encoder | Scaling Factor Denominator | `Encoder/EncPara@ScaleFactorDenominator` | default | 3145728 | 3:1 gearbox × 2^20 |
@@ -57,12 +62,15 @@ the change in XAE and does both.
 ```powershell
 # axis-change.ps1  -  propose, review, then apply NC axis parameter changes in XAE.
 # Open the project in XAE first; the script attaches to that instance and leaves it open.
-# Pass 1:  .\axis-change.ps1 -Axis "Axis_X" -Produce
-# Pass 2:  .\axis-change.ps1 -Axis "Axis_X" -Changes changes.csv
+# Pass 1:  .\axis-change.ps1 -Solution C:\proj\Machine.sln -Axis "Axis_X" -Produce
+# Pass 2:  .\axis-change.ps1 -Solution C:\proj\Machine.sln -Axis "Axis_X" -Changes changes.csv
 # changes.csv columns: XPath,Attribute,Old,New   (XPath into the produced XML)
 # Windows PowerShell 5.1 (GetActiveObject is not available in PowerShell 7).
 # Never saves and never activates: review in XAE, then save and activate yourself.
+# Aborts unless the attached XAE has exactly this solution open. Close other XAE instances.
 param(
+    [Parameter(Mandatory)] [string] $Solution,
+    [string] $Project,                         # TwinCAT project name, if the solution has several
     [Parameter(Mandatory)] [string] $Axis,
     [switch] $Produce,
     [string] $Changes,
@@ -70,7 +78,14 @@ param(
 )
 $ErrorActionPreference = "Stop"
 $dte = [Runtime.InteropServices.Marshal]::GetActiveObject($ProgId)
-$sysMan = $dte.Solution.Projects.Item(1).Object
+$want = (Resolve-Path $Solution).Path
+if ($dte.Solution.FullName -ne $want) {
+    throw "XAE has '$($dte.Solution.FullName)' open, not '$want'. Nothing done."
+}
+$tc = @($dte.Solution.Projects | Where-Object {
+    $_.FullName -like '*.tsproj' -and (-not $Project -or $_.Name -eq $Project) })
+if ($tc.Count -ne 1) { throw "Found $($tc.Count) matching TwinCAT projects; name one with -Project. Nothing done." }
+$sysMan = $tc[0].Object
 $item = $sysMan.LookupTreeItem("TINC^NC-Task 1 SAF^Axes^$Axis")
 [xml] $xml = $item.ProduceXml()
 $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -99,6 +114,27 @@ When you hand this out:
   instead of half-applying.
 - After applying: review the axis in XAE, then the same steps as for a table (save,
   activate when it suits, test at reduced limits, commit, `axis_xti.py diff`).
+
+## 3. Direct `.xti` edit, after acknowledgement
+
+Only when the user asks for it or accepts it after you have named the risks above. The
+go-ahead must cover this file and these changes; a general "go ahead" earlier in the
+conversation is not enough. Then:
+
+1. **Before**: the project is closed in XAE (XAE overwrites the file when it saves), and the
+   `.xti` is committed to version control, so the edit can be reverted.
+2. **Change only values of parameters already in the file.** A parameter at its default is
+   absent; adding it means adding XML in the right place, which has not been verified. Use a
+   table or the script for those.
+3. **Touch nothing else**: not the `DataTypes` or `Vars` blocks, not links, ids or names.
+4. **After**: `axis_xti.py diff` between the committed and the edited file must show exactly
+   the intended changes. Show that diff to the user.
+5. The person opens the project in XAE, checks the values on the axis's parameter pages,
+   saves (XAE may reformat the file; diff again), and activates when it suits the machine,
+   then tests at reduced limits.
+
+Whether XAE loads a hand-edited value unchanged has not been tested as part of this skill.
+Say so when you make the edit.
 
 ## Runtime parameter writes are not configuration
 

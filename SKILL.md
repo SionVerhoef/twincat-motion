@@ -29,8 +29,10 @@ hardware.
 2. **Never move an axis or change a running system.** Propose motion as code or steps that a
    person runs, at reduced limits first. No motion commands, no ADS parameter writes, no
    activating a configuration.
-3. **Never edit an `.xti` file.** Configuration changes go out as a parameter-change table
-   or an Automation Interface script that a person applies: `references/config-changes.md`.
+3. **Never edit an `.xti` file without an explicit go-ahead.** Configuration changes go out
+   as a parameter-change table or an Automation Interface script that a person applies. A
+   direct edit only when the user agrees to that change, with XAE closed, the file committed
+   and a diff afterwards: `references/config-changes.md`.
 4. **Look up every NC error code with the tool.** Neighbouring codes mean different things.
 5. **Check which stack before answering.** This skill covers classic NC with `Tc2_MC2`.
    `Tc3_Mc3*` or `McToPlc` is MC3, and 0x81xx codes are MC3 or the Advanced Motion Pack; NCI, XTS, XPlanar, kinematics and the Advanced
@@ -70,7 +72,8 @@ python3 scripts/axis_xti.py diff old.xti new.xti                 # e.g. old from
 An `.xti` stores only non-default values and the tool has no defaults table: an absent
 parameter is at its TwinCAT default, lint checks explicit values only, and a clean lint is
 not a full audit. Say so when you report a result. The tool never writes an `.xti`;
-propose changes as an Automation Interface script or a parameter-change table.
+propose changes as a parameter-change table or an Automation Interface script
+(`references/config-changes.md`).
 
 ## Where to read next
 

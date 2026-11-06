@@ -9,7 +9,8 @@ too.
 **Read the explicit values with the tool, not by eye**: `axis_xti.py show` lists what an axis
 sets, `lint` checks it, `diff` shows what changed. An `.xti` stores only non-default values,
 so anything not listed is at its TwinCAT default. Changes go out as a parameter-change table
-or an Automation Interface script, never as an `.xti` edit: `config-changes.md`.
+or an Automation Interface script; a direct `.xti` edit only after the user explicitly agrees:
+`config-changes.md`.
 
 ## First question: who closes the position loop?
 

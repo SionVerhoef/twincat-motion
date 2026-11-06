@@ -17,7 +17,8 @@ or 4.
   from the axis's Online tab in XAE. A status that nobody refreshes is stale.
 - **Every NC error code.** Look each one up with `scripts/nc_error.py`; never from memory.
 - **What changed** since it last worked: new configuration activated, drive swapped,
-  TwinCAT updated, PLC code changed.
+  TwinCAT updated, PLC code changed, process data mapping changed, hardware or wiring work
+  on the machine.
 
 ## 0. Is it an NC2 axis, and is anything arriving?
 
@@ -33,6 +34,18 @@ or 4.
 - **The bus is up.** `ST_AxisStatus.IoDataInvalid` TRUE, or codes 0x4466, 0x4651 or 0x4655,
   mean the I/O data is not valid: the drive slave is not in OP or its working counter is
   bad. That is a bus problem: hand to **ethercat-diagnostics** and stop here.
+- **Every mapped output in the drive's process data is linked.** An output entry that is
+  mapped but linked to nothing is sent as 0 every cycle. The NC links only the entries it
+  needs (controlword, set point); anything extra that was added to the mapping, such as a
+  torque or current limit, a mode of operation or a digital output, is the user's to link.
+  The classic case: a torque limit is mapped and left unlinked, so the drive gets a limit
+  of 0. The axis enables and `MC_Power.Status` is TRUE, but the motor produces no torque:
+  it does not move, or sags, and the position lag grows until 0x4550 or 0x435D. In XAE,
+  look for output variables of the drive without a link, or an online value stuck at 0.
+  Fix it by linking the entry to a PLC variable with a sensible value, or by removing it
+  from the mapping and setting the value once in the drive's startup parameters, where the
+  drive allows that. What the object means and its units are **cia402-motion**'s; which
+  entries this drive can map, **ethercat-esi**'s.
 
 ## 1. Is an axis error pending?
 
@@ -87,13 +100,14 @@ readiness; on an analog drive it can only report the control side.
 | **Outside a software limit**, or a target beyond one. | `SoftLimitMinExceeded` / `SoftLimitMaxExceeded`; 0x4460–0x4463. |
 | **Another command owns the axis.** A newer command with the default `Aborting` mode replaces the running one, which then reports `CommandAborted`. | `CommandAborted` on the first block. Expected behaviour, not a fault: `axis-lifecycle.md`. |
 | **Your application waits for `Homed`** and the axis came up not referenced (absolute encoder without retain data, or a fresh start). | `ST_AxisStatus.Homed`; 0x4002 at start-up. `homing.md`. |
+| **A mapped output is unlinked and sent as 0**: a torque or current limit, so the motor has no torque. | Step 0, last item. Status TRUE, no motion, the lag grows. |
 | **`MC_Jog` in a standard mode** uses the manual velocity from the axis parameters and ignores its `Velocity` input. If that parameter is tiny, the jog looks dead. | `MC_Jog.Mode`; the manual velocity parameters. |
 
 ## 5. It moves, then faults
 
 | Code | Usual cause | Where |
 |---|---|---|
-| 0x4550 position lag | Window or filter time too tight for the dynamics; an untuned or wrongly scaled axis; a mechanical fault (blocked, brake still applied, current limit). | `axis-parameters.md`, "Position lag" |
+| 0x4550 position lag | Window or filter time too tight for the dynamics; an untuned or wrongly scaled axis; a torque or current limit at 0 or too low (unlinked process data, step 0); a mechanical fault (blocked, brake still applied). | `axis-parameters.md`, "Position lag" |
 | 0x4551 velocity lag | Same family, on the velocity. | as above |
 | 0x435C not in target window in time | Target window or settling time too tight, or the axis hunts around the target. | `axis-parameters.md`, "Target window" |
 | 0x435D motion not seen at the encoder | Encoder not linked, wrong encoder, scaling sign or factor wrong, or the motor does not turn (brake, STO). | `axis-parameters.md`, "Scaling" |
@@ -118,3 +132,29 @@ position lag, set and actual velocity, torque or current) and hand the recording
   reduced limits.
 - **Jumps on enable or after homing**: on a CSP drive the target must equal the actual
   position when the drive enables; that is the drive side, **cia402-motion**.
+
+## Don't rule out hardware
+
+This page leans on configuration and code, because that is what can be checked from the
+engineering PC. But a good share of "won't enable" and "faults when it moves" is hardware,
+especially when the symptom started without a software change, or after work on the
+machine. Keep it in the picture from the start, and keep it general: name the likely
+area and how it shows up in TwinCAT, and leave the physical checks to the people on site.
+
+| Area | How it can show up |
+|---|---|
+| Supply: mains or DC link, the 24 V control supply, a separate brake supply | drive not ready (`Status` FALSE), undervoltage 0x4631, drops out of ready under load 0x4650 |
+| Holding brake not releasing | enables, then lag error or a stall at the first move; torque high, no motion |
+| Motor or feedback cable, connectors, shielding | encoder errors 0x4464–0x4467, wire break or overcurrent 0x4632–0x4635, faults that come and go with movement or vibration |
+| Mechanics: binding, a blocked axis, a slipping coupling or belt, a different gearbox after a repair | lag errors, overload 0x4636, the distance is wrong (scaling no longer matches the mechanics) |
+| Limit switches and reference switches: wiring, normally open vs closed, a damaged sensor | homing errors 0x429C–0x429E, an axis that stops in one direction only |
+| Temperature: drive, terminal or motor | overtemperature 0x4630, faults after running for a while |
+| Bus wiring | `IoDataInvalid`, 0x4651 / 0x4655: **ethercat-diagnostics** |
+
+- Look each code up with the tool, and read the drive's own diagnosis (its error history in
+  XAE or its own tool) before assuming either a software or a hardware cause.
+- Physical checks are for qualified people following the site's own procedures: the machine
+  made safe and isolated, no work on live parts, no reaching into the machine's range of
+  motion. Say that; don't give step-by-step electrical instructions.
+- Never suggest bypassing, bridging or forcing a safety device, limit switch or enable
+  circuit to narrow down a fault (`boundaries.md`).
