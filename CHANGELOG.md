@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- SKILL.md body: scope and safety notice, the rules (no safety logic, never move an axis, no `.xti` edits, look codes up, NC2 only, who closes the loop, triage first), reading table and hand-offs to the sibling skills.
+- `references/`: triage for an axis that won't enable or move, axis lifecycle and Tc2_MC2 behaviour, axis parameters with worked scaling and reference-velocity examples, all six homing options, proposing configuration changes (parameter table or Automation Interface script), safety and skill boundaries, and a pointer page for what is out of scope (MC3, NCI/CNC, XTS, XPlanar, kinematics, TF54xx).
 - `scripts/axis_xti.py`: shows, lints and diffs TwinCAT NC axis files (`.xti`) without XAE. Lints explicit values only, since a file stores only non-defaults. Tested on four public sample axes, shipped with their licences in `tests/fixtures/xti/`.
 - `scripts/nc_error.py`: explains about 60 hand-picked TwinCAT NC error codes, each with what to check and a link to its InfoSys page. Any other code gets its family and that family's page. Exact matches only.
 - Repository scaffold: draft SKILL.md, contributor rules, CI frontmatter check.
