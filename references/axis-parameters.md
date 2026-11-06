@@ -26,9 +26,11 @@ CSV) and the mode of operation. Mode details are **cia402-motion** territory.
 On a CSP axis the NC still computes the position lag (set position minus actual position),
 and still monitors it. The actual position arrives a few bus cycles after the set point
 was sent, so without dead-time compensation the NC sees a lag that grows with speed even
-when the drive follows perfectly. Set the compensation from the drive's documentation (in
-the `.xti` it sits under `Drive/DrvPara/TimeComp`); Beckhoff's own example for an EL72x1
-uses a few cycles.
+when the drive follows perfectly. The compensation is an **encoder** setting: in XAE, open
+the axis, expand it, select its encoder (*Enc*) and use the *Time Compensation* tab. Set it
+from the drive's documentation; Beckhoff's own example for an EL72x1 uses a few cycles.
+The drive has a separate time-compensation entry of its own (`Drive/DrvPara/TimeComp` in
+the `.xti`, seen in sample axes as `TaskDelayCycles`); that is not this setting.
 
 ## Scaling
 
