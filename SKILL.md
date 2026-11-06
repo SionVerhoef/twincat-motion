@@ -15,9 +15,9 @@ description: "Use for Beckhoff TwinCAT 3 motion control: NC axis configuration a
 Get a TwinCAT NC axis configured, enabled, homed and moving correctly, and diagnose why it
 is not.
 
-## Tool
+## Tools
 
-`scripts/nc_error.py` needs only Python 3.8+ (`py -3` on Windows).
+Both scripts need only Python 3.8+ (`py -3` on Windows).
 
 ```bash
 python3 scripts/nc_error.py 0x4550          # hex as InfoSys prints it; also 16#4550
@@ -30,3 +30,16 @@ Run it for every NC error code instead of answering from memory: neighbouring co
 gets its family, what part of the family it falls in, and the InfoSys page. Say that the
 meaning was not looked up; never borrow a nearby code's meaning. 0x81xx is MC3, which this
 skill does not cover. `--json` gives machine-readable output.
+
+`scripts/axis_xti.py` reads NC2 axis files (`_Config/NC/Axes/*.xti`) without XAE:
+
+```bash
+python3 scripts/axis_xti.py show "_Config/NC/Axes/Axis 1.xti"   # explicit parameters
+python3 scripts/axis_xti.py lint _Config/NC/Axes                 # every axis in a folder
+python3 scripts/axis_xti.py diff old.xti new.xti                 # e.g. old from git show
+```
+
+An `.xti` stores only non-default values and the tool has no defaults table: an absent
+parameter is at its TwinCAT default, lint checks explicit values only, and a clean lint is
+not a full audit. Say so when you report a result. The tool never writes an `.xti`;
+propose changes as an Automation Interface script or a parameter-change table.
