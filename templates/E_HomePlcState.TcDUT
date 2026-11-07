@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <DUT Name="E_HomePlcState" Id="{ff4ae4f1-4f21-430b-9146-374038f84a44}">
+    <Declaration><![CDATA[// Steps of FB_HomePlc. Gaps left for inserting steps.
+{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_HomePlcState :
+(
+    Idle         := 0,
+    Prepare      := 10,    // check parameters, clear the homed mark
+    ClearNcHomed := 20,    // MC_Home MC_ResetCalibration (NC mark only)
+    CheckSwitch  := 30,    // already on the switch? move off it first
+    MoveOff      := 40,    // MC_MoveVelocity away until switch released
+    HaltOff      := 50,    // MC_Halt, wait for standstill
+    Search       := 60,    // MC_MoveVelocity towards until switch edge
+    HaltSearch   := 70,    // MC_Halt, wait for standstill
+    SetPosition  := 80,    // MC_SetPosition, relative, lag cleared
+    MarkNcHomed  := 90,    // MC_Home MC_ForceCalibration (NC mark only)
+    Done         := 100,
+    Stopping     := 110,   // failed while moving: MC_Halt, then Error
+    Error        := 120
+) DINT;
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

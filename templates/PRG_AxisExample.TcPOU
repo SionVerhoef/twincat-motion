@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <POU Name="PRG_AxisExample" Id="{8abe7412-3edf-4bf7-b1c8-a359682add30}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM PRG_AxisExample
+(*
+    How FB_Axis and the homing blocks fit together on one axis. The
+    commands come from placeholder BOOLs; wire them to the HMI or to a
+    sequence.
+
+    TEMPLATE - reviewed, not run. Every number here is a placeholder in
+    mm, mm/s and mm/s^2: size each one for the machine, and start with
+    reduced values.
+
+    Link Axis1 to the NC axis: NC axis > Settings > Link To PLC.
+*)
+VAR
+    Axis1       : AXIS_REF;
+    fbAxis      : FB_Axis;
+    fbHomePlc   : FB_HomePlc;
+    fbHomeNc    : FB_HomeNc;
+    stHomePlc   : ST_HomePlcParams := (
+                      eSearchDirection := MC_Direction.MC_Negative_Direction,
+                      fSearchVelocity := 5.0,
+                      fMoveOffVelocity := 10.0,
+                      fDeceleration := 100.0,
+                      fReferencePosition := 0.0,
+                      bMarkNcHomed := FALSE,
+                      tStepTimeout := T#60S);
+    stHomeNc    : ST_HomeNcParams := (fDeceleration := 100.0);
+    bRefSwitch AT %I* : BOOL;     // reference switch or cam, link it
+
+    bPowerOn    : BOOL;           // placeholder commands: HMI, sequence
+    bHomeCmd    : BOOL;           // hold TRUE until done or error
+    bMoveCmd    : BOOL;
+    bHaltCmd    : BOOL;
+    bResetCmd   : BOOL;
+    fTarget     : LREAL;          // mm
+
+    fbMoveTrig  : R_TRIG;
+    fbHaltTrig  : R_TRIG;
+    fbResetTrig : R_TRIG;
+    bHoming     : BOOL;
+    bHomed      : BOOL;
+    bAccepted   : BOOL;           // last method call was accepted
+    bError      : BOOL;
+    nErrorID    : UDINT;
+END_VAR
+VAR CONSTANT
+    cUseNcHoming : BOOL  := FALSE;   // FALSE: FB_HomePlc; TRUE: FB_HomeNc
+    cMoveVelo    : LREAL := 50.0;    // mm/s, placeholder
+    cHaltDecel   : LREAL := 100.0;   // mm/s^2, placeholder
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// 1. The wrapper first: it refreshes Axis1.Status for all code below.
+fbAxis(Axis := Axis1, bPowerOn := bPowerOn);
+
+// 2. Homing. Both blocks are called every scan; only one gets the
+//    command. Nothing else may command the axis while one is busy.
+fbHomePlc(Axis := Axis1,
+          bExecute := bHomeCmd AND NOT cUseNcHoming,
+          bRefSwitch := bRefSwitch,
+          stParams := stHomePlc);
+fbHomeNc(Axis := Axis1,
+         bExecute := bHomeCmd AND cUseNcHoming,
+         bCalibrationCam := bRefSwitch,
+         stParams := stHomeNc);
+bHoming := fbHomePlc.bBusy OR fbHomeNc.bBusy;
+
+// The one record of "homed": FB_HomePlc's own flag, which mirrors the
+// NC's state when stHomePlc.bMarkNcHomed is TRUE; else the NC's state.
+IF cUseNcHoming THEN
+    bHomed := Axis1.Status.Homed;
+ELSE
+    bHomed := fbHomePlc.bHomed;
+END_IF
+
+// 3. Commands, each on its own rising edge. Halt and Reset always go
+//    through; a move only on a homed axis that is not being homed.
+//    Methods called after the body are issued on the next scan.
+fbMoveTrig(CLK := bMoveCmd);
+fbHaltTrig(CLK := bHaltCmd);
+fbResetTrig(CLK := bResetCmd);
+IF fbHaltTrig.Q THEN
+    bAccepted := fbAxis.Halt(fDeceleration := cHaltDecel);
+ELSIF fbResetTrig.Q THEN
+    bAccepted := fbAxis.Reset();
+ELSIF fbMoveTrig.Q THEN
+    bAccepted := bHomed AND NOT bHoming;
+    IF bAccepted THEN
+        bAccepted := fbAxis.MoveAbsolute(fPosition := fTarget,
+                                         fVelocity := cMoveVelo);
+    END_IF
+END_IF
+
+// 4. One error for the HMI; look an NC code up with nc_error.py.
+bError := fbAxis.bError OR fbHomePlc.bError OR fbHomeNc.bError;
+IF fbAxis.bError THEN
+    nErrorID := fbAxis.nErrorID;
+ELSIF fbHomePlc.bError THEN
+    nErrorID := fbHomePlc.nErrorID;
+ELSIF fbHomeNc.bError THEN
+    nErrorID := fbHomeNc.nErrorID;
+ELSE
+    nErrorID := 0;
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

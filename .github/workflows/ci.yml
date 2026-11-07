@@ -39,6 +39,15 @@ jobs:
       - name: tests, on Python 3.8
         run: uv run --no-project --python 3.8 python -m unittest discover -s tests
 
+      # The PLC templates must pass twincat-st's file checker and reviewer. Pinned to a
+      # tag, so a new upstream rule changes this build only when the pin moves.
+      - name: templates pass twincat-st v0.6.0
+        run: |
+          git clone -q --depth 1 --branch v0.6.0 \
+            https://github.com/SionVerhoef/twincat-st.git "$RUNNER_TEMP/twincat-st"
+          python "$RUNNER_TEMP/twincat-st/scripts/tcpou.py" check templates/*.TcPOU templates/*.TcDUT
+          python "$RUNNER_TEMP/twincat-st/scripts/st_review.py" --pedantic --fail-on low templates
+
       - name: standalone contract
         # Nothing may point outside this repository. The bracket around a first letter
         # keeps each pattern from matching this file's own source.

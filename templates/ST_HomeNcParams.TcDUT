@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <DUT Name="ST_HomeNcParams" Id="{0dde8168-0e68-42d2-b4e4-be56637509cd}">
+    <Declaration><![CDATA[// Parameters of FB_HomeNc. The homing velocities and directions are not
+// here: MC_Home takes them from the axis's encoder parameters.
+TYPE ST_HomeNcParams :
+STRUCT
+    // the position set at the reference; DEFAULT_HOME_POSITION takes the
+    // reference position from the axis parameters
+    fPosition     : LREAL := DEFAULT_HOME_POSITION;
+    bNoCam        : BOOL;           // TRUE: no cam, sync pulse only
+    fDeceleration : LREAL;          // MC_Halt after a timeout, > 0
+    tTimeout      : TIME := T#60S;  // the whole run; size from travel
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

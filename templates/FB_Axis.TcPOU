@@ -1,0 +1,419 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <POU Name="FB_Axis" Id="{fc68b3fd-d800-4883-a625-1424c3ae007b}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_Axis
+(*
+    NC2 axis wrapper on Tc2_MC2: power, reset, three moves and a halt
+    behind command methods, with one status refresh and one error path.
+
+    TEMPLATE - reviewed, not run. Compile it, test it on a simulated axis,
+    then on the real axis at reduced velocity, acceleration and torque.
+
+    CONTRACT
+    - Call the body exactly once per cycle, unconditionally, before any
+      code reads Axis.Status in that cycle: it calls Axis.ReadStatus().
+    - The methods only record a request. The body issues it: on this
+      scan's call if the method ran before the body, else on the next.
+    - A method returns TRUE when the request was accepted, not when the
+      axis has done it. bBusy / bDone / bError report that.
+    - A stop wins: Halt replaces a move still waiting to be issued, and
+      while a Halt waits, moves and Reset are refused.
+    - Units are the axis's user units (mm, mm/s, mm/s^2 for an axis
+      scaled in mm). Dynamics of 0 mean the axis parameters' defaults.
+    - bBusy is about the command, not the axis. MC_MoveVelocity stays busy
+      until something replaces it, and Tc2_MC2 ends it with CommandAborted
+      when the override changes while the axis keeps moving. To know
+      whether the axis moves, read Axis.Status.Moving / NotMoving.
+    - The hardware enable of the drive is not MC_Power's; see the
+      triage reference. No part of this block is a safety function.
+
+    WHY TWO INSTANCES PER MOVE
+    Tc2_MC2 takes no new parameters while a move block is busy. To
+    retarget a running move, or change speed, a second instance of the
+    same block takes over (BufferMode Aborting, the default); the first
+    then reports CommandAborted, which here is expected and not passed on.
+
+    WHY EXECUTE IS HELD UNTIL A RESULT
+    Each instance's Execute stays TRUE from its trigger until it shows
+    Done, Error or CommandAborted, then is FALSE for at least one call.
+    An instance is triggered only when it is not Busy and was given
+    Execute FALSE at its last call: every trigger is a real rising edge,
+    and its inputs, which the block latches on that edge, are the ones
+    the method recorded.
+*)
+VAR_INPUT
+    bPowerOn  : BOOL;              // MC_Power software enable, both ways
+    fOverride : LREAL := 100.0;    // velocity override, percent, 0..100
+END_VAR
+VAR_IN_OUT
+    Axis      : AXIS_REF;          // the NC axis, linked in the I/O tree
+END_VAR
+VAR_OUTPUT
+    bReady          : BOOL;  // MC_Power.Status: enabled and ready
+    bBusy           : BOOL;  // a request waits or any command runs
+    bDone           : BOOL;  // last command done; MoveVelocity: at speed
+    bCommandAborted : BOOL;  // last command taken over by another block
+    bError          : BOOL;  // axis, power or command error
+    nErrorID        : UDINT; // NC code (scripts/nc_error.py) or cErr...
+END_VAR
+VAR
+    fbPower     : MC_Power;
+    fbReset     : MC_Reset;
+    fbHalt      : MC_Halt;
+    aMoveAbs    : ARRAY[0..1] OF MC_MoveAbsolute;
+    aMoveRel    : ARRAY[0..1] OF MC_MoveRelative;
+    aMoveVel    : ARRAY[0..1] OF MC_MoveVelocity;
+    fbPendTimer : TON;
+
+    // Execute of each block: TRUE from its trigger until its result
+    bExecReset  : BOOL;
+    bExecHalt   : BOOL;
+    abExecAbs   : ARRAY[0..1] OF BOOL;
+    abExecRel   : ARRAY[0..1] OF BOOL;
+    abExecVel   : ARRAY[0..1] OF BOOL;
+    nIdxAbs     : INT;             // instance used last, per move
+    nIdxRel     : INT;
+    nIdxVel     : INT;
+    i           : INT;
+
+    // the request a method recorded; the blocks latch it on their edge
+    ePending    : E_AxisCmd := E_AxisCmd.None;
+    fReqValue   : LREAL;           // position or distance
+    fReqVelo    : LREAL;           // > 0
+    eReqDir     : MC_Direction := MC_Direction.MC_Positive_Direction;
+    fReqHaltDec : LREAL;
+    fAcc        : LREAL;           // 0 = axis default; SetDynamics
+    fDec        : LREAL;
+    fJerk       : LREAL;
+
+    eCmd        : E_AxisCmd := E_AxisCmd.None;  // last issued command
+    bCmdError   : BOOL;            // its error, latched to the next one
+    nCmdErrorID : UDINT;
+END_VAR
+VAR CONSTANT
+    // Own codes sit above 16#FFFF, clear of every NC and ADS code.
+    cErrNotIssued : UDINT := 16#0001_0001;  // request waited too long
+    cPendTimeout  : TIME  := T#1S;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// 1. Sensors first. Tc2_MC2 refreshes Axis.Status only when asked.
+Axis.ReadStatus();
+
+// 2. Issue a recorded request once its block can see a real rising edge.
+//    The timer runs after the attempt, so it only counts a request that
+//    is still waiting, never one issued this scan.
+IF ePending <> E_AxisCmd.None THEN
+    M_Issue();
+END_IF
+fbPendTimer(IN := (ePending <> E_AxisCmd.None), PT := cPendTimeout);
+IF fbPendTimer.Q THEN
+    ePending    := E_AxisCmd.None;
+    bCmdError   := TRUE;
+    nCmdErrorID := cErrNotIssued;
+END_IF
+
+// 3. Every block, every cycle, unconditionally. Only Execute changes.
+fbPower(Axis := Axis,
+        Enable := bPowerOn,
+        Enable_Positive := bPowerOn,
+        Enable_Negative := bPowerOn,
+        Override := fOverride);
+fbReset(Axis := Axis, Execute := bExecReset);
+fbHalt(Axis := Axis, Execute := bExecHalt,
+       Deceleration := fReqHaltDec, Jerk := fJerk);
+FOR i := 0 TO 1 DO
+    aMoveAbs[i](Axis := Axis, Execute := abExecAbs[i],
+                Position := fReqValue, Velocity := fReqVelo,
+                Acceleration := fAcc, Deceleration := fDec, Jerk := fJerk);
+    aMoveRel[i](Axis := Axis, Execute := abExecRel[i],
+                Distance := fReqValue, Velocity := fReqVelo,
+                Acceleration := fAcc, Deceleration := fDec, Jerk := fJerk);
+    aMoveVel[i](Axis := Axis, Execute := abExecVel[i],
+                Velocity := fReqVelo, Direction := eReqDir,
+                Acceleration := fAcc, Deceleration := fDec, Jerk := fJerk);
+END_FOR
+
+// 4. Results. Drop Execute once a block shows its result, so its next
+//    trigger is a rising edge; keep the result of the current command.
+IF bExecReset AND (fbReset.Done OR fbReset.Error) THEN
+    bExecReset := FALSE;
+    IF eCmd = E_AxisCmd.Reset THEN
+        M_Result(bOk := fbReset.Done, bAborted := FALSE,
+                 bErr := fbReset.Error, nErr := fbReset.ErrorID);
+    END_IF
+END_IF
+IF bExecHalt AND (fbHalt.Done OR fbHalt.Error OR fbHalt.CommandAborted)
+THEN
+    bExecHalt := FALSE;
+    IF eCmd = E_AxisCmd.Halt THEN
+        M_Result(bOk := fbHalt.Done, bAborted := fbHalt.CommandAborted,
+                 bErr := fbHalt.Error, nErr := fbHalt.ErrorID);
+    END_IF
+END_IF
+FOR i := 0 TO 1 DO
+    IF abExecAbs[i] AND (aMoveAbs[i].Done OR aMoveAbs[i].Error
+                         OR aMoveAbs[i].CommandAborted) THEN
+        abExecAbs[i] := FALSE;
+        IF eCmd = E_AxisCmd.MoveAbsolute AND i = nIdxAbs THEN
+            M_Result(bOk := aMoveAbs[i].Done,
+                     bAborted := aMoveAbs[i].CommandAborted,
+                     bErr := aMoveAbs[i].Error,
+                     nErr := aMoveAbs[i].ErrorID);
+        END_IF
+    END_IF
+    IF abExecRel[i] AND (aMoveRel[i].Done OR aMoveRel[i].Error
+                         OR aMoveRel[i].CommandAborted) THEN
+        abExecRel[i] := FALSE;
+        IF eCmd = E_AxisCmd.MoveRelative AND i = nIdxRel THEN
+            M_Result(bOk := aMoveRel[i].Done,
+                     bAborted := aMoveRel[i].CommandAborted,
+                     bErr := aMoveRel[i].Error,
+                     nErr := aMoveRel[i].ErrorID);
+        END_IF
+    END_IF
+    // MC_MoveVelocity has no Done: InVelocity is "at speed", and the
+    // command stays busy until another one replaces it.
+    IF eCmd = E_AxisCmd.MoveVelocity AND i = nIdxVel
+       AND aMoveVel[i].InVelocity THEN
+        bDone := TRUE;
+    END_IF
+    IF abExecVel[i] AND (aMoveVel[i].Error
+                         OR aMoveVel[i].CommandAborted) THEN
+        abExecVel[i] := FALSE;
+        IF eCmd = E_AxisCmd.MoveVelocity AND i = nIdxVel THEN
+            M_Result(bOk := FALSE,
+                     bAborted := aMoveVel[i].CommandAborted,
+                     bErr := aMoveVel[i].Error,
+                     nErr := aMoveVel[i].ErrorID);
+        END_IF
+    END_IF
+END_FOR
+
+// 5. Outputs. An axis error outranks the command's own error.
+bReady := fbPower.Status;
+// Busy while any instance still runs, not only the current one: a
+// rejected retarget must not hide the previous move, which goes on.
+bBusy := bExecReset OR bExecHalt OR (ePending <> E_AxisCmd.None);
+FOR i := 0 TO 1 DO
+    bBusy := bBusy OR abExecAbs[i] OR abExecRel[i] OR abExecVel[i];
+END_FOR
+bError := Axis.Status.Error OR bCmdError OR fbPower.Error;
+IF Axis.Status.Error THEN
+    nErrorID := Axis.Status.ErrorId;
+ELSIF bCmdError THEN
+    nErrorID := nCmdErrorID;
+ELSIF fbPower.Error THEN
+    nErrorID := fbPower.ErrorID;
+ELSE
+    nErrorID := 0;
+END_IF
+]]></ST>
+    </Implementation>
+    <Method Name="MoveAbsolute" Id="{039bbf45-729e-4b81-a0e3-aa21e9af1d74}">
+      <Declaration><![CDATA[METHOD MoveAbsolute : BOOL
+VAR_INPUT
+    fPosition : LREAL;    // target, user units
+    fVelocity : LREAL;    // > 0, user units/s
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Accepted while the axis is ready and no stop waits to be issued.
+// A velocity <= 0 is refused here: the block would reject it with an
+// error while the previous move keeps running. Other bad values are
+// reported by the block as an error.
+// An absolute target needs a homed axis: check that before calling.
+MoveAbsolute := bReady AND (ePending <> E_AxisCmd.Halt)
+                AND (fVelocity > 0.0);
+IF MoveAbsolute THEN
+    fReqValue := fPosition;
+    fReqVelo  := fVelocity;
+    ePending  := E_AxisCmd.MoveAbsolute;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="MoveRelative" Id="{f714eace-0d29-4009-8cac-e4e7ec1bb981}">
+      <Declaration><![CDATA[METHOD MoveRelative : BOOL
+VAR_INPUT
+    fDistance : LREAL;    // signed, user units
+    fVelocity : LREAL;    // > 0, user units/s
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Accepted while the axis is ready and no stop waits to be issued.
+MoveRelative := bReady AND (ePending <> E_AxisCmd.Halt)
+                AND (fVelocity > 0.0);
+IF MoveRelative THEN
+    fReqValue := fDistance;
+    fReqVelo  := fVelocity;
+    ePending  := E_AxisCmd.MoveRelative;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="MoveVelocity" Id="{404b355c-5454-4476-b8b7-3e8749f29c72}">
+      <Declaration><![CDATA[METHOD MoveVelocity : BOOL
+VAR_INPUT
+    fVelocity  : LREAL;          // > 0, user units/s
+    eDirection : MC_Direction;   // MC_Positive_ or MC_Negative_Direction
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Accepted while the axis is ready and no stop waits to be issued.
+// Calling it again while one runs changes the speed: the other instance
+// takes over. The axis runs until Halt or another move.
+MoveVelocity := bReady AND (ePending <> E_AxisCmd.Halt)
+                AND (fVelocity > 0.0);
+IF MoveVelocity THEN
+    fReqVelo := fVelocity;
+    eReqDir  := eDirection;
+    ePending := E_AxisCmd.MoveVelocity;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Halt" Id="{bf6118a5-1b0d-4179-bbaf-1d77309bb738}">
+      <Declaration><![CDATA[METHOD Halt : BOOL
+VAR_INPUT
+    fDeceleration : LREAL;   // > 0, user units/s^2; see the note below
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Always accepted, also when not ready: a stop request is never refused.
+// MC_Halt, not MC_Stop: it does not lock the axis against the next move.
+// Pass an explicit deceleration. For a value <= 0 the Tc2_MC2 manual
+// says the last move's deceleration is used; not verified on a target.
+// Only a Halt that is still the current command and still running is
+// left to finish; then any request waiting behind it is dropped. In
+// every other case a new Halt is recorded and replaces whatever waits,
+// and M_Issue triggers it as soon as the halt block is free again
+// (an older halt being taken over by a move frees it within cycles).
+IF (eCmd = E_AxisCmd.Halt) AND (bExecHalt OR fbHalt.Busy) THEN
+    ePending := E_AxisCmd.None;
+ELSE
+    fReqHaltDec := fDeceleration;
+    ePending    := E_AxisCmd.Halt;
+END_IF
+Halt := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Reset" Id="{e56054b0-7d6b-465a-90c6-1868a5623f01}">
+      <Declaration><![CDATA[METHOD Reset : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// MC_Reset clears an axis error (and often the drive's). Refused while
+// a stop waits to be issued, so a reset never swallows a Halt. While a
+// reset already runs, TRUE means "that reset covers it": no second one.
+// Find the cause first: resetting a repeating error hides it.
+Reset := (ePending <> E_AxisCmd.Halt);
+IF Reset AND NOT (bExecReset OR fbReset.Busy) THEN
+    ePending := E_AxisCmd.Reset;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetDynamics" Id="{d886e02c-5e29-4f18-8e73-202a3db13d80}">
+      <Declaration><![CDATA[METHOD SetDynamics
+VAR_INPUT
+    fAcceleration : LREAL;   // >= 0, user units/s^2; 0 = axis default
+    fDeceleration : LREAL;   // >= 0, user units/s^2; 0 = axis default
+    fJerkValue    : LREAL;   // >= 0, user units/s^3; 0 = axis default
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Applies to the moves issued from now on; a running move keeps the
+// values it latched on its edge.
+fAcc  := fAcceleration;
+fDec  := fDeceleration;
+fJerk := fJerkValue;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Issue" Id="{6e9c89d1-2bd5-46ce-a77e-6c6f9c318794}">
+      <Declaration><![CDATA[METHOD PRIVATE M_Issue
+VAR
+    k : INT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Trigger the request on an instance that is free: not Busy, and given
+// Execute FALSE at its last call, so the coming call is a rising edge.
+// Dropping the flag is not enough on its own: a flag dropped after one
+// call and set again before the next is TRUE at both calls - no edge.
+// Not free: leave the request pending and try again next scan.
+CASE ePending OF
+    E_AxisCmd.Reset:
+        IF NOT (bExecReset OR fbReset.Execute OR fbReset.Busy) THEN
+            bExecReset := TRUE;
+            M_Accept();
+        END_IF
+
+    E_AxisCmd.Halt:
+        IF NOT (bExecHalt OR fbHalt.Execute OR fbHalt.Busy) THEN
+            bExecHalt := TRUE;
+            M_Accept();
+        END_IF
+
+    E_AxisCmd.MoveAbsolute:
+        k := 1 - nIdxAbs;
+        IF NOT (abExecAbs[k] OR aMoveAbs[k].Execute OR aMoveAbs[k].Busy)
+        THEN
+            nIdxAbs      := k;
+            abExecAbs[k] := TRUE;
+            M_Accept();
+        END_IF
+
+    E_AxisCmd.MoveRelative:
+        k := 1 - nIdxRel;
+        IF NOT (abExecRel[k] OR aMoveRel[k].Execute OR aMoveRel[k].Busy)
+        THEN
+            nIdxRel      := k;
+            abExecRel[k] := TRUE;
+            M_Accept();
+        END_IF
+
+    E_AxisCmd.MoveVelocity:
+        k := 1 - nIdxVel;
+        IF NOT (abExecVel[k] OR aMoveVel[k].Execute OR aMoveVel[k].Busy)
+        THEN
+            nIdxVel      := k;
+            abExecVel[k] := TRUE;
+            M_Accept();
+        END_IF
+
+ELSE
+    ePending := E_AxisCmd.None;
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Accept" Id="{c756d66a-7cdf-45fc-9e06-af6d01ea63a2}">
+      <Declaration><![CDATA[METHOD PRIVATE M_Accept
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// The pending request becomes the current command; the previous
+// command's result no longer applies.
+eCmd            := ePending;
+ePending        := E_AxisCmd.None;
+bDone           := FALSE;
+bCommandAborted := FALSE;
+bCmdError       := FALSE;
+nCmdErrorID     := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Result" Id="{fc1e80d4-31b8-4457-a451-822f1ad61d36}">
+      <Declaration><![CDATA[METHOD PRIVATE M_Result
+VAR_INPUT
+    bOk      : BOOL;     // Done
+    bAborted : BOOL;     // CommandAborted
+    bErr     : BOOL;     // Error
+    nErr     : UDINT;    // ErrorID
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Latched until the next command is accepted.
+bDone           := bOk;
+bCommandAborted := bAborted;
+bCmdError       := bErr;
+IF bErr THEN
+    nCmdErrorID := nErr;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
