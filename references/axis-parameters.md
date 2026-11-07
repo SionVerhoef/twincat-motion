@@ -32,6 +32,23 @@ from the drive's documentation; Beckhoff's own example for an EL72x1 uses a few 
 The drive has a separate time-compensation entry of its own (`Drive/DrvPara/TimeComp` in
 the `.xti`, seen in sample axes as `TaskDelayCycles`); that is not this setting.
 
+**A simpler alternative: take the following error from the drive.** The drive closes the
+loop, so it knows the real following error with no bus delay in it. Map it into the process
+data (on a CoE drive, the following-error actual value, 0x60F4) and link it to the PLC for
+display, logging and your own checks, and let the drive's own following-error monitoring do
+the tight supervision (its window and time, 0x6065 / 0x6066 on a CoE drive). Then the NC's
+lag no longer needs to be exact, and you can skip tuning the dead-time compensation. If you
+go this way:
+
+- keep NC position-lag monitoring **on**, with a window sized to cover the transport delay
+  at maximum speed, so the NC still stops an axis that does not follow at all;
+- make sure the drive's monitoring is really set up, not left at a default that never trips;
+- check that the drive's value is in units you can read (drive units, not NC units), and
+  that the entry is linked: an unlinked input simply stays 0 (`triage.md`, step 0).
+
+What the drive objects mean is **cia402-motion**'s; whether this drive can map them,
+**ethercat-esi**'s.
+
 ## Scaling
 
 The **encoder scaling factor** turns encoder increments into axis units: units per increment.
@@ -122,7 +139,8 @@ scaled or not following. So:
 - **Do size it from the dynamics.** Record the lag during the worst move (fastest, hardest
   acceleration) with Scope (hand the recording to **twincat-scope**), then set the window
   with a margin you can justify and a short filter time.
-- On a CSP axis check the dead-time compensation first (above).
+- On a CSP axis check the dead-time compensation first, or read the drive's own following
+  error (both above).
 
 ### Target window
 
