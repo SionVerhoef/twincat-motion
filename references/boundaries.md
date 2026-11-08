@@ -29,7 +29,8 @@ provides none of these.
 
 **You may:**
 - explain how a missing hardware enable or open STO shows up in TwinCAT (`MC_Power.Status`
-  FALSE, drive not ready, 0x4650) and diagnose an axis that will not enable because of it.
+  FALSE, drive not ready; 0x4225 when a move starts on a drive that is not ready, 0x4650
+  when it drops out during motion) and diagnose an axis that will not enable because of it.
 - read an existing safety configuration so the user understands it.
 - write the functional part (stop the axis with a ramp, report the state to the HMI),
   labelled as not safety, next to a pointer to the safety controller that must do the real

@@ -31,9 +31,12 @@ parameter, *Allow motion commands to slave axes*
   `BufferMode := MC_Aborting` is possible, and the move is limited to the axis's maximum
   dynamics.
 
-Axes created in XAE 4024.55 come with it **TRUE** (all ten axes in our untouched test export
-carry it). So on a new project a stray `MC_MoveAbsolute` or `MC_Halt` on a slave does not
-fail: it silently drops the coupling. If a slave "falls out of sync" for no reason, look for
+XAE 4024.55 **writes it TRUE** when it creates an axis: all ten axes in our untouched test
+export carry `AllowMotionCmdToSlave="true"` explicitly. Because an `.xti` stores only
+non-default values, that explicit TRUE implies the underlying default is FALSE; what an axis
+*without* the attribute does (an older project, an axis made another way) is unverified, so
+read the setting in XAE rather than assume either value. So on a new project a stray
+`MC_MoveAbsolute` or `MC_Halt` on a slave does not fail: it silently drops the coupling. If a slave "falls out of sync" for no reason, look for
 a motion block that also points at the slave. Whether to allow it is a design choice: TRUE suits
 code that decouples by moving, FALSE turns a wiring mistake in the PLC into a visible error.
 
@@ -200,7 +203,8 @@ The usual print-mark or product-edge loop:
    one edge at a time and has no continuous mode.
 4. Error = expected mark position − `RecordedPosition`. Filter it and limit it; one bad mark
    should not throw the tool.
-5. Apply the correction while running: `MC_PhasingRelative` on a geared or cam slave,
+5. Apply the correction while running: `MC_PhasingRelative` on an `MC_GearIn` or
+   `MC_CamIn_V2` slave (the couplings listed under Phasing; plain `MC_CamIn` is not one),
    `MC_MoveSuperImposed` on a single axis or slave, or a new `SlaveOffset` through
    `MC_CamScaling` activated at a table position. Make it in the part of the cycle where the
    tool is not in the product (a rotary knife's non-synchronous zone).

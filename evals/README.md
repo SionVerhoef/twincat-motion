@@ -106,3 +106,10 @@ A hand read of the 36 skill answers found wording problems, filed as a bead: the
 `AllowMotionCmdToSlave` "default" clashes with ".xti stores only non-defaults"; the homing
 edge fix overstates what it removes; 0x4650 listed for open STO; phasing on plain `MC_CamIn`
 contradicts itself; no guidance on how a scaling error shows on a velocity axis.
+All five are fixed in `twincat-motion-7az`: `coupling.md` and `triage.md` now say XAE
+writes TRUE on a new axis and leave an absent attribute as unverified; `homing.md` says the
+edge fix removes the braking distance but not one cycle's sampling jitter; `boundaries.md`
+names 0x4225 (not ready at start) and 0x4650 (drop-out during motion); registration step 5
+names `MC_CamIn_V2`; `axis-parameters.md` says how a scaling error shows in the lag. The
+hardware questions behind them (absent-attribute meaning, phasing on plain `MC_CamIn`) are
+in `twincat-motion-6uv.9`.
