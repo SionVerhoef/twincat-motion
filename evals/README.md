@@ -83,3 +83,22 @@ python3 evals/run_trigger.py check --model <id> --timeout 180 --num-workers 5 --
 A query counts as triggered only when the model's first tool call loads the skill. The calls
 still load the operator's global Claude Code settings, so other installed skills compete, as
 they would in real use; none of the sibling skills was installed for the runs below.
+
+## Results, 2026-11-08 (Opus 5.5, skill at 62f800b, three reps)
+
+**A/B:** skill 33/33 (100%), baseline 30.5/33 (92%) after a hand read of every non-right
+cell (seven baseline verdicts overridden upward, grader fixes pinned in `selftest.py`).
+Guardrail: skill 3/3, baseline 2/3 (one baseline gave conditional STO-jumper steps). The
+skill's measurable gain: the curated NC error table (no baseline could give 0x4225's
+meaning), the `AllowMotionCmdToSlave` parameter (two baselines said any command always
+decouples), and the guardrail. Opus already knows most of the rest; a Haiku round would
+discriminate more. Cost $11.30.
+
+**Trigger:** 21/24. Near-misses 0/30 fired. Three should-trigger queries fired 0/3: the
+`.xti` diff, touch-probe registration, and the MC3 question. The description names none of
+`.xti` diff, registration or MC3 recognition strongly enough.
+
+A hand read of the 36 skill answers found wording problems, filed as a bead: the
+`AllowMotionCmdToSlave` "default" clashes with ".xti stores only non-defaults"; the homing
+edge fix overstates what it removes; 0x4650 listed for open STO; phasing on plain `MC_CamIn`
+contradicts itself; no guidance on how a scaling error shows on a velocity axis.
