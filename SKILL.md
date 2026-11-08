@@ -85,6 +85,7 @@ Load a reference when the task reaches it, not all of them up front.
 | Order of commands, axis states, `MC_Stop` vs `MC_Halt`, `ST_AxisStatus`, buffer modes, `CommandAborted`, error kinds, `MC_Jog` modes | `references/axis-lifecycle.md` |
 | Scaling, reference velocity, CSP vs velocity mode, lag / target / soft-limit monitoring, Kv | `references/axis-parameters.md` |
 | Homing: PLC-based, `MC_Home`, step homing, touch probe, drive-based, absolute encoders and retain data | `references/homing.md` |
+| Gearing, cam plates, flying saw, phasing, `MC_MoveSuperImposed`, touch-probe registration, external set points; a slave in protected mode | `references/coupling.md` |
 | Writing PLC code for an axis: a wrapper FB, PLC-based or `MC_Home` homing | `templates/README.md`, then the template |
 | Proposing a configuration change; Automation Interface | `references/config-changes.md` |
 | STO, safe stop, E-stop, SIL/PL; which sibling skill owns what | `references/boundaries.md` |
