@@ -61,7 +61,7 @@ TOOLS = {"with_skill": "Read Write Edit Glob Grep Bash", "without_skill": "Write
 DENIED = ("WebFetch WebSearch Agent Task PushNotification Workflow ScheduleWakeup "
           "CronCreate RemoteTrigger SendMessage DesignSync")
 # The skill is public. A web baseline that reaches it is measuring the skill again.
-SKILL_REPO = re.compile(r"twincat-motion", re.I)
+SKILL_REPO = re.compile(r"(?<!lcls-)twincat-motion", re.I)  # not pcdshub/lcls-twincat-motion
 
 
 def denied(arm: str) -> str:
