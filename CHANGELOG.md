@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- `references/coupling.md`: gearing (`MC_GearIn`, `GearInDyn`, `GearInMultiMaster`, flying-saw pointer), phasing, cam plates with `Tc2_MC2_Camming` (tables, coupling without a jump, activation and scaling), `MC_MoveSuperImposed`, touch-probe registration, the external set-point generator, and slave protected mode. Notes that axes created in 4024.55 allow motion commands on a slave, so a stray move silently decouples it.
 - `templates/`: `FB_Axis` wrapper on Tc2_MC2 (power, reset, moves and halt behind methods, edge-safe triggering, one error path), `FB_HomePlc` (PLC-based homing; marks homed by own flag or the NC's state) and `FB_HomeNc` (`MC_Home`), with an example program. Reviewed, not run: they pass twincat-st v0.6.0's `tcpou.py check` and `st_review.py --pedantic`, which CI now runs.
 - SKILL.md body: scope and safety notice, the rules (no safety logic, never move an axis, no `.xti` edits, look codes up, NC2 only, who closes the loop, triage first), reading table and hand-offs to the sibling skills.
 - `references/`: triage for an axis that won't enable or move, axis lifecycle and Tc2_MC2 behaviour, axis parameters with worked scaling and reference-velocity examples, all six homing options, proposing configuration changes (parameter table or Automation Interface script), safety and skill boundaries, and a pointer page for what is out of scope (MC3, NCI/CNC, XTS, XPlanar, kinematics, TF54xx).
