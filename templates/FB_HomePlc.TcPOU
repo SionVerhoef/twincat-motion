@@ -131,15 +131,15 @@ CASE eState OF
             END_IF
         END_IF
 
+    // Each moving or waiting step: M_StepResult is TRUE when the step's
+    // own condition is met; on an error, an abort by another command or
+    // the step timeout it has already moved to Stopping or Error.
     E_HomePlcState.ClearNcHomed:
-        IF fbHome.Done THEN
+        IF M_StepResult(bDone := fbHome.Done,
+                        bErr := fbHome.Error, nErr := fbHome.ErrorID,
+                        bAborted := fbHome.CommandAborted,
+                        nTimeoutErr := cErrStepTime, bStop := FALSE) THEN
             eState := E_HomePlcState.CheckSwitch;
-        ELSIF fbHome.Error THEN
-            M_Fail(errorID := fbHome.ErrorID, bStop := FALSE);
-        ELSIF fbHome.CommandAborted THEN
-            M_Fail(errorID := cErrAborted, bStop := FALSE);
-        ELSIF fbStepTimer.Q THEN
-            M_Fail(errorID := cErrStepTime, bStop := FALSE);
         END_IF
 
     E_HomePlcState.CheckSwitch:
@@ -150,53 +150,44 @@ CASE eState OF
         END_IF
 
     E_HomePlcState.MoveOff:
-        IF NOT bRefSwitch THEN
+        IF M_StepResult(bDone := NOT bRefSwitch,
+                        bErr := fbMoveOff.Error, nErr := fbMoveOff.ErrorID,
+                        bAborted := fbMoveOff.CommandAborted,
+                        nTimeoutErr := cErrMoveOffTime, bStop := TRUE) THEN
             eState := E_HomePlcState.HaltOff;
-        ELSIF fbMoveOff.Error THEN
-            M_Fail(errorID := fbMoveOff.ErrorID, bStop := TRUE);
-        ELSIF fbMoveOff.CommandAborted THEN
-            M_Fail(errorID := cErrAborted, bStop := FALSE);
-        ELSIF fbStepTimer.Q THEN
-            M_Fail(errorID := cErrMoveOffTime, bStop := TRUE);
         END_IF
 
     E_HomePlcState.HaltOff:
-        IF fbHalt.Done THEN
+        IF M_StepResult(bDone := fbHalt.Done,
+                        bErr := fbHalt.Error, nErr := fbHalt.ErrorID,
+                        bAborted := fbHalt.CommandAborted,
+                        nTimeoutErr := cErrStepTime, bStop := FALSE) THEN
             eState := E_HomePlcState.Search;
-        ELSIF fbHalt.Error THEN
-            M_Fail(errorID := fbHalt.ErrorID, bStop := FALSE);
-        ELSIF fbHalt.CommandAborted THEN
-            M_Fail(errorID := cErrAborted, bStop := FALSE);
-        ELSIF fbStepTimer.Q THEN
-            M_Fail(errorID := cErrStepTime, bStop := FALSE);
         END_IF
 
     E_HomePlcState.Search:
-        IF fbSwitchTrig.Q THEN
+        IF M_StepResult(bDone := fbSwitchTrig.Q,
+                        bErr := fbSearch.Error, nErr := fbSearch.ErrorID,
+                        bAborted := fbSearch.CommandAborted,
+                        nTimeoutErr := cErrSearchTime, bStop := TRUE) THEN
             // the position in the scan the edge is seen, before the halt
             fPosAtEdge := Axis.NcToPlc.ActPos;
             eState     := E_HomePlcState.HaltSearch;
-        ELSIF fbSearch.Error THEN
-            M_Fail(errorID := fbSearch.ErrorID, bStop := TRUE);
-        ELSIF fbSearch.CommandAborted THEN
-            M_Fail(errorID := cErrAborted, bStop := FALSE);
-        ELSIF fbStepTimer.Q THEN
-            M_Fail(errorID := cErrSearchTime, bStop := TRUE);
         END_IF
 
     E_HomePlcState.HaltSearch:
-        IF fbHalt.Done THEN
+        IF M_StepResult(bDone := fbHalt.Done,
+                        bErr := fbHalt.Error, nErr := fbHalt.ErrorID,
+                        bAborted := fbHalt.CommandAborted,
+                        nTimeoutErr := cErrStepTime, bStop := FALSE) THEN
             eState := E_HomePlcState.SetPosition;
-        ELSIF fbHalt.Error THEN
-            M_Fail(errorID := fbHalt.ErrorID, bStop := FALSE);
-        ELSIF fbHalt.CommandAborted THEN
-            M_Fail(errorID := cErrAborted, bStop := FALSE);
-        ELSIF fbStepTimer.Q THEN
-            M_Fail(errorID := cErrStepTime, bStop := FALSE);
         END_IF
 
     E_HomePlcState.SetPosition:
-        IF fbSetPos.Done THEN
+        IF M_StepResult(bDone := fbSetPos.Done,
+                        bErr := fbSetPos.Error, nErr := fbSetPos.ErrorID,
+                        bAborted := FALSE,
+                        nTimeoutErr := cErrStepTime, bStop := FALSE) THEN
             IF stRun.bMarkNcHomed THEN
                 eHomeMode := MC_HomingMode.MC_ForceCalibration;
                 eState    := E_HomePlcState.MarkNcHomed;
@@ -204,21 +195,14 @@ CASE eState OF
                 bHomed := TRUE;
                 eState := E_HomePlcState.Done;
             END_IF
-        ELSIF fbSetPos.Error THEN
-            M_Fail(errorID := fbSetPos.ErrorID, bStop := FALSE);
-        ELSIF fbStepTimer.Q THEN
-            M_Fail(errorID := cErrStepTime, bStop := FALSE);
         END_IF
 
     E_HomePlcState.MarkNcHomed:
-        IF fbHome.Done THEN
+        IF M_StepResult(bDone := fbHome.Done,
+                        bErr := fbHome.Error, nErr := fbHome.ErrorID,
+                        bAborted := fbHome.CommandAborted,
+                        nTimeoutErr := cErrStepTime, bStop := FALSE) THEN
             eState := E_HomePlcState.Done;
-        ELSIF fbHome.Error THEN
-            M_Fail(errorID := fbHome.ErrorID, bStop := FALSE);
-        ELSIF fbHome.CommandAborted THEN
-            M_Fail(errorID := cErrAborted, bStop := FALSE);
-        ELSIF fbStepTimer.Q THEN
-            M_Fail(errorID := cErrStepTime, bStop := FALSE);
         END_IF
 
     E_HomePlcState.Done:
@@ -311,6 +295,33 @@ IF bStop THEN
     eState := E_HomePlcState.Stopping;
 ELSE
     eState := E_HomePlcState.Error;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_StepResult" Id="{49e77785-3dd6-45e4-87f8-a4e323b0bef8}">
+      <Declaration><![CDATA[METHOD PRIVATE M_StepResult : BOOL
+VAR_INPUT
+    bDone       : BOOL;    // the step's own end condition
+    bErr        : BOOL;    // the step block's Error
+    nErr        : UDINT;   // and its ErrorID
+    bAborted    : BOOL;    // its CommandAborted; FALSE if it has none
+    nTimeoutErr : UDINT;   // code to report when the step times out
+    bStop       : BOOL;    // TRUE: the step moves the axis; halt on fail
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// One step's outcome, checked in priority order: done beats an error
+// seen on the same scan, an error beats an abort, all beat the timeout.
+// An abort means another command owns the axis now, so it never halts.
+M_StepResult := FALSE;
+IF bDone THEN
+    M_StepResult := TRUE;
+ELSIF bErr THEN
+    M_Fail(errorID := nErr, bStop := bStop);
+ELSIF bAborted THEN
+    M_Fail(errorID := cErrAborted, bStop := FALSE);
+ELSIF fbStepTimer.Q THEN
+    M_Fail(errorID := nTimeoutErr, bStop := bStop);
 END_IF]]></ST>
       </Implementation>
     </Method>
