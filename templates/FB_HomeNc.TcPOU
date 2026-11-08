@@ -1,0 +1,171 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <POU Name="FB_HomeNc" Id="{aea4dfa2-ad52-4744-8243-6c53a5543487}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_HomeNc
+(*
+    Homing option 2 (references/homing.md): the NC's own sequence, run by
+    MC_Home in MC_DefaultHoming. Directions, velocities and the Reference
+    Mode are encoder parameters of the axis, not inputs here. The record
+    of "homed" is the NC's: Axis.Status.Homed.
+
+    What this block adds to a bare MC_Home:
+    - the cam input passed on every scan; the NC sees the cam only there
+    - an axis with no cam, homing on the encoder's sync pulse alone
+      (stParams.bNoCam): the cam is faked, TRUE from the start until
+      Axis.NcToPlc.HomingState reaches 4 (after 1..3 in this run)
+    - a timeout over the whole run that stops the axis with MC_Halt
+    - one error path, with the NC code passed on
+
+    TEMPLATE - reviewed, not run. Compile it, test it on a simulated
+    axis, then on the real axis at reduced velocity. Not verified: that
+    MC_Halt stops a running MC_Home (the timeout path relies on it). Test
+    that on a simulated axis before trusting the timeout. A cam is not a
+    safety device; homing is not safe homing.
+
+    CONTRACT
+    - Call every cycle, unconditionally. bExecute is edge-triggered;
+      bDone / bError hold until bExecute falls (one scan if it already
+      fell). A falling bExecute does not stop a run.
+    - The axis must be enabled (MC_Power, e.g. FB_Axis), decoupled, and
+      nothing else may command it during the run.
+    - Typical NC errors: 0x429C cam not found, 0x429D cam not released,
+      0x429E sync pulse not found. Look each up with scripts/nc_error.py.
+*)
+VAR_INPUT
+    bExecute        : BOOL;             // rising edge starts homing
+    bCalibrationCam : BOOL;             // reference cam input, every cycle
+    stParams        : ST_HomeNcParams;  // read when bExecute rises
+END_VAR
+VAR_IN_OUT
+    Axis            : AXIS_REF;
+END_VAR
+VAR_OUTPUT
+    bBusy    : BOOL;
+    bDone    : BOOL;                    // homed; holds until bExecute falls
+    bError   : BOOL;
+    nErrorID : UDINT;                   // NC code or cErr...
+END_VAR
+VAR
+    eState       : E_HomeNcState := E_HomeNcState.Idle;
+    eStatePrev   : E_HomeNcState := E_HomeNcState.Idle;
+    bStepChanged : BOOL;
+    stRun        : ST_HomeNcParams;     // stParams, frozen at the start
+    bCam         : BOOL;                // the cam as MC_Home sees it
+    bRunStarted  : BOOL;                // HomingState 1..3 seen this run
+    bCamReleased : BOOL;                // faked cam: then >= 4 seen
+
+    fbExecTrig   : R_TRIG;
+    fbTimer      : TON;
+    fbHome       : MC_Home;
+    fbHalt       : MC_Halt;
+END_VAR
+VAR CONSTANT
+    // Own codes sit above 16#FFFF, clear of every NC and ADS code.
+    cErrParams       : UDINT := 16#0001_0201;  // stParams not usable
+    cErrTimeout      : UDINT := 16#0001_0202;  // run took too long
+    cErrAborted      : UDINT := 16#0001_0203;  // another command took over
+    cErrInvalidState : UDINT := 16#0001_02FF;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Sensors above the CASE (see FB_HomePlc).
+Axis.ReadStatus();
+fbExecTrig(CLK := bExecute);
+
+bStepChanged := (eState <> eStatePrev);
+eStatePrev   := eState;
+// Re-armed on entering a step: the run and the stop each get a timeout.
+fbTimer(IN := ((eState = E_HomeNcState.Homing)
+               OR (eState = E_HomeNcState.Stopping))
+              AND NOT bStepChanged,
+        PT := stRun.tTimeout);
+
+CASE eState OF
+
+    E_HomeNcState.Idle:
+        IF fbExecTrig.Q THEN
+            stRun        := stParams;
+            nErrorID     := 0;
+            bCamReleased := FALSE;
+            bRunStarted  := FALSE;
+            IF (stRun.fDeceleration > 0.0) AND (stRun.tTimeout > T#0S)
+            THEN
+                eState := E_HomeNcState.Homing;
+            ELSE
+                nErrorID := cErrParams;
+                eState   := E_HomeNcState.Error;
+            END_IF
+        END_IF
+
+    E_HomeNcState.Homing:
+        // Release the faked cam at HomingState >= 4 only after this run
+        // has shown 1..3: a stale 4..6 left by an aborted run would
+        // otherwise drop the cam before the NC has seen it.
+        IF (Axis.NcToPlc.HomingState >= 1)
+           AND (Axis.NcToPlc.HomingState <= 3) THEN
+            bRunStarted := TRUE;
+        ELSIF bRunStarted AND (Axis.NcToPlc.HomingState >= 4) THEN
+            bCamReleased := TRUE;
+        END_IF
+        IF fbHome.Done THEN
+            eState := E_HomeNcState.Done;
+        ELSIF fbHome.Error THEN
+            // An axis error has already stopped the axis; an input error
+            // never started it. No halt needed either way.
+            nErrorID := fbHome.ErrorID;
+            eState   := E_HomeNcState.Error;
+        ELSIF fbHome.CommandAborted THEN
+            nErrorID := cErrAborted;        // the axis is another's now
+            eState   := E_HomeNcState.Error;
+        ELSIF fbTimer.Q THEN
+            nErrorID := cErrTimeout;
+            eState   := E_HomeNcState.Stopping;
+        END_IF
+
+    E_HomeNcState.Done:
+        IF NOT bExecute THEN
+            eState := E_HomeNcState.Idle;
+        END_IF
+
+    E_HomeNcState.Stopping:
+        IF fbHalt.Done OR fbHalt.Error OR fbHalt.CommandAborted
+           OR fbTimer.Q THEN
+            eState := E_HomeNcState.Error;
+        END_IF
+
+    E_HomeNcState.Error:
+        IF NOT bExecute THEN
+            eState := E_HomeNcState.Idle;
+        END_IF
+
+ELSE
+    nErrorID := cErrInvalidState;
+    eState   := E_HomeNcState.Stopping;
+END_CASE
+
+// The cam MC_Home sees: the real input, or with no cam a faked one, TRUE
+// from the start of the run until the NC reaches HomingState 4.
+IF stRun.bNoCam THEN
+    bCam := (eState = E_HomeNcState.Homing) AND NOT bCamReleased;
+ELSE
+    bCam := bCalibrationCam;
+END_IF
+
+// Commanded blocks below the CASE, every scan (see FB_HomePlc).
+fbHome(Axis := Axis,
+       Execute := (eState = E_HomeNcState.Homing),
+       Position := stRun.fPosition,
+       HomingMode := MC_HomingMode.MC_DefaultHoming,
+       bCalibrationCam := bCam);
+fbHalt(Axis := Axis,
+       Execute := (eState = E_HomeNcState.Stopping),
+       Deceleration := stRun.fDeceleration);
+
+bBusy  := (eState = E_HomeNcState.Homing)
+          OR (eState = E_HomeNcState.Stopping);
+bDone  := (eState = E_HomeNcState.Done);
+bError := (eState = E_HomeNcState.Error);
+]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

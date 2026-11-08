@@ -45,13 +45,16 @@ is the switch edge plus the braking distance. That varies with speed and load. B
 - for real repeatability, latch the edge in hardware (option 4).
 
 **Marking homed.** Two ways, both in use:
-- **your own flag**, set in step 6, stored in the axis wrapper. Simple and explicit; but
+- **your own flag**, set in step 6 and kept in your PLC code (the homing block or an axis wrapper). Simple and explicit; but
   `ST_AxisStatus.Homed` stays FALSE, so an HMI or code that reads the NC's flag sees "not
   homed".
 - **`MC_Home` with `HomingMode := MC_ForceCalibration`**: no movement, no position change;
   it sets the NC's own homed state. Then `ST_AxisStatus.Homed` is the single record.
 
 `MC_SetPosition` alone does not set the NC's homed state.
+
+Template: `templates/FB_HomePlc.TcPOU` does steps 1–6 with the edge-accurate relative shift,
+and marks homed either way (a parameter picks which).
 
 **Hard stop instead of a switch.** Run into the stop with a reduced torque limit and detect
 the stop (lag rising, velocity zero, torque at the limit). Plan what the position-lag
@@ -102,6 +105,9 @@ Points that trip people up:
 - The encoder's *Reference Mode* offers other sequences besides the default (for example a
   latch from the drive or terminal); which ones appear depends on the encoder type.
 - Decouple a slave axis before homing it.
+
+Template: `templates/FB_HomeNc.TcPOU` wraps `MC_Home` with the cam input, the faked cam for a
+sync-pulse-only axis, and a run timeout.
 
 ## 3. PLCopen Part 5 step homing (`Tc3_MC2_AdvancedHoming`)
 

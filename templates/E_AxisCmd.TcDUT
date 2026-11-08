@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <DUT Name="E_AxisCmd" Id="{d3834542-d756-4723-9a46-60d00c54c725}">
+    <Declaration><![CDATA[// The commands FB_Axis can issue. None = nothing pending or issued yet.
+{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_AxisCmd :
+(
+    None         := 0,
+    Reset        := 10,
+    Halt         := 20,
+    MoveAbsolute := 30,
+    MoveRelative := 40,
+    MoveVelocity := 50
+) DINT;
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

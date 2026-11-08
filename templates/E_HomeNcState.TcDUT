@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <DUT Name="E_HomeNcState" Id="{4c2259ef-d458-4d25-b5b9-683f91ffd643}">
+    <Declaration><![CDATA[// Steps of FB_HomeNc.
+{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE E_HomeNcState :
+(
+    Idle     := 0,
+    Homing   := 10,    // MC_Home MC_DefaultHoming running
+    Done     := 80,
+    Stopping := 85,    // timed out while moving: MC_Halt, then Error
+    Error    := 90
+) DINT;
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

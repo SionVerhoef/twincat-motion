@@ -1,0 +1,318 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <POU Name="FB_HomePlc" Id="{9272de4d-31c0-45f3-945b-64e071908fad}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK FB_HomePlc
+(*
+    Homing option 1, PLC-based (references/homing.md): search the
+    reference switch with MC_MoveVelocity, stop with MC_Halt, then shift
+    the position so the switch edge becomes the reference position.
+
+    It marks the axis homed in one of two ways (stParams.bMarkNcHomed):
+      FALSE  own flag. bHomed is the record; ST_AxisStatus.Homed is not
+             touched, so an HMI reading the NC's flag sees "not homed".
+      TRUE   NC homed state. MC_Home with MC_ForceCalibration at the end;
+             bHomed mirrors Axis.Status.Homed, which is the one record.
+    Either way a run starts by clearing the mark, so a failed or aborted
+    run leaves the axis "not homed", never homed on a half-set position.
+    The NC mark is cleared and set by explicit MC_Home calls; nothing
+    here relies on MC_SetPosition changing it, or leaving it alone.
+
+    TEMPLATE - reviewed, not run. Compile it, test it on a simulated
+    axis, then on the real axis at reduced velocity and torque. A
+    reference switch is not a safety device; homing is not safe homing.
+
+    CONTRACT
+    - Call every cycle, unconditionally. bExecute is edge-triggered;
+      bDone / bError hold until bExecute falls (one scan if it already
+      fell). A falling bExecute does not stop a run: halt the axis
+      (FB_Axis.Halt) and this block reports cErrAborted.
+    - The axis must be enabled (MC_Power, e.g. FB_Axis) and nothing else
+      may command it during the run.
+    - bRefSwitch is the switch's input, every cycle; TRUE = on the switch.
+    - bHomed is not retained: after a restart the axis is not homed.
+
+    ACCURACY
+    The PLC sees the edge, so the position is taken in the scan the input
+    changes: within one PLC cycle x search velocity of the true edge, plus
+    the input's filter time, plus a cycle's lag when the PLC task runs
+    slower than the NC task. The shift is relative (MC_SetPosition Mode
+    TRUE) by fReferencePosition - position at the edge, so the braking
+    distance does not end up in the zero. Search slowly; for better, latch
+    the edge in hardware (touch probe, homing option 4).
+*)
+VAR_INPUT
+    bExecute   : BOOL;              // rising edge starts a homing run
+    bRefSwitch : BOOL;              // reference switch input, every cycle
+    stParams   : ST_HomePlcParams;  // read when bExecute rises
+END_VAR
+VAR_IN_OUT
+    Axis       : AXIS_REF;
+END_VAR
+VAR_OUTPUT
+    bBusy    : BOOL;
+    bDone    : BOOL;               // homed; holds until bExecute falls
+    bError   : BOOL;
+    nErrorID : UDINT;              // NC code (scripts/nc_error.py) or cErr
+    bHomed   : BOOL;               // the homed mark, see above
+END_VAR
+VAR
+    eState       : E_HomePlcState := E_HomePlcState.Idle;
+    eStatePrev   : E_HomePlcState := E_HomePlcState.Idle;
+    bStepChanged : BOOL;           // TRUE the one scan a step is entered
+    bTimedStep   : BOOL;
+    stRun        : ST_HomePlcParams;  // stParams, frozen at the start
+    eMoveOffDir  : MC_Direction := MC_Direction.MC_Positive_Direction;
+    eHomeMode    : MC_HomingMode := MC_HomingMode.MC_ResetCalibration;
+    fPosAtEdge   : LREAL;          // actual position when the edge came
+
+    fbExecTrig   : R_TRIG;
+    fbSwitchTrig : R_TRIG;
+    fbStepTimer  : TON;
+    fbMoveOff    : MC_MoveVelocity;
+    fbSearch     : MC_MoveVelocity;
+    fbHalt       : MC_Halt;
+    fbSetPos     : MC_SetPosition;
+    fbHome       : MC_Home;        // calibration flag only, no movement
+    stSetPosOpt  : ST_SetPositionOptions;
+END_VAR
+VAR CONSTANT
+    // Own codes sit above 16#FFFF, clear of every NC and ADS code.
+    cErrParams       : UDINT := 16#0001_0101;  // stParams not usable
+    cErrMoveOffTime  : UDINT := 16#0001_0102;  // switch not released
+    cErrSearchTime   : UDINT := 16#0001_0103;  // switch not found
+    cErrStepTime     : UDINT := 16#0001_0104;  // halt / set / mark slow
+    cErrAborted      : UDINT := 16#0001_0105;  // another command took over
+    cErrInvalidState : UDINT := 16#0001_01FF;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Sensors above the CASE, so it decides on this scan's values. Reading
+// the status again is harmless if FB_Axis already did; this block does
+// not depend on being called after it.
+Axis.ReadStatus();
+fbExecTrig(CLK := bExecute);
+fbSwitchTrig(CLK := bRefSwitch);
+
+bStepChanged := (eState <> eStatePrev);
+eStatePrev   := eState;
+bTimedStep   := (eState <> E_HomePlcState.Idle)
+                AND (eState <> E_HomePlcState.Done)
+                AND (eState <> E_HomePlcState.Error);
+// One timer for every step: IN low on the scan a step is entered re-arms
+// it, so each step gets a full timeout (twincat-st FB_Sequence shape).
+fbStepTimer(IN := bTimedStep AND NOT bStepChanged,
+            PT := stRun.tStepTimeout);
+
+CASE eState OF
+
+    E_HomePlcState.Idle:
+        IF fbExecTrig.Q THEN
+            stRun    := stParams;
+            nErrorID := 0;
+            eState   := E_HomePlcState.Prepare;
+        END_IF
+
+    E_HomePlcState.Prepare:
+        bHomed := FALSE;
+        IF NOT M_ParamsOk() THEN
+            M_Fail(errorID := cErrParams, bStop := FALSE);
+        ELSE
+            IF stRun.eSearchDirection = MC_Direction.MC_Positive_Direction
+            THEN
+                eMoveOffDir := MC_Direction.MC_Negative_Direction;
+            ELSE
+                eMoveOffDir := MC_Direction.MC_Positive_Direction;
+            END_IF
+            IF stRun.bMarkNcHomed THEN
+                eHomeMode := MC_HomingMode.MC_ResetCalibration;
+                eState    := E_HomePlcState.ClearNcHomed;
+            ELSE
+                eState := E_HomePlcState.CheckSwitch;
+            END_IF
+        END_IF
+
+    E_HomePlcState.ClearNcHomed:
+        IF fbHome.Done THEN
+            eState := E_HomePlcState.CheckSwitch;
+        ELSIF fbHome.Error THEN
+            M_Fail(errorID := fbHome.ErrorID, bStop := FALSE);
+        ELSIF fbHome.CommandAborted THEN
+            M_Fail(errorID := cErrAborted, bStop := FALSE);
+        ELSIF fbStepTimer.Q THEN
+            M_Fail(errorID := cErrStepTime, bStop := FALSE);
+        END_IF
+
+    E_HomePlcState.CheckSwitch:
+        IF bRefSwitch THEN
+            eState := E_HomePlcState.MoveOff;
+        ELSE
+            eState := E_HomePlcState.Search;
+        END_IF
+
+    E_HomePlcState.MoveOff:
+        IF NOT bRefSwitch THEN
+            eState := E_HomePlcState.HaltOff;
+        ELSIF fbMoveOff.Error THEN
+            M_Fail(errorID := fbMoveOff.ErrorID, bStop := TRUE);
+        ELSIF fbMoveOff.CommandAborted THEN
+            M_Fail(errorID := cErrAborted, bStop := FALSE);
+        ELSIF fbStepTimer.Q THEN
+            M_Fail(errorID := cErrMoveOffTime, bStop := TRUE);
+        END_IF
+
+    E_HomePlcState.HaltOff:
+        IF fbHalt.Done THEN
+            eState := E_HomePlcState.Search;
+        ELSIF fbHalt.Error THEN
+            M_Fail(errorID := fbHalt.ErrorID, bStop := FALSE);
+        ELSIF fbHalt.CommandAborted THEN
+            M_Fail(errorID := cErrAborted, bStop := FALSE);
+        ELSIF fbStepTimer.Q THEN
+            M_Fail(errorID := cErrStepTime, bStop := FALSE);
+        END_IF
+
+    E_HomePlcState.Search:
+        IF fbSwitchTrig.Q THEN
+            // the position in the scan the edge is seen, before the halt
+            fPosAtEdge := Axis.NcToPlc.ActPos;
+            eState     := E_HomePlcState.HaltSearch;
+        ELSIF fbSearch.Error THEN
+            M_Fail(errorID := fbSearch.ErrorID, bStop := TRUE);
+        ELSIF fbSearch.CommandAborted THEN
+            M_Fail(errorID := cErrAborted, bStop := FALSE);
+        ELSIF fbStepTimer.Q THEN
+            M_Fail(errorID := cErrSearchTime, bStop := TRUE);
+        END_IF
+
+    E_HomePlcState.HaltSearch:
+        IF fbHalt.Done THEN
+            eState := E_HomePlcState.SetPosition;
+        ELSIF fbHalt.Error THEN
+            M_Fail(errorID := fbHalt.ErrorID, bStop := FALSE);
+        ELSIF fbHalt.CommandAborted THEN
+            M_Fail(errorID := cErrAborted, bStop := FALSE);
+        ELSIF fbStepTimer.Q THEN
+            M_Fail(errorID := cErrStepTime, bStop := FALSE);
+        END_IF
+
+    E_HomePlcState.SetPosition:
+        IF fbSetPos.Done THEN
+            IF stRun.bMarkNcHomed THEN
+                eHomeMode := MC_HomingMode.MC_ForceCalibration;
+                eState    := E_HomePlcState.MarkNcHomed;
+            ELSE
+                bHomed := TRUE;
+                eState := E_HomePlcState.Done;
+            END_IF
+        ELSIF fbSetPos.Error THEN
+            M_Fail(errorID := fbSetPos.ErrorID, bStop := FALSE);
+        ELSIF fbStepTimer.Q THEN
+            M_Fail(errorID := cErrStepTime, bStop := FALSE);
+        END_IF
+
+    E_HomePlcState.MarkNcHomed:
+        IF fbHome.Done THEN
+            eState := E_HomePlcState.Done;
+        ELSIF fbHome.Error THEN
+            M_Fail(errorID := fbHome.ErrorID, bStop := FALSE);
+        ELSIF fbHome.CommandAborted THEN
+            M_Fail(errorID := cErrAborted, bStop := FALSE);
+        ELSIF fbStepTimer.Q THEN
+            M_Fail(errorID := cErrStepTime, bStop := FALSE);
+        END_IF
+
+    E_HomePlcState.Done:
+        IF NOT bExecute THEN
+            eState := E_HomePlcState.Idle;
+        END_IF
+
+    E_HomePlcState.Stopping:
+        // Failed while moving: stop, then report the original error.
+        IF fbHalt.Done OR fbHalt.Error OR fbHalt.CommandAborted
+           OR fbStepTimer.Q THEN
+            eState := E_HomePlcState.Error;
+        END_IF
+
+    E_HomePlcState.Error:
+        IF NOT bExecute THEN
+            eState := E_HomePlcState.Idle;
+        END_IF
+
+ELSE
+    M_Fail(errorID := cErrInvalidState, bStop := TRUE);
+END_CASE
+
+// Commanded blocks below the CASE, called every scan with the inputs the
+// CASE just chose, so a step entered this scan issues its command now.
+// Each Execute is TRUE only in its own steps, and no two of a block's
+// steps follow each other, so every entry is a fresh rising edge.
+stSetPosOpt.ClearPositionLag := TRUE;
+fbMoveOff(Axis := Axis,
+          Execute := (eState = E_HomePlcState.MoveOff),
+          Velocity := stRun.fMoveOffVelocity,
+          Direction := eMoveOffDir);
+fbSearch(Axis := Axis,
+         Execute := (eState = E_HomePlcState.Search),
+         Velocity := stRun.fSearchVelocity,
+         Direction := stRun.eSearchDirection);
+fbHalt(Axis := Axis,
+       Execute := (eState = E_HomePlcState.HaltOff)
+                  OR (eState = E_HomePlcState.HaltSearch)
+                  OR (eState = E_HomePlcState.Stopping),
+       Deceleration := stRun.fDeceleration);
+fbSetPos(Axis := Axis,
+         Execute := (eState = E_HomePlcState.SetPosition),
+         Position := stRun.fReferencePosition - fPosAtEdge,
+         Mode := TRUE,                      // relative: shift by Position
+         Options := stSetPosOpt);
+fbHome(Axis := Axis,
+       Execute := (eState = E_HomePlcState.ClearNcHomed)
+                  OR (eState = E_HomePlcState.MarkNcHomed),
+       HomingMode := eHomeMode);
+
+IF stRun.bMarkNcHomed THEN
+    bHomed := Axis.Status.Homed;
+END_IF
+bBusy  := (eState <> E_HomePlcState.Idle)
+          AND (eState <> E_HomePlcState.Done)
+          AND (eState <> E_HomePlcState.Error);
+bDone  := (eState = E_HomePlcState.Done);
+bError := (eState = E_HomePlcState.Error);
+]]></ST>
+    </Implementation>
+    <Method Name="M_ParamsOk" Id="{a72b3be7-0feb-428b-8be3-c7d0f5babcdc}">
+      <Declaration><![CDATA[METHOD PRIVATE M_ParamsOk : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Refuse a run the axis cannot do sensibly, before anything moves. A
+// velocity of 0 is an NC error anyway, and a Halt deceleration of 0
+// would leave the stop ramp to the library.
+M_ParamsOk :=
+    ((stRun.eSearchDirection = MC_Direction.MC_Positive_Direction)
+     OR (stRun.eSearchDirection = MC_Direction.MC_Negative_Direction))
+    AND (stRun.fSearchVelocity > 0.0)
+    AND (stRun.fMoveOffVelocity > 0.0)
+    AND (stRun.fDeceleration > 0.0)
+    AND (stRun.tStepTimeout > T#0S);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Fail" Id="{f4d90d8f-966c-47f3-b37a-6a3f58b93687}">
+      <Declaration><![CDATA[METHOD PRIVATE M_Fail
+VAR_INPUT
+    errorID : UDINT;
+    bStop   : BOOL;   // TRUE: this block's move may be running; halt it
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Not halted on an abort: the axis is then another block's, and halting
+// it would fight that block. Not halted after a failed halt either.
+nErrorID := errorID;
+IF bStop THEN
+    eState := E_HomePlcState.Stopping;
+ELSE
+    eState := E_HomePlcState.Error;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
