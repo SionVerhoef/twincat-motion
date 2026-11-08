@@ -11,6 +11,10 @@ python3 evals/run_cells.py /tmp/ab-opus --model claude-opus-5-5 --reps 3   # the
 python3 evals/grade.py /tmp/ab-opus                         # right / partly / wrong per cell
 ```
 
+These evals test what an agent says. What TwinCAT does is checked separately, by hand, in
+`field-test/`: one XAE session on simulated axes that confirms or refutes the claims the
+references could only take from the manual.
+
 The harness is the one from the sibling skill cia402-motion, with the names changed;
 `run_cells.py`'s docstring says why each isolation flag is there. In short: `run_cells.py`
 snapshots the skill at `--ref` (default `HEAD`) minus `evals/`, lays the cells out with
