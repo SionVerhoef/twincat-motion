@@ -79,6 +79,23 @@ class Lookup(unittest.TestCase):
         self.assertNotIn('family', r)
         self.assertIn('ADS', r['note'])
 
+    def test_superposition_partial_vs_refused(self):
+        # One apart, different situations: one ran short, one never started.
+        partial, refused = nc_error.lookup('0x4243'), nc_error.lookup('0x4245')
+        self.assertIn('partly', partial['label'])
+        self.assertIn('warning', partial['meaning'])
+        self.assertIn('refused', refused['label'])
+        self.assertEqual(nc_error.lookup('16963')['code'], '0x4243')   # decimal WarningId
+
+    def test_coupling_codes_known(self):
+        self.assertIn('blending', nc_error.lookup('0x4296')['meaning'].lower())
+        self.assertIn('standstill', nc_error.lookup('0x425A')['meaning'])
+        self.assertIn('zero', nc_error.lookup('0x421B')['label'].lower())
+        for code in ('0x4216', '0x4261'):
+            self.assertIn('table', nc_error.lookup(code)['label'].lower(), code)
+        self.assertEqual(nc_error.lookup('0x4A06')['family'],
+                         'Table (cam and characteristic tables)')
+
     def test_bus_codes_hand_off(self):
         for code in ('0x4466', '0x4651', '0x4655'):
             self.assertEqual(nc_error.lookup(code)['handoff'], 'ethercat-diagnostics', code)

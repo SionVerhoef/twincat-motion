@@ -93,7 +93,7 @@ readiness; on an analog drive it can only report the control side.
 | Check | How to see it |
 |---|---|
 | **`MC_Stop` still holds the axis.** It keeps the axis locked until its `Execute` goes FALSE after `Done`, and needs a few more cycles to release. | `ST_AxisStatus.MotionCommandsLocked`; error 0x42EF on the next command. Use `MC_Halt` for ordinary stops. |
-| **The axis is in protected mode**, typically the slave of a gear or cam coupling. | `ST_AxisStatus.ProtectedMode` or `Coupled`; error 0x4B08. Decouple first, or allow motion commands on a slave in the axis parameters. |
+| **The axis is a coupled slave** (gear or cam), so it is in protected mode. What a move does depends on the axis parameter *Allow motion commands to slave axes*: FALSE refuses it with 0x4B08; TRUE, which axes created in 4024.55 have, decouples the slave without an error and runs the move. | `ST_AxisStatus.ProtectedMode` or `Coupled`. Decouple first. If a slave drops out of sync instead, look for a motion block on it: `coupling.md`. |
 | **The move never triggered.** `Execute` needs a rising edge; held TRUE it fires once. Re-triggering while the block is busy is ignored without an error. | twincat-st reviewer rule X11 catches level-driven `Execute`. |
 | **The block is not called every cycle while busy.** | 0x4B66, or the block hangs with `Busy` TRUE. |
 | **An input is invalid.** A velocity of 0 is not "use the default" (0x4231); acceleration 0 *is* (it takes the axis parameter). | The block's `ErrorID`. |
