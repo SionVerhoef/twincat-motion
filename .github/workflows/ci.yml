@@ -34,6 +34,10 @@ jobs:
       - name: tests
         run: python -m unittest discover -s tests -v
 
+      # The eval grader must tell a good answer from a trapped one (evals/README.md).
+      - name: eval grader selftest
+        run: python evals/selftest.py
+
       # SKILL.md promises Python 3.8. setup-python may no longer offer it; uv does.
       - uses: astral-sh/setup-uv@v5
       - name: tests, on Python 3.8

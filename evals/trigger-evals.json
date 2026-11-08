@@ -1,0 +1,27 @@
+[
+  {"query": "MC_Power.Status never goes TRUE on my TwinCAT NC axis. Enable is TRUE, no error on the block. AX8000 drive. Where do I start looking?", "should_trigger": true},
+  {"query": "our twincat axis throws 0x4550 every time we go above 300 mm/s. what is that and how do I fix it without just turning the monitoring off", "should_trigger": true},
+  {"query": "MC_MoveAbsolute ErrorID 17239 - what does that mean? Tc2_MC2", "should_trigger": true},
+  {"query": "After one MC_Stop the axis refuses every move until we restart the PLC. Error 16#42EF on the next MC_MoveRelative. What's going on?", "should_trigger": true},
+  {"query": "How do I calculate the encoder scaling factor numerator and denominator for an NC axis: 5 mm lead screw, 10:1 gearbox, EL7211 with 20-bit single-turn feedback?", "should_trigger": true},
+  {"query": "Third party CSP servo on a TwinCAT NC axis oscillates a bit. Should I raise Kv in the NC controller tab or lower it?", "should_trigger": true},
+  {"query": "Best way to home a TwinCAT axis with only a reference switch? We do MC_MoveVelocity + MC_Halt + MC_SetPosition now but Axis.Status.Homed stays FALSE.", "should_trigger": true},
+  {"query": "Slave axis geared with MC_GearIn sometimes just stops following the master, no error. TwinCAT 4024.55.", "should_trigger": true},
+  {"query": "When the conveyor starts, our rotary knife coupled with MC_CamIn jumps and trips a lag error. Cam table built in the PLC with MC_CamTableSelect.", "should_trigger": true},
+  {"query": "Can you diff these two _Config/NC/Axes/Axis 1.xti files from git and tell me what my colleague changed in the axis parameters?", "should_trigger": true},
+  {"query": "Write me an axis wrapper function block around MC_Power, MC_Reset, MC_MoveAbsolute and MC_Halt for Tc2_MC2, with a command enum.", "should_trigger": true},
+  {"query": "What is the difference between MC_Halt and MC_Stop in TwinCAT, and why is our second MC_MoveAbsolute reporting CommandAborted?", "should_trigger": true},
+  {"query": "Registration on a print mark: MC_TouchProbe on the web axis, then correct the knife with MC_PhasingRelative. How should I window the latch?", "should_trigger": true},
+  {"query": "We moved to Tc3_Mc3Ptp on 4026 and MC_MoveAbsolute fails with 16#8151. Does the NC2 advice still apply?", "should_trigger": true},
+
+  {"query": "Statusword reads 0x0218 on my CiA 402 servo driven from a Codesys master, no TwinCAT involved. Which state is that and how do I reset the fault?", "should_trigger": false},
+  {"query": "EtherCAT slave 1003 stuck in SAFEOP with AL status code 0x001B. TwinCAT shows working counter errors. What's wrong?", "should_trigger": false},
+  {"query": "Which PDO entries does the ESI file of our EL7211 allow in the 0x1A01 TxPDO? Please read the XML and list them.", "should_trigger": false},
+  {"query": "Refactor this TwinCAT Structured Text function block into an interface plus two implementations; it is a recipe manager, no motion involved.", "should_trigger": false},
+  {"query": "How do I set up a TwinCAT Scope View recording with a trigger on a PLC variable and export it to CSV?", "should_trigger": false},
+  {"query": "Write a G-code program for our TwinCAT CNC (TF5200) that mills a 40 mm circular pocket.", "should_trigger": false},
+  {"query": "Siemens S7-1500 TO_PositioningAxis: MC_Power gives ErrorID 16#8001. What does it mean?", "should_trigger": false},
+  {"query": "Our Codesys SoftMotion axis on a Raspberry Pi drifts after homing with MC_Home. Encoder is a cheap incremental one.", "should_trigger": false},
+  {"query": "What is the proper way to size a servo motor and gearbox for a 200 kg vertical axis? Need inertia ratio guidance.", "should_trigger": false},
+  {"query": "Design the TwinSAFE logic for a guard door with SS1 on four drives, with a PL d claim.", "should_trigger": false}
+]
