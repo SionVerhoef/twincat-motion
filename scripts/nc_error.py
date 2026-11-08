@@ -123,6 +123,21 @@ CODES = {
     },
 
     # Group
+    0x4216: {
+        'label': 'Cam table unknown',
+        'meaning': 'A coupling or characteristic refers to a table ID the NC does not have.',
+        'check': ['CamTableID on MC_CamIn: the ID from the cam editor, or the one passed '
+                  'to MC_CamTableSelect.',
+                  'A PLC-built table: did MC_CamTableSelect finish with Done before '
+                  'MC_CamIn started?'],
+    },
+    0x421B: {
+        'label': 'Gear ratio of zero',
+        'meaning': 'The coupling was started with a ratio of 0, which the NC refuses.',
+        'check': ['RatioNumerator / GearRatio: an input left at its default of 0.',
+                  'MC_GearIn: for a fractional ratio put the LREAL in the numerator, '
+                  'denominator 1.'],
+    },
     0x4221: {
         'label': 'Commanded velocity rejected',
         'meaning': 'The velocity of the move is outside what the axis accepts: zero or '
@@ -167,11 +182,43 @@ CODES = {
         'check': ['The Velocity input of the move block. Direction comes from the target '
                   'or the Direction input, never from the sign of Velocity.'],
     },
+    0x4243: {
+        'label': 'Superimposed move only partly done',
+        'meaning': 'Usually a warning, not an axis error: MC_MoveSuperImposed could not fit '
+                   'the whole Distance into the allowed Length and VelocityDiff and did '
+                   'as much as it could.',
+        'check': ['ActualDistance against Distance: how much is missing.',
+                  'More Length, more VelocityDiff, or a mode that reduces length instead '
+                  'of velocity.',
+                  'Decide in the application whether a partial correction is acceptable.'],
+    },
+    0x4245: {
+        'label': 'Superimposed move refused',
+        'meaning': 'A superimposed move could not start: one is already running, or the '
+                   'axis is not moving.',
+        'check': ['A superimposed move needs a moving axis; on a standing axis use an '
+                  'ordinary move.',
+                  'Wait for the previous MC_MoveSuperImposed Done, or MC_AbortSuperposition.'],
+    },
+    0x424A: {
+        'label': 'Master standing still, cannot synchronise',
+        'meaning': 'A coupling that synchronises on the fly (flying saw) needs a moving '
+                   'master; the master velocity is zero.',
+        'check': ['Start the master first, or couple at standstill with MC_GearIn.'],
+    },
     0x4242: {
         'label': 'A stop is already running',
         'meaning': 'A command arrived while the axis is still executing a stop.',
         'check': ['Wait for the stop to finish (MC_Stop / MC_Halt Done) before the next '
                   'command.', 'See 0x42EF for the MC_Stop lock.'],
+    },
+    0x425A: {
+        'label': 'Coupling refused while the slave is busy',
+        'meaning': 'This kind of coupling needs the slave at standstill, and the slave '
+                   'still has a command running.',
+        'check': ['Halt the slave and wait for standstill before MC_GearIn.',
+                  'To catch a moving axis use MC_GearInMultiMaster with '
+                  'AdvancedSlaveDynamics, or the flying-saw blocks.'],
     },
     0x425D: {
         'label': 'Axis stop already active',
@@ -187,6 +234,11 @@ CODES = {
                   'Use MC_Halt for an ordinary stop. Keep MC_Stop for stops that must '
                   'not be overridden.'],
     },
+    0x4261: {
+        'label': 'Cam table not found',
+        'meaning': 'The table ID given does not exist, or is not unique.',
+        'check': ['As 0x4216: the CamTableID, and that MC_CamTableSelect finished first.'],
+    },
     0x4260: {
         'label': 'Controller enable lost',
         'meaning': 'The controller enable was missing at start or dropped while the axis '
@@ -201,6 +253,14 @@ CODES = {
         'meaning': 'More motion commands were queued than the axis can buffer.',
         'check': ['Queue a buffered command only after the previous one is Active.',
                   'BufferMode on each block: the default, Aborting, needs no buffer.'],
+    },
+    0x4296: {
+        'label': 'New command contradicts the running one',
+        'meaning': 'A buffered or blended command would need a direction that does not fit '
+                   'the command before it, so it is refused. A blending position beyond '
+                   'the previous target does this.',
+        'check': ['Blending position: it must lie before the previous target.',
+                  'Buffer mode and target of the second command against the first.'],
     },
     0x429C: {
         'label': 'Homing: reference cam not found',
@@ -444,6 +504,22 @@ CODES = {
         'handoff': 'ethercat-diagnostics',
     },
 
+    # Table
+    0x4A00: {
+        'label': 'Table ID not allowed',
+        'meaning': 'The ID for a new table is already in use or outside 1..255.',
+        'check': ['MC_CamTableSelect: an ID that a cam-editor table or an earlier select '
+                  'already uses. Keep PLC table IDs apart from editor IDs.'],
+    },
+    0x4A06: {
+        'label': 'Table not monotonic',
+        'meaning': 'The master column of the table does not rise steadily, or does not fit '
+                   'the step size given.',
+        'check': ['A PLC-built position table: master values must strictly ascend; look '
+                  'for duplicates, unfilled rows at the end of the array, or a NoOfRows '
+                  'larger than the rows you filled.'],
+    },
+
     # NC-PLC
     0x4B06: {
         'label': 'Function block input invalid',
@@ -464,7 +540,9 @@ CODES = {
         'meaning': 'The axis refuses direct motion commands, typically because it is the '
                    'slave of a coupling.',
         'check': ['Decouple first (MC_GearOut, MC_CamOut), then command it.',
-                  'MC_ReadStatus: ProtectedMode and the coupling state.'],
+                  'MC_ReadStatus: ProtectedMode and the coupling state.',
+                  'The axis parameter "Allow motion commands to slave axes" is FALSE here. '
+                  'Set TRUE, a move decouples the slave instead of failing.'],
     },
     0x4B09: {
         'label': 'Axis not ready',
