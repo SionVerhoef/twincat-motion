@@ -86,7 +86,8 @@ python3 evals/run_trigger.py check --model <id> --timeout 180 --num-workers 5 --
 
 A query counts as triggered only when the model's first tool call loads the skill. The calls
 still load the operator's global Claude Code settings, so other installed skills compete, as
-they would in real use; none of the sibling skills was installed for the runs below.
+they would in real use. `--co-install <skill folder>` (repeatable) links a sibling skill into
+every throwaway project so it competes too, without touching the global skills.
 
 ## Results, 2026-11-08 (Opus 5.5, skill at 62f800b, three reps)
 
@@ -113,3 +114,38 @@ names 0x4225 (not ready at start) and 0x4650 (drop-out during motion); registrat
 names `MC_CamIn_V2`; `axis-parameters.md` says how a scaling error shows in the lag. The
 hardware questions behind them (absent-attribute meaning, phasing on plain `MC_CamIn`) are
 in `twincat-motion-6uv.9`.
+
+## Trigger results, 2026-11-08: description rewrite (three runs per query, five workers)
+
+The first round missed the `.xti` diff, registration and MC3 queries. The description was
+rewritten in the form that worked for cia402-motion: "Load before answering any question
+about a … NC axis", a reason (NC behaviour hides in axis parameters and look-alike error
+codes), the covered topics with registration's block names, and the neighbours under "Not
+for". MC3 is deliberately named neither as covered nor as excluded: MC3 support is planned,
+and no other skill owns it, so excluding it would send those questions nowhere. The MC3 query
+stays a should-trigger query and is not part of the pass bar for v0.1.
+
+v2 added "or opening any file", the cam symptom ("MC_GearIn, MC_CamIn: a slave that jumps,
+lags or drops out") and "linting or diffing any … .xti file, also two versions of one", after
+Haiku missed the `.xti` and cam queries with v1.
+
+| Description | Siblings installed | Haiku 5.5 should · near-miss | Opus 5.5 should · near-miss |
+|---|---|---|---|
+| v0 ("Use for Beckhoff TwinCAT 3 motion control: …", 62f800b) | none | – | 33/42 · 0/30 |
+| v1 ("Load before answering any question about …") | none | 36/42 · 0/30 | 42/42 · 0/30 |
+| v2 (now in `SKILL.md`) | none | 37/42 · 0/30 | 42/42 · 0/30 |
+| v2 | cia402-motion, twincat-st | 33/42 · 0/30 | 42/42 · 0/30 |
+
+**Must-win query** ("MC_Power.Status never goes TRUE on my TwinCAT NC axis") with
+cia402-motion installed: twincat-motion was the first skill loaded in 3/3 on both models
+(cia402-motion had taken it 2/3 on Opus when twincat-motion was absent).
+
+**What Haiku still misses.** The `.xti` diff fired 0/3 with every description. A probe of
+the first tool call shows why: in two of three runs Haiku first runs `find` for
+`Axis 1.xti` in the empty test project, then would read the files; in the third it loads the
+skill. The metric counts only the first call, so this miss says Haiku explores first, not
+that the description fails to match; whether it loads the skill after finding real files is
+not measured. The co-install round's lower Haiku score has the same cause. For the MC_Halt /
+CommandAborted query (1/3), in a three-run probe with the siblings installed, Haiku listed
+the project's files first twice and loaded twincat-motion once; no sibling took it. Opus
+loads the skill first on every query.

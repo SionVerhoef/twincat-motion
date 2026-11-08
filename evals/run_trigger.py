@@ -6,7 +6,9 @@
     python3 evals/run_trigger.py optimize --skill-creator DIR --model <id> [run_loop options]
 
 DIR is the skill-creator skill folder (the one holding scripts/run_eval.py); it can
-also come from $SKILL_CREATOR_DIR. --eval-set defaults to evals/trigger-evals.json and
+also come from $SKILL_CREATOR_DIR. `--co-install SKILLDIR` (repeatable) links a
+sibling skill into every throwaway project's .claude/skills, so it competes for the
+query without touching the operator's global skills. --eval-set defaults to evals/trigger-evals.json and
 --skill-path to this repository. `check` scores the current description once;
 `optimize` also rewrites it. Neither touches SKILL.md — copy a winner in by hand.
 
@@ -40,6 +42,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 HISTORY = Path.home() / ".claude" / "projects"
+CO_INSTALL = []     # sibling skill folders, from --co-install
 _stock = None
 
 
@@ -49,6 +52,10 @@ def isolated(*a, **kw):
     root = tempfile.mkdtemp(prefix="twincat-motion-trigger-")
     try:
         (Path(root) / ".claude").mkdir()
+        for sibling in CO_INSTALL:
+            skills = Path(root) / ".claude" / "skills"
+            skills.mkdir(exist_ok=True)
+            (skills / sibling.name).symlink_to(sibling)
         bound.arguments["project_root"] = root
         return _stock(*bound.args, **bound.kwargs)
     finally:
@@ -67,6 +74,12 @@ def main() -> None:
         i = args.index("--skill-creator")
         creator = args[i + 1]
         del args[i:i + 2]
+    while "--co-install" in args:
+        i = args.index("--co-install")
+        CO_INSTALL.append(Path(args[i + 1]).resolve())
+        del args[i:i + 2]
+    if not all((p / "SKILL.md").exists() for p in CO_INSTALL):
+        sys.exit("--co-install takes a skill folder, the one holding SKILL.md")
     if not (Path(creator) / "scripts" / "run_eval.py").exists():
         sys.exit("point --skill-creator (or $SKILL_CREATOR_DIR) at the skill-creator skill "
                  "folder, the one holding scripts/run_eval.py")
