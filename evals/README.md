@@ -11,6 +11,10 @@ python3 evals/run_cells.py /tmp/ab-opus --model claude-opus-5-5 --reps 3   # the
 python3 evals/grade.py /tmp/ab-opus                         # right / partly / wrong per cell
 ```
 
+These evals test what an agent says. What TwinCAT does is checked separately, by hand, in
+`field-test/`: one XAE session on simulated axes that confirms or refutes the claims the
+references could only take from the manual.
+
 The harness is the one from the sibling skill cia402-motion, with the names changed;
 `run_cells.py`'s docstring says why each isolation flag is there. In short: `run_cells.py`
 snapshots the skill at `--ref` (default `HEAD`) minus `evals/`, lays the cells out with
@@ -103,6 +107,13 @@ A hand read of the 36 skill answers found wording problems, filed as a bead: the
 `AllowMotionCmdToSlave` "default" clashes with ".xti stores only non-defaults"; the homing
 edge fix overstates what it removes; 0x4650 listed for open STO; phasing on plain `MC_CamIn`
 contradicts itself; no guidance on how a scaling error shows on a velocity axis.
+All five are fixed in `twincat-motion-7az`: `coupling.md` and `triage.md` now say XAE
+writes TRUE on a new axis and leave an absent attribute as unverified; `homing.md` says the
+edge fix removes the braking distance but not one cycle's sampling jitter; `boundaries.md`
+names 0x4225 (not ready at start) and 0x4650 (drop-out during motion); registration step 5
+names `MC_CamIn_V2`; `axis-parameters.md` says how a scaling error shows in the lag. The
+hardware questions behind them (absent-attribute meaning, phasing on plain `MC_CamIn`) are
+in `twincat-motion-6uv.9`.
 
 ## Trigger results, 2026-11-08: description rewrite (three runs per query, five workers)
 
@@ -134,7 +145,7 @@ the first tool call shows why: in two of three runs Haiku first runs `find` for
 `Axis 1.xti` in the empty test project, then would read the files; in the third it loads the
 skill. The metric counts only the first call, so this miss says Haiku explores first, not
 that the description fails to match; whether it loads the skill after finding real files is
-not measured. The co-install round's lower Haiku score has the same cause: the MC_Halt /
-CommandAborted query (1/3): in a three-run probe with the siblings installed, Haiku listed
+not measured. The co-install round's lower Haiku score has the same cause. For the MC_Halt /
+CommandAborted query (1/3), in a three-run probe with the siblings installed, Haiku listed
 the project's files first twice and loaded twincat-motion once; no sibling took it. Opus
 loads the skill first on every query.

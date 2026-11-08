@@ -39,9 +39,12 @@ ordinary move blocks and sets the position itself.
 **Accuracy.** Setting the position at standstill puts the zero where the axis stopped, which
 is the switch edge plus the braking distance. That varies with speed and load. Better:
 - read the actual position in the cycle the edge is seen, and after standstill call
-  `MC_SetPosition` in relative mode (`Mode` TRUE) with `reference − position at edge`. The
-  zero is then the switch edge, to within one PLC cycle × the search speed.
-- or search fast, back off, and approach again slowly.
+  `MC_SetPosition` in relative mode (`Mode` TRUE) with `reference − position at edge`. This
+  removes the braking distance, not the sampling jitter: the PLC sees the edge up to one
+  cycle late, so the zero still scatters by up to cycle time × search speed (10 ms ×
+  50 mm/s = 0.5 mm).
+- or search fast, back off, and approach again slowly: a slower final approach shrinks that
+  jitter, but only a hardware latch removes it.
 - for real repeatability, latch the edge in hardware (option 4).
 
 **Marking homed.** Two ways, both in use:
