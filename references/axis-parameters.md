@@ -80,7 +80,11 @@ is off by orders of magnitude. The drive side is **cia402-motion**; the drive's 
 resolution comes from its ESI or manual (ask **ethercat-esi**).
 
 Check a scaling by commanding a short, slow move at reduced limits and measuring it, not by
-reading the position display: a wrong factor makes the display agree with itself.
+reading the position display: a wrong factor makes the display agree with itself. On a
+velocity-interface axis it also shows in the lag: the feed-forward is off by the same factor,
+so the lag grows in proportion to velocity. A factor too small (each increment counted as
+less travel than it is) makes the axis lag; too large makes it run ahead of the set point
+(negative lag).
 
 **Direction.** Encoder direction and motor polarity can each be inverted. They must agree:
 invert both or neither, and not again in the drive's own parameters. A mismatch gives
