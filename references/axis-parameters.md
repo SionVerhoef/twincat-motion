@@ -16,7 +16,7 @@ or an Automation Interface script; a direct `.xti` edit only after the user expl
 
 | Drive runs | Who closes the position loop | The NC position controller (Kv, Tn, ...) |
 |---|---|---|
-| a **position** set point: CoE CSP, AX5000/AX8000 in position mode, EL72x1 in position mode | the drive | **has no effect.** Tune in the drive (Drive Manager 2, TE5960 autotuning, the drive's own tool) |
+| a **position** set point: CoE CSP (the AX8000 too), AX5000 in position mode, EL72x1 in position mode | the drive | **has no effect.** Tune in the drive (Drive Manager 2, TE5960 autotuning, the drive's own tool) |
 | a **velocity** set point: CoE CSV, analog ±10 V, a terminal in velocity mode | the NC | is the loop. Kv, and the reference velocity, matter |
 
 Tuning NC Kv on a CSP axis is a common and long detour. Find out the mode first: for a CoE
@@ -48,6 +48,27 @@ go this way:
 
 What the drive objects mean is **cia402-motion**'s; whether this drive can map them,
 **ethercat-esi**'s.
+
+## Beckhoff AX8000 on the NC
+
+The AX8000 axis modules are CoE drives with the standard CiA 402 objects (0x6040, 0x6041,
+0x6060 …), not SoE drives like the AX5000. Beckhoff's object dictionary lists no second
+profile. Three of its settings matter to the NC axis:
+
+- **Position scaling, 0x3005:01.** The drive sends position in units it sets itself: by
+  default 2^20 counts per 360° of the motor. The NC encoder scaling must use the same
+  resolution (Example 1 below). If someone changes 0x3005:01 in the drive, re-check the NC
+  factor.
+- **Fault reaction, 0x605E.** Besides the profile's values, it offers −1, "NC handling".
+  The default is 2, a ramp closed in the drive. Find out which one is set before you explain
+  how the axis stopped after a fault.
+- **No drive homing.** Only cyclic modes exist (8–11 and 15, plus vendor modes), with no
+  homing mode, so the NC or the PLC homes the axis (`homing.md`, options 1–4 and 6). Mode 6,
+  drive-based homing (option 5), does not apply.
+
+Sources: Beckhoff InfoSys, AX8xxx object dictionary v1.7.0 (`ax8xxx_objects`), pages
+18797721227, 18797826827, 18797962251, 18797964299, read 2026-11-08. Drive-side details
+(modes, quick stop, statusword bits, PDO modules) are in **cia402-motion**'s Beckhoff notes.
 
 ## Scaling
 

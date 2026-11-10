@@ -9,9 +9,9 @@ or 4.
 - **Library and build.** Tc2_MC2 on TwinCAT 3.1.4024 or similar? `Tc3_Mc3*` or `McToPlc` mean
   MC3, and 0x81xx codes MC3 or the Advanced Motion Pack; this skill covers neither:
   `out-of-scope.md`.
-- **The drive and its interface.** Simulated axis, AX5000/AX8000 (SoE), EL72x1/EL70x7
-  terminal, or a third-party CoE drive. For a CoE drive: does it run in position mode
-  (CSP) or velocity mode (CSV)?
+- **The drive and its interface.** Simulated axis, AX5000 (SoE), AX8000 (CoE, CiA 402
+  objects), EL72x1/EL70x7 terminal, or a third-party CoE drive. For a CoE drive: does it run
+  in position mode (CSP) or velocity mode (CSV)?
 - **The `MC_Power` outputs**: `Status`, `Error`, `ErrorID`. And the move block's outputs.
 - **The axis status**, from `MC_ReadStatus` or `Axis.ReadStatus()` called this cycle, or
   from the axis's Online tab in XAE. A status that nobody refreshes is stale.
