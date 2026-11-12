@@ -11,7 +11,7 @@ TYPE E_HomePlcState :
     ClearNcHomed := 20,    // MC_Home MC_ResetCalibration (NC mark only)
     CheckSwitch  := 30,    // already on the switch? move off it first
     MoveOff      := 40,    // MC_MoveVelocity away until switch released
-    HaltOff      := 50,    // MC_Halt, wait for standstill
+    HaltOff      := 50,    // MC_Halt, wait for standstill, then CheckSwitch again
     Search       := 60,    // MC_MoveVelocity towards until switch edge
     HaltSearch   := 70,    // MC_Halt, wait for standstill
     SetPosition  := 80,    // MC_SetPosition, relative, lag cleared

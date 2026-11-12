@@ -80,8 +80,9 @@ and restored afterwards. Option 3 (`MC_StepBlock`) does this for you.
 | `MC_ForceCalibration` | marks the axis homed; no movement, position unchanged |
 | `MC_ResetCalibration` | clears the homed state; no movement, position unchanged |
 
-Older TcMC2 documentation listed modes such as absolute switch, reference pulse and block as
-"not implemented". They do not exist in Tc2_MC2; step homing (option 3) covers them.
+TcMC2 documentation also lists modes such as absolute switch, reference pulse and block,
+marked "not implemented". Whether a given `Tc2_MC2` version still declares them in the enum
+is unverified; either way, don't use them. Step homing (option 3) covers those cases.
 `Tc3_DriveMotionControl` has a different `MC_HomingMode` enum with the same name: check the
 library before trusting an enum value (`out-of-scope.md`).
 
