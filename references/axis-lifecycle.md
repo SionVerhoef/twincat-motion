@@ -45,8 +45,9 @@ A master stays in its own state while slaves couple to it. Read-only blocks (`MC
 
 `MC_Stop` sets `Done` when the axis stands still, but `Busy` and `Active` stay TRUE and the
 axis refuses every other motion command (error 0x42EF) until `Execute` goes FALSE. Release is
-not instant: `Busy` stays TRUE for some cycles after the falling edge, and the block must
-keep being called until it drops. `MC_Reset` also releases it. `ST_AxisStatus.MotionCommandsLocked` shows the lock.
+not instant: `Busy` stays TRUE for some cycles after the falling edge (one PLC cycle on
+4024.55 / Tc2_MC2 3.3.59 with a simulated axis), and the block must keep being called until
+it drops. `MC_Reset` also releases it, even while `MC_Stop.Execute` stays TRUE. `ST_AxisStatus.MotionCommandsLocked` shows the lock.
 
 Using `MC_Stop` for a normal stop and holding its `Execute` is the classic "the axis won't
 move again" bug. Use `MC_Halt`, which stops without locking.
@@ -69,16 +70,25 @@ the target of a running move, trigger **a second instance** with the new values;
 default `Aborting` mode it takes over and the first reports `CommandAborted`.
 
 A falling `Execute` resets the outputs but does **not** cancel the command. If `Execute`
-falls before the command ends, the block still shows `Done`, `Error` or `CommandAborted`
-for one cycle at the end.
+falls before the command ends, the block is documented to still show `Done`, `Error` or
+`CommandAborted` for one cycle at the end. Not always: an `MC_MoveVelocity` ended by an
+override change (see `MC_Power` details below) never showed `CommandAborted` with `Execute` already
+FALSE, not even for one cycle; with `Execute` held it did (observed, 4024.55 / Tc2_MC2
+3.3.59, simulated axis). Code that pulses `Execute` on `MC_MoveVelocity` cannot tell that an
+override change ended it. `Done` and `Error` after a falling `Execute` were not tested.
 
 ### Zero means different things
 
 - On a move or `MC_Jog`, a dynamics input (`Acceleration`, `Deceleration`, `Jerk`) of 0
   means "use the default from the axis parameters".
 - On `MC_Halt` and `MC_Stop`, a deceleration or jerk of 0 (or less) takes the values of the
-  last move instead, and a stop never ramps more gently than the move it ends.
-- A `Velocity` of 0 on a move is an error (0x4231), not a default.
+  last move instead, so a stop with 0 never ramps more gently than the move it ends
+  (observed for `MC_Halt` after moves with deceleration 500 and 200). An **explicit** value
+  is used as given: an `MC_Halt.Deceleration` of 100 ending a move that ran with 500
+  stopped at 100, more gently than the move.
+- A `Velocity` of 0 on a move is an error, not a default. The code depends on the block:
+  `MC_MoveAbsolute` with `Velocity` 0 returned 0x4359 (observed, 4024.55 / Tc2_MC2 3.3.59);
+  0x4231 is the group-level code for the same mistake. Look up whichever the block reports.
 
 ### Buffer modes
 
@@ -123,7 +133,11 @@ and `MC_JOGMODE_INCHING_MODULO` move a set distance per button press.
 
 ### `MC_Power` details
 
-- `Override` is a percentage (0–100, default 100) applied to every move on the axis.
+- `Override` is a percentage (0–100, default 100) applied to every move on the axis. At 0
+  the axis stands still with its command still running; a move started at override 0 is
+  `Busy` and `Active` and does not move, and finishes once the override returns. A change of
+  override ends a running `MC_MoveVelocity` with `CommandAborted` while the axis keeps moving
+  at the new velocity (observed, 4024.55 / Tc2_MC2 3.3.59, `Execute` held TRUE).
 - `Status` is the readiness of the axis, including the drive's on digital drives. On an
   analog drive it can only report the control side.
 - The hardware enable of a drive is not driven by `MC_Power`: `triage.md`, step 3.

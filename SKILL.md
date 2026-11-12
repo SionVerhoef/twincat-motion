@@ -70,7 +70,9 @@ python3 scripts/axis_xti.py diff old.xti new.xti                 # e.g. old from
 ```
 
 An `.xti` stores only non-default values and the tool has no defaults table: an absent
-parameter is at its TwinCAT default, lint checks explicit values only, and a clean lint is
+parameter is at its TwinCAT default (one exception: XAE 4024.55 writes
+`AllowMotionCmdToSlave="true"` into every new axis, although the default, and an absent
+attribute, is FALSE), lint checks explicit values only, and a clean lint is
 not a full audit. Say so when you report a result. The tool never writes an `.xti`;
 propose changes as a parameter-change table or an Automation Interface script
 (`references/config-changes.md`).
@@ -109,5 +111,8 @@ CoE tab in XAE or its ESI file.
 
 Written for TwinCAT 3.1.4024 with `Tc2_MC2`; differences in 4026 are named only where known.
 The references are built from the Tc2_MC2 documentation and public sample projects, restated
-in our own words. `nc_error.py` and `axis_xti.py` are tested on public sample axes. Nothing here
-has been run against a real axis: report at that precision.
+in our own words. `nc_error.py` and `axis_xti.py` are tested on public sample axes. A field
+test on 4024.55 / `Tc2_MC2` 3.3.59 with simulated axes checked the templates and the main
+claims on the axis lifecycle, homing, coupling and configuration; the references mark what it
+observed. Nothing here has been run against a real drive, an absolute encoder or real retain
+storage: report at that precision.

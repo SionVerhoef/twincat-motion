@@ -7,7 +7,7 @@
     commands come from placeholder BOOLs; wire them to the HMI or to a
     sequence.
 
-    TEMPLATE - reviewed, not run. Every number here is a placeholder in
+    TEMPLATE - run on a simulated axis. Every number is a placeholder in
     mm, mm/s and mm/s^2: size each one for the machine, and start with
     reduced values.
 

@@ -1,17 +1,17 @@
 # Field test: one XAE sitting
 
-This protocol checks the claims in this skill that nobody has yet run against TwinCAT. It
-is written for an agent that has only this repository, working with a person at a Windows PC
+This protocol checks the skill's claims against TwinCAT. It is written for an agent that has only this repository, working with a person at a Windows PC
 with TwinCAT XAE. Everything you need is in this folder and in the files it points to.
 
 ## Context
 
 `twincat-motion` is an agent skill for classic TwinCAT NC axes (`Tc2_MC2`). Its references
 (`references/`), templates (`templates/`) and scripts (`scripts/`) were written from the
-Beckhoff documentation and public sample projects. The scripts are unit-tested, but nothing
-has run against a real NC: the templates have not been compiled, and several statements
-about NC behaviour come from the manual or from memory. This session settles those
-statements on **simulated axes**, in one sitting.
+Beckhoff documentation and public sample projects. A first run on 4024.55 with simulated
+axes (November 2026) has been folded into the references, which mark what it "observed";
+the steps below include what that run taught about the protocol. A repeat is most useful on
+another TwinCAT build or library version, and for sections F and G on real hardware, which
+the first run did not have.
 
 Read `SKILL.md` first. Before each check, skim the reference section it names under
 **Claim**: that is what the check confirms or refutes.
@@ -77,19 +77,20 @@ what happened instead), `PARTIAL`, `NOT RUN` (say why).
 ## A. Configuration in XAE (no runtime needed)
 
 **A1. What a new axis writes to its file.**
-Claim: `references/coupling.md`, "The slave is protected": axes created in 4024.55 have
-*Allow motion commands to slave axes* TRUE. `SKILL.md`, Tools: an `.xti` holds only
-non-default values. Both can't be fully true if the file spells TRUE out.
+Claim: `references/coupling.md`, "The slave is protected": XAE 4024.55 writes *Allow motion
+commands to slave axis* TRUE into new axes, although the default is FALSE. `SKILL.md`,
+Tools: otherwise an `.xti` holds only non-default values.
 Do: `py -3 scripts\axis_xti.py show "axes-fresh\Axis 1.xti"`. Open the file in an editor
 and search for `AllowMotionCmdToSlave` and for `PosDiffControl`. In XAE, read the same two
-settings on Axis 1's *Parameter* tab (allow motion commands to slave axes; position lag
+settings on Axis 1's *Parameter* tab (*Allow motion commands to slave axis*; position lag
 monitoring enable).
 Record: for each, present in the file or not, its value, and what XAE shows. The full list of
 attributes `axis_xti.py show` prints for a fresh axis.
 
 **A2. Does XAE accept a hand-edited `.xti`?**
-Claim: `references/config-changes.md`, section 3: it is untested whether XAE loads a
-hand-edited value unchanged, and whether it rewrites the file on save.
+Claim: `references/config-changes.md`, section 3: XAE loads a hand-edited value unchanged and
+does not rewrite the file on a *Save All* with no change; when it rewrites, it keeps the
+layout and adds or drops bookkeeping only.
 Do: in XAE set Axis 2's *Manual Velocity (Fast)* (or any velocity on the Parameter tab) to
 123, save all, close XAE. Copy `Axis 2.xti` to `axis2-before.xti`. In an editor, change
 that 123 to 124 and nothing else. Open the project in XAE.
@@ -109,9 +110,10 @@ the "absent" case; record that.)
 **A4. Where non-default settings land in the file.**
 Claim: `references/axis-parameters.md`, dead-time compensation: an encoder setting on the
 *Enc > Time Compensation* tab, separate from the drive's `Drive/DrvPara/TimeComp`.
-`references/coupling.md`: the external set-point setting is named as
-`Status.Opmode.AllowExtSetAxisCommands`, and the slave setting as
-`AxisPara/OtherSettings@AllowMotionCmdToSlave`.
+`references/coupling.md`: the external set-point setting is
+`AxisPara/OtherSettings@AllowMotionCmdToExtSetGenAxis`, and the slave setting
+`AxisPara/OtherSettings@AllowMotionCmdToSlave`. `axis-parameters.md`: the axis-level dead time
+is `AxisPara/Dynamic@DelayTime`.
 Do, on Axis 4, one change at a time: copy `Axis 4.xti` to a numbered backup, change the
 setting in XAE, save, run `axis_xti.py diff` and a raw diff against the backup, then undo
 the change.
@@ -119,25 +121,27 @@ the change.
    such tab, set the encoder type to an EL72x1 or AX8000 encoder (no hardware needed for the
    configuration) and record which type shows it.
 2. *Allow motion commands to an external set-point axis* (exact name as XAE shows it).
-3. *Allow motion commands to slave axes* set to FALSE.
+3. *Allow motion commands to slave axis* set to FALSE.
 4. Position lag monitoring off. (Scratch axis only; switch it back on.)
 Record per change: XAE page and field name, the `.xti` element path, attribute and value, and
 whether `axis_xti.py diff` shows it under that path. If the tool misses a change or names it
 differently, that is a finding.
 
 **A5. The Automation Interface script.**
-Claim: `references/config-changes.md`, section 2: `axis-change.ps1` has not been run
-against XAE; the XML from `ProduceXml` may not match the `.xti` layout.
+Claim: `references/config-changes.md`, section 2: the produced XML holds every value as
+element text under `/TreeItem/NcAxisDef`, and the apply pass sets that text; this version of
+the apply pass has not been run as a whole.
 Do: copy the script from that section, unchanged, into `axis-change.ps1`. With the project
 open in XAE, in Windows PowerShell 5.1:
 1. `.\axis-change.ps1 -Solution <path to the .sln> -Axis "Axis 4" -Produce`
-2. Find Axis 4's maximum velocity (or manual velocity) in the produced XML. Write a
-   `changes.csv` with one row (`XPath,Attribute,Old,New`) that changes it.
+2. Find Axis 4's manual velocity (fast) in the produced XML. Write a `changes.csv` with a
+   header `XPath,Old,New` and one row that changes it, e.g.
+   `/TreeItem/NcAxisDef/AxisParam/Velo/FastManual,600,601`.
 3. Run it again with `-Changes changes.csv`. Check the value on the axis in XAE.
 4. Run once more with a wrong `Old` value: it must stop with "Nothing applied".
 Record: whether it attached at all (if `TcXaeShell.DTE.15.0` failed, which ProgId worked);
 whether the tree path `TINC^NC-Task 1 SAF^Axes^Axis 4` worked; the produced XML's root
-element and the XPath and attribute of the value you changed, next to its `.xti` path from
+element and the XPath of the value you changed, next to its `.xti` path from
 A4; whether the change showed in XAE and marked the project modified; every error message
 verbatim, with local paths removed.
 
@@ -148,8 +152,8 @@ flying saw product.
 Record: the library name and the product number and title, as shown.
 
 **A7. NC retain settings: where they are and what they're called.**
-Claim: `references/homing.md`, section 6: NC retain data is set on the SAF task, and the
-strictest setting is called *Load/Store* "in our sources".
+Claim: `references/homing.md`, section 6: NC retain data is set on the SAF task's *Settings*
+tab (four options), plus *Data Persistence* per axis.
 Do: find in XAE where NC retain data is configured (task, NC or axis level), and any
 per-encoder data-persistence setting.
 Record: the menu path and the exact names of the options.
@@ -157,17 +161,21 @@ Record: the menu path and the exact names of the options.
 ## B. Compile, link and start
 
 **B1. The templates compile.**
-Claim: `templates/README.md`: reviewed, never compiled.
+Claim: `templates/README.md`: they build with no errors or warnings.
 Do: add all nine files from `templates/` to the PLC project (*Add > Existing Item*). In a
 throwaway project the templates' GUIDs don't matter; in a real project use twincat-st's
-`tcpou.py` as `templates/README.md` says. Build.
+`tcpou.py` as `templates/README.md` says. TwinCAT generates code only for POUs that something
+calls, so a build of uncalled templates proves nothing: call `PRG_AxisExample()` from `MAIN`
+(it instantiates every template; B3 step 4) or run *Check all objects*, then build.
 Record: every error and warning, verbatim, with object and line. Known risk points: reading
 a block's `Execute` from inside a method of `FB_Axis`, the `16#0001_0001` literals, and
 `DEFAULT_HOME_POSITION` as a default value in `ST_HomeNcParams`. For each fix you needed,
 record a unified diff against the template.
 
 **B2. The test program compiles.**
-Do: create `PRG_FieldTest` from `PRG_FieldTest.st` as its header says. Build.
+Do: create `PRG_FieldTest` from `PRG_FieldTest.st` as its header says. Build. It was written
+against `Tc2_MC2_Camming` 3.4.0, whose `MC_CamTableSelect` takes `Master` and `Slave` as
+`VAR_IN_OUT`; on a library version without them, remove those two inputs from the call.
 Record: errors and the fixes, as in B1.
 
 **B3. A test copy of the example program.**
@@ -176,7 +184,9 @@ Record: errors and the fixes, as in B1.
    `fSwitchPos : LREAL := -50.0;` to its `VAR` block.
 2. Add as the first line of its code: `bRefSwitch := Axis1.NcToPlc.ActPos <= fSwitchPos;`
    The "switch" is then active below -50 and moves with the coordinates when homing sets a
-   new position. That is fine for these tests.
+   new position. That is fine for `FB_HomePlc` (D2), **not** for NC homing (C5, D4): during
+   `MC_DefaultHoming` the NC sets the position to -1.0E10, so this switch goes TRUE in the
+   first cycle of the search. D4 uses its own cam BOOL.
 3. Add a velocity command for D3, in the declarations
    `bVeloCmd : BOOL; fVeloCmd : LREAL := 50.0; fbVeloTrig : R_TRIG;` and after the other
    commands:
@@ -192,12 +202,13 @@ Write `bClear := TRUE` before each check. Pulse a command means: write TRUE, the
 
 **C0. What the running NC holds.** (Completes A1 and A3.)
 Record: `fbAllowSlave1.Value`, `fbAllowSlave2.Value`, `fbLagMon1.Value`,
-`fbLagMon2.Value`, `fbAllowExt1.Value`, each with its `Valid`. Axis 2 is the one whose
-attributes A3 removed.
+`fbLagMon2.Value`, `fbAllowExt1.Value`. Axis 2 is the one whose attributes A3 removed. In
+`READMODE_CYCLIC`, `Valid` toggled TRUE/FALSE every cycle on 4024.55; that is expected, so
+read `Value` and `Error` rather than gate on `Valid`.
 
 **C1. `MC_Power` with only `Enable`.**
-Claim: `references/triage.md` step 2: with only `Enable`, the first move is refused with
-0x4357 or 0x4358, or 0x4223 / 0x422A at the start of a move.
+Claim: `references/triage.md` step 2: with only `Enable`, a move is refused with 0x4223 on
+the block for either direction, and the axis takes no error.
 Do: `bEnPos1 := FALSE`, `bEnNeg1 := FALSE`, `bEnable1 := TRUE`. Then pulse `bMoveA`
 (a positive move, to 1000).
 Record: `fbPower1.Status` before the move; `nErrMoveA` (the block) and `nAxisErr1` (the
@@ -217,9 +228,10 @@ Repeat, but while `bStop1` is held pulse `bReset1`: is the lock gone? Does a mov
 
 **C3. `MC_Halt` with `Deceleration` 0.**
 Claim: `references/axis-lifecycle.md`, "Zero means different things": 0 on `MC_Halt` takes
-the last move's deceleration, and a stop never ramps more gently than the move it ends.
-`templates/README.md` calls this unconfirmed.
-Do: four runs. Each: set `fDec`, pulse `bMoveVelo`, wait for constant velocity, set
+the last move's deceleration; an explicit value is used as given.
+Do: set `fVelo := 500` first. At 100 mm/s the default jerk (2250 mm/s³ on a new axis) limits
+the peak deceleration to about sqrt(100 × 2250) ≈ 474 mm/s², and the runs can't be told
+apart. Record the axis's default jerk too. Four runs. Each: set `fDec`, pulse `bMoveVelo`, wait for constant velocity, set
 `fHaltDec1`, pulse `bHalt1`, read `fPeakDecel1` (the largest set deceleration of the ramp).
 | Run | `fDec` | `fHaltDec1` |
 |---|---|---|
@@ -244,11 +256,14 @@ Record after each step: `Axis1.Status.Homed` and the actual position. Also: does
 Claim: `references/homing.md`, option 2, the default sequence and `HomingState`.
 `templates/README.md`: `FB_HomeNc`'s timeout relies on `MC_Halt` stopping a running
 `MC_Home`, which is untested.
-Do: `eHomeMode1 := MC_DefaultHoming`, `bCam1 := FALSE`, pulse `bHome1`. Watch
-`Axis1.NcToPlc.HomingState` and the motion. Set `bCam1 := TRUE` (cam found), then FALSE
-(cam left). Does a simulated encoder ever give the sync pulse? Then start again, and while
-the axis searches set `fHaltDec1 := 500` and pulse `bHalt1`. Repeat once while it waits for
-the sync pulse, if it gets there.
+Do: start a Scope recording first (PLC symbols at the PLC cycle: `HomingState`, `ActPos`,
+`SetPos`, `bCam1`, the `fbHome1` outputs); the intermediate states last tens of milliseconds,
+too fast for the watch window. `eHomeMode1 := MC_DefaultHoming`, `bCam1 := FALSE`, pulse
+`bHome1`. Watch `Axis1.NcToPlc.HomingState` and the motion. Set `bCam1 := TRUE` (cam found), then FALSE
+(cam left). A simulated encoder gives the sync pulse at once, so homing completes; a real
+encoder may wait in state 5. Then start again, and while the axis searches set
+`fHaltDec1 := 500` and pulse `bHalt1`. On a real encoder, repeat once while it waits for the
+sync pulse.
 Record: search direction and velocity, and the encoder parameters they came from; each
 `HomingState` value and when; whether homing completes. On the halt: does the axis stop?
 `nErrHome1`, `bAbortedHome1`, `nErrHalt1`, `nAxisErr1`, `HomingState` afterwards, and
@@ -258,16 +273,20 @@ whether the next homing run starts without `MC_Reset`.
 Claim: `templates/FB_Axis.TcPOU`, contract: `MC_MoveVelocity` ends with `CommandAborted`
 when the override changes while the axis keeps moving. `references/triage.md` step 2: at
 override 0 a move starts and nothing moves.
-Do: pulse `bMoveVelo`, wait for `fbMoveVelo.InVelocity`, set `fOverride1 := 50`, then 0,
-then 100. Then, with override 0, pulse `bMoveA`.
+Do: set `bMoveVelo := TRUE` and **hold it TRUE** (with a pulse, the `CommandAborted` from
+the override change never reaches the outputs: `axis-lifecycle.md`). Wait for
+`fbMoveVelo.InVelocity`, set `fOverride1 := 50`, then 0, then 100. Then, with override 0,
+pulse `bMoveA`.
 Record at each step: `InVelocity`, `Busy`, `bAbortedVelo`, whether the axis moves, and
 `fbMoveA.Busy` / `Done` with override 0.
 
 **C7. Zero velocity, zero acceleration.**
-Claim: `references/axis-lifecycle.md`: a velocity of 0 is error 0x4231; an acceleration of
-0 means the axis default.
+Claim: `references/axis-lifecycle.md`: a velocity of 0 is an error (0x4359 from
+`MC_MoveAbsolute` on 4024.55); an acceleration of 0 means the axis default.
 Do: `fVelo := 0`, pulse `bMoveA`. Then `fVelo := 100`, `fAcc := 0`, pulse `bMoveA`.
-Record: `nErrMoveA`; whether the second move runs.
+Record: `nErrMoveA` and `nAxisErr1` (did the axis itself go to error?); whether the second
+move runs, and its acceleration ramp (`Axis1.NcToPlc.SetAcc` in Scope) against the axis
+default.
 
 **C8. Retargeting a running move.**
 Claim: `references/axis-lifecycle.md`, "Inputs latch on the rising edge": a new rising edge
@@ -317,12 +336,12 @@ Record: each step's outputs, and any refusal (`bAccepted` FALSE).
 Claim: `references/homing.md` option 2; `templates/README.md`: the timeout path relies on
 `MC_Halt` stopping `MC_Home`.
 Do: set `cUseNcHoming := TRUE` (a constant: change it and download), `stHomeNc.tTimeout :=
-T#10S`.
-1. With the simulated switch as cam: run homing. If it never completes (no sync pulse on a
-   simulated encoder, see C5), it must time out: expect `bError`, `nErrorID` 16#0001_0202,
-   and the axis halted.
-2. `stHomeNc.bNoCam := TRUE`: run again. Expect the faked cam to start the sequence, then the
-   same outcome.
+T#10S`. Feed `FB_HomeNc`'s `bCalibrationCam` from a hand-written BOOL (for example a new
+`bCamNc : BOOL` written online), **not** from the `ActPos` switch of B3 (see there).
+1. Cam BOOL held FALSE, `stHomeNc.bNoCam := FALSE`: run homing. The cam never arrives, so it
+   must time out: expect `bError`, `nErrorID` 16#0001_0202, and the axis halted.
+2. `stHomeNc.bNoCam := TRUE`: run again. Expect the faked cam to start the sequence at
+   `HomingState` 3; on a simulated encoder it then completes.
 Record: both runs, `Axis1.NcToPlc.HomingState` along the way, and whether the axis really
 stood still after the timeout. If homing completed, the final position (the default takes the
 reference position from the encoder parameters).
@@ -335,11 +354,16 @@ between checks.
 **E1. A move on a coupled slave, motion commands to slaves allowed.**
 Claim: `references/coupling.md`, "The slave is protected", and `references/triage.md` step 4:
 with the setting TRUE, a move on a slave decouples it without an error and runs.
-Do: set Axis 2's *Allow motion commands to slave axes* to TRUE in XAE and activate (or
-download it online). Pulse `bGearIn` at standstill, pulse `bMoveVelo` on the master, then
-pulse `bMoveSlave`. Afterwards, couple again and pulse `bHalt2` (`fHaltDec2 := 500`).
+Do: set Axis 2's *Allow motion commands to slave axis* to TRUE in XAE and activate, or
+download it online: *Parameter* tab, **Download**, and answer the *Persistent Changes* dialog
+with **Save now** (OK keeps it only until the next restart; `config-changes.md`). Pulse
+`bGearIn` at standstill, pulse `bMoveVelo` on the master, then pulse `bMoveSlave`. Then
+**stop the master** (`MC_GearIn` onto a moving master is refused with 0x425A), couple again at
+standstill, start the master again, and pulse `bHalt2` (`fHaltDec2 := 500`) on the coupled
+slave.
 Record: `nErrMoveSlave`, `Axis2.Status.Coupled` and `ProtectedMode` before and after,
-`bAbortedGearIn`, where the slave ends; the same for the halt.
+`fbGearIn.InGear` and `fbGearIn.ErrorID` after each decouple, `bAbortedGearIn`, where the
+slave ends; the same for the halt.
 
 **E2. Decoupling a moving slave.**
 Claim: `references/coupling.md`, `MC_GearOut`: the slave keeps its velocity indefinitely.
@@ -350,11 +374,13 @@ Record: `Axis2.NcToPlc.SetVelo` after the decouple and after the master stopped;
 **E3. `MC_Halt` with `Deceleration` 0 on a decoupled slave.**
 Do: continue from E2 with `fHaltDec2 := 0`, pulse `bHalt2`, read `fPeakDecel2`. Repeat with
 the master's `fDec` at 500 and at 200 before coupling.
-Record: both values, and Axis 2's default deceleration. Whose dynamics did the halt use?
+Record: both values, and Axis 2's default deceleration and jerk (Axis 2 > *Parameter* >
+*Dynamics*). Whose dynamics did the halt use?
 
 **E4. `MC_GearInDyn` with `Enable` FALSE.**
 Claim: `references/coupling.md`: `Enable` FALSE ends the command but keeps the coupling;
-`MC_GearOut` while `Enable` is TRUE decouples only briefly.
+`MC_GearOut` while `Enable` is TRUE leaves the slave decoupled, with `InGear` FALSE and no
+error.
 Do: `bGearInDyn := TRUE`, wait for `InGear`, master moving. `bGearInDyn := FALSE`. Then
 `bGearInDyn := TRUE` again and pulse `bGearOut` while it stays TRUE.
 Record: `Axis2.Status.Coupled` and whether the slave follows after Enable FALSE; what the
@@ -374,17 +400,20 @@ Record: slave set position after coupling and after each master move; `nAxisErr2
 at 120; other orders give 45 / 55 or 75 / 85. Which matches?
 
 **E6. Phasing on a plain `MC_CamIn` slave.**
-Claim: `references/coupling.md`, "Phasing": phasing works on `MC_GearIn`,
-`MC_GearInMultiMaster` with advanced slave dynamics and `MC_CamIn_V2`, not on
-`MC_GearInDyn`; the registration section suggests it on any cam slave.
-Do: pulse `bPhasing` (`fPhaseShift := 10`) on: an `MC_CamIn` slave (E5), an `MC_GearIn`
-slave, an `MC_GearInDyn` slave.
-Record per coupling: `nErrPhasing`, whether the slave shifted by 10.
+Claim: `references/coupling.md`, "Phasing": phasing works on `MC_GearIn` and a plain
+`MC_CamIn`, not on `MC_GearInDyn` (0x4251); with the master at standstill it reports `Done`
+and nothing shifts.
+Do: run the **master at constant velocity** while phasing. For `MC_CamIn`, keep the master
+inside the table's range: the first run started both axes at 0 with the master at 30 mm/s
+and a 0..360 table. Pulse `bPhasing` (`fPhaseShift := 10`, phasing velocity 30) on: an
+`MC_CamIn` slave (E5), an `MC_GearIn` slave, an `MC_GearInDyn` slave.
+Record per coupling: `nErrPhasing`, and the shift as the change of (slave set position −
+master set position).
 
 **E7. The same move with motion commands to slaves not allowed.** (Last, as it may need an
 activation.)
-Claim: as E1: with the setting FALSE, the move is refused with 0x4B08 and the slave stays
-coupled.
+Claim: as E1: with the setting FALSE, the move is refused with 0x4B08, a halt with 0x4267,
+and the slave stays coupled.
 Do: set the setting FALSE on Axis 2, activate or download, and repeat E1.
 Record: as E1.
 
@@ -394,8 +423,11 @@ Record: as E1.
 Claim: `references/homing.md`, section 6: without valid retain data the NC either refuses to
 start (strictest setting) or starts with 0x4002 and absolute axes not homed; 0x4002 on the
 very first start is expected and should not repeat.
-Do: only if the runtime has retain storage: switch NC retain on with the settings found in
-A7, activate, restart the runtime twice.
+Needs a controller with real retain storage (NOVRAM or UPS-backed), preferably with an
+absolute encoder. On a Windows VM the settings are accepted silently and nothing is restored,
+which proves nothing: mark `NOT RUN` there.
+Do: switch NC retain on with the settings found in A7, and *Data Persistence* on the axis
+(it cannot be downloaded online: activate), activate, restart the runtime twice.
 Record: the codes at each start (the TwinCAT logger shows them), and whether Axis 1 is homed.
 If this needs hardware you don't have, mark `NOT RUN`; A7 still counts.
 

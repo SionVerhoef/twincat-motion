@@ -9,7 +9,7 @@ names, local paths, serial numbers or licence keys.
 | | |
 |---|---|
 | Date | |
-| TwinCAT build (XAE and runtime) | |
+| TwinCAT build: XAE (Help > About), and runtime read on the runtime PC (for example the TwinCAT system-tray menu > About TwinCAT); write "not read" if you could not | |
 | `Tc2_MC2` version | |
 | `Tc2_MC2_Camming` version, licence | |
 | Runtime on | local PC in run mode / test IPC (model only) |

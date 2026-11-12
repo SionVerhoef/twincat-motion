@@ -157,8 +157,12 @@ CODES = {
         'meaning': 'A move was started on an axis whose controller enable or direction '
                    'enable was not set. Not the same as 0x4225, where the drive is the '
                    'one not ready.',
-        'check': ['MC_Power: Enable, Enable_Positive and Enable_Negative all TRUE.',
-                  'Start moves only after MC_Power.Status is TRUE.'],
+        'check': ['MC_Power: Enable, Enable_Positive and Enable_Negative all TRUE. '
+                  'MC_Power.Status can be TRUE with both direction enables FALSE.',
+                  'Start moves only after MC_Power.Status is TRUE.',
+                  'Observed (4024.55, Tc2_MC2 3.3.59, simulated axis): a missing direction '
+                  'enable gave this code on the move block for either direction, with no '
+                  'axis error and no MC_Reset needed; 0x4357 / 0x4358 did not appear.'],
     },
     0x422A: {
         'label': 'Controller or feed enable missing at start (slave)',
@@ -180,7 +184,9 @@ CODES = {
         'label': 'Velocity of zero or less',
         'meaning': 'A move was commanded with a velocity of 0 or a negative value.',
         'check': ['The Velocity input of the move block. Direction comes from the target '
-                  'or the Direction input, never from the sign of Velocity.'],
+                  'or the Direction input, never from the sign of Velocity.',
+                  'MC_MoveAbsolute with Velocity 0 returned 0x4359 instead in one test '
+                  '(4024.55, Tc2_MC2 3.3.59).'],
     },
     0x4243: {
         'label': 'Superimposed move only partly done',
@@ -213,12 +219,30 @@ CODES = {
                   'command.', 'See 0x42EF for the MC_Stop lock.'],
     },
     0x425A: {
-        'label': 'Coupling refused while the slave is busy',
-        'meaning': 'This kind of coupling needs the slave at standstill, and the slave '
-                   'still has a command running.',
-        'check': ['Halt the slave and wait for standstill before MC_GearIn.',
+        'label': 'Coupling refused while an axis is still moving',
+        'meaning': 'This kind of coupling needs standstill, and the master or the slave '
+                   'still has a motion command running.',
+        'check': ['Is the master moving? MC_GearIn onto a master at constant velocity was '
+                  'refused with this code (4024.55, Tc2_MC2 3.3.59), slave at standstill.',
+                  'Halt the slave and wait for standstill before MC_GearIn.',
                   'To catch a moving axis use MC_GearInMultiMaster with '
                   'AdvancedSlaveDynamics, or the flying-saw blocks.'],
+    },
+    0x4251: {
+        'label': 'Function not available here',
+        'meaning': 'The NC does not provide the requested function, or not for this axis '
+                   'or coupling.',
+        'check': ['Phasing: MC_PhasingRelative on an MC_GearInDyn slave gave this code. '
+                  'Phase on MC_GearIn or a cam coupling instead (references/coupling.md).',
+                  'The block and library version against what the axis supports.'],
+    },
+    0x4267: {
+        'label': 'Command refused on a coupled slave',
+        'meaning': 'A command that only a master may receive was sent to an axis that is '
+                   'the slave of a coupling.',
+        'check': ['Decouple first (MC_GearOut, MC_CamOut), or stop the master.',
+                  'Seen for MC_Halt on a coupled slave with "Allow motion commands to slave '
+                  'axis" FALSE; a move in the same state gives 0x4B08 instead.'],
     },
     0x425D: {
         'label': 'Axis stop already active',
@@ -312,6 +336,15 @@ CODES = {
                    'MC_Power.Enable_Positive is FALSE. (0x4357 is the negative direction.)',
         'check': ['MC_Power.Enable_Positive TRUE.',
                   'If a limit switch drives it: is the axis on the positive limit?'],
+    },
+    0x4359: {
+        'label': 'Positioning velocity rejected',
+        'meaning': 'The velocity of a positioning move is zero or less, or above the maximum '
+                   'or reference velocity of the axis.',
+        'check': ['The Velocity input: an input left at 0 is the usual cause.',
+                  'The axis maximum and reference velocity (axis-parameters.md).',
+                  'Seen for MC_MoveAbsolute with Velocity 0 (4024.55, Tc2_MC2 3.3.59), '
+                  'where 0x4231 might be expected.'],
     },
     0x435C: {
         'label': 'Did not settle in the target window in time',
@@ -541,8 +574,10 @@ CODES = {
                    'slave of a coupling.',
         'check': ['Decouple first (MC_GearOut, MC_CamOut), then command it.',
                   'MC_ReadStatus: ProtectedMode and the coupling state.',
-                  'The axis parameter "Allow motion commands to slave axes" is FALSE here. '
-                  'Set TRUE, a move decouples the slave instead of failing.'],
+                  'The axis parameter "Allow motion commands to slave axis" is FALSE here '
+                  '(also when absent from the .xti). Set TRUE, a move decouples the slave '
+                  'instead of failing.',
+                  'MC_Halt on such a slave gives 0x4267, not this code.'],
     },
     0x4B09: {
         'label': 'Axis not ready',
@@ -552,9 +587,13 @@ CODES = {
     },
     0x4B0A: {
         'label': 'Homing failed',
-        'meaning': 'MC_Home ended in error. The real cause is the axis error behind it.',
+        'meaning': 'MC_Home ended in error. Usually the real cause is the axis error '
+                   'behind it.',
         'check': ['MC_ReadAxisError / the axis ErrorID after the failure: often 0x429C, '
-                  '0x429D or 0x429E.'],
+                  '0x429D or 0x429E.',
+                  'Axis error 0: was the homing aborted? MC_Halt during MC_Home ends it '
+                  'with this code (not CommandAborted) and leaves the axis not homed; '
+                  'a new MC_Home starts without MC_Reset.'],
     },
     0x4B0E: {
         'label': 'Required TwinCAT function not available',

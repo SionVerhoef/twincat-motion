@@ -54,7 +54,11 @@ is the switch edge plus the braking distance. That varies with speed and load. B
 - **`MC_Home` with `HomingMode := MC_ForceCalibration`**: no movement, no position change;
   it sets the NC's own homed state. Then `ST_AxisStatus.Homed` is the single record.
 
-`MC_SetPosition` alone does not set the NC's homed state.
+`MC_SetPosition` alone does not set the NC's homed state, and it does not clear it either:
+on an axis that is already homed, `ST_AxisStatus.Homed` stays TRUE after `MC_SetPosition`
+(observed on 4024.55 / Tc2_MC2 3.3.59, simulated axis). The axis then reports "homed" at a
+shifted reference. If your code shifts the position, clear the homed state itself
+(`MC_ResetCalibration`) or re-mark it deliberately.
 
 Template: `templates/FB_HomePlc.TcPOU` does steps 1–6 with the edge-accurate relative shift,
 and marks homed either way (a parameter picks which).
@@ -92,7 +96,35 @@ library before trusting an enum value (`out-of-scope.md`).
 6. At standstill, set the position to the reference position plus the braking distance, so
    the reference is exact even though the axis stopped a little further on.
 
-`Axis.NcToPlc.HomingState` shows the phase (0 = done, 1–6 = the steps above).
+`Axis.NcToPlc.HomingState` shows the phase. Its numbers do not match the steps above one to
+one. Observed on 4024.55 / Tc2_MC2 3.3.59 with a **simulated encoder**, recorded with Scope
+at 10 ms:
+
+| `HomingState` | Phase |
+|---|---|
+| 1 | start, about 0.25 s, no motion |
+| 2 | search towards the cam (step 1) |
+| 3 | stopping on the cam (step 2) |
+| 4 | moving off the cam (steps 3 and 4) |
+| 5 | not seen: the simulated encoder gives the sync pulse at once |
+| 6 | stopping after the sync pulse (step 5) |
+| 0 | done (or aborted) |
+
+With the cam already active at the start (a faked cam), the sequence began at state 3. A real
+encoder may spend visible time in state 5; check on your axis.
+
+**The NC replaces the position while it homes.** During the default sequence the actual and
+set position read **−1.0E10** while searching for the cam and **+1.0E10** while moving off it
+(observed, simulated encoder). Anything computed from `ActPos` during homing sees these
+values: software limits in the PLC, zone and range checks, an HMI, or a test switch simulated
+from `ActPos` (which goes TRUE in the first cycle of the search). Gate such logic on
+`ST_AxisStatus.HomingBusy`.
+
+**Aborting.** `MC_Halt` stops a running `MC_Home`. Observed: `MC_Home` then reports `Error`
+with 0x4B0A, not `CommandAborted`, and the axis has no error of its own (axis error 0), so
+there is no 0x429C/D/E behind it. The axis is left **not homed**, at its placeholder position
+(about −1.0E10 if halted during the search). A new `MC_Home` starts normally without
+`MC_Reset`.
 
 Points that trip people up:
 
@@ -186,11 +218,20 @@ encoder, or a multiturn whose turns overflow), the NC has to remember the overfl
 power cycle. That needs NC retain data, set on the SAF task, and retain storage on the
 controller.
 
+- **Where it is set.** NC-Task 1 SAF > *Settings* tab > *Retain Data*: **None** (the
+  default), **Store only**, **Load / Store**, **Load (if available) / Store** (4024.55). Per
+  axis there is also *Parameter* > *Other Settings* > **Data Persistence** (FALSE by
+  default). *Data Persistence* cannot be downloaded online; it takes effect with an
+  activation (`config-changes.md`).
 - Without valid retain data (always the case on the very first start), the outcome depends
-  on the retain setting: the strictest one (*Load/Store* in our sources) refuses to start;
+  on the retain setting: the strictest one (*Load / Store* in our sources) refuses to start;
   otherwise the NC starts, reports 0x4002, and absolute axes come up **not homed**. 0x4002
-  once on the first start is expected; it should not repeat. Check the setting names on
-  your build.
+  once on the first start is expected; it should not repeat. This has not been tested with
+  absolute axes and real retain storage.
+- On a Windows VM with a simulated axis, *Load / Store* plus *Data Persistence* TRUE was
+  accepted silently: the NC started, reported no 0x4002, and restored nothing after a
+  *Restart TwinCAT System* (a homed axis came back not homed, at 0). So a retain setup that
+  "works" on a test PC proves nothing; test it on the target controller.
 - When retain data is missing and the NC starts, absolute axes are not homed. The application must
   check `ST_AxisStatus.Homed` at start-up and refuse absolute moves until the axis is
   referenced again.

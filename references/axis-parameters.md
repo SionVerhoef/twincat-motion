@@ -8,7 +8,11 @@ too.
 
 **Read the explicit values with the tool, not by eye**: `axis_xti.py show` lists what an axis
 sets, `lint` checks it, `diff` shows what changed. An `.xti` stores only non-default values,
-so anything not listed is at its TwinCAT default. Changes go out as a parameter-change table
+so anything not listed is at its TwinCAT default. (One value XAE 4024.55 writes into every new
+axis although it is not the default: `AxisPara/OtherSettings@AllowMotionCmdToSlave="true"`;
+see `coupling.md`.) XAE also writes `<ParameterChanged>` elements into `AxisPara` and
+`EncPara` whenever a parameter is edited in its UI, and drops some or all of them on later
+saves; they are bookkeeping, not settings, and `axis_xti.py` keeps them apart. Changes go out as a parameter-change table
 or an Automation Interface script; a direct `.xti` edit only after the user explicitly agrees:
 `config-changes.md`.
 
@@ -29,8 +33,18 @@ was sent, so without dead-time compensation the NC sees a lag that grows with sp
 when the drive follows perfectly. The compensation is an **encoder** setting: in XAE, open
 the axis, expand it, select its encoder (*Enc*) and use the *Time Compensation* tab. Set it
 from the drive's documentation; Beckhoff's own example for an EL72x1 uses a few cycles.
-The drive has a separate time-compensation entry of its own (`Drive/DrvPara/TimeComp` in
-the `.xti`, seen in sample axes as `TaskDelayCycles`); that is not this setting.
+There are three time-compensation places, all checked on 4024.55 with a simulated axis:
+
+| XAE | `.xti` path |
+|---|---|
+| Axis > *Enc* > *Time Compensation* tab: mode, *IO Time is absolute*, *Encoder Delay in Cycles*, *Additional Encoder Delay* | `Encoder/EncPara/TimeComp@TimeCompMode`, `@IoTimeAbsolute`, `@EncDelayCycles`, `@AdditionalTimeShift` |
+| Axis > *Drive* > *Time Compensation* tab (position mode only): mode, *IO Time is absolute*, *Task Delay in Cycles*, *Drive Delay in Cycles*, *Additional Drive Delay* | `Drive/DrvPara/TimeComp@TimeCompMode`, `@IoTimeAbsolute`, `@TaskDelayCycles`, `@DriveDelayCycles`, `@AdditionalTimeShift` |
+| Axis > *Parameter* > *Other Settings* > *Dead Time Compensation (Delay Velo and Position)*, in seconds | `AxisPara/Dynamic@DelayTime` |
+
+The encoder one is the setting meant above. XAE added `Drive/DrvPara/TimeComp@TaskDelayCycles="1"`
+to an axis file on its first save after (probably) the first activation, although nobody had
+touched a drive setting, and shows *Task Delay in Cycles* = 1. Whether 1 is the built-in
+default is not settled; don't read that attribute in a diff as a user's change.
 
 **A simpler alternative: take the following error from the drive.** The drive closes the
 loop, so it knows the real following error with no bus delay in it. Map it into the process
@@ -142,7 +156,7 @@ in the set point.
 
 | Monitoring | What it does | Error |
 |---|---|---|
-| **Position lag** (enable, maximum value, filter time) | raises an error if the lag stays above the maximum for longer than the filter time | 0x4550 |
+| **Position lag** (enable, maximum value, filter time; `.xti` `Controller/CtrPara/PosDiffControl`, absent = enabled) | raises an error if the lag stays above the maximum for longer than the filter time | 0x4550 |
 | **Velocity lag** | the same on velocity | 0x4551 |
 | **Position range** (window) | sets `InPositionArea` when the axis is near its target | — |
 | **Target position** (window, monitoring time) | sets `InTargetPosition` once the axis has stayed inside the window for the monitoring time | — |
