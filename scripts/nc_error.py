@@ -635,6 +635,32 @@ CODES = {
 }
 
 
+# --- The templates' own codes -------------------------------------------------------
+#
+# templates/*.TcPOU report their own errors above 16#FFFF, clear of every NC and ADS code.
+# Kept in step with the cErr constants there (tests/test_nc_error.py checks it).
+
+TEMPLATE_CODES = {
+    0x00010001: ('FB_Axis', 'cErrNotIssued',
+                 'A requested command waited too long and was never issued to the axis.'),
+    0x00010101: ('FB_HomePlc', 'cErrParams', 'stParams not usable: check the values.'),
+    0x00010102: ('FB_HomePlc', 'cErrMoveOffTime',
+                 'The reference switch was not released in time while moving off it.'),
+    0x00010103: ('FB_HomePlc', 'cErrSearchTime',
+                 'The reference switch was not found in time: search direction, switch '
+                 'wiring, or bRefSwitch not passed every cycle.'),
+    0x00010104: ('FB_HomePlc', 'cErrStepTime', 'Halt, set position or homed mark too slow.'),
+    0x00010105: ('FB_HomePlc', 'cErrAborted', 'Another command took over the axis.'),
+    0x000101FF: ('FB_HomePlc', 'cErrInvalidState', 'Internal step error.'),
+    0x00010201: ('FB_HomeNc', 'cErrParams', 'stParams not usable: check the values.'),
+    0x00010202: ('FB_HomeNc', 'cErrTimeout',
+                 'The homing run took longer than stParams.tTimeout; the axis was halted.'),
+    0x00010203: ('FB_HomeNc', 'cErrAborted', 'Another command took over the axis.'),
+    0x000102FF: ('FB_HomeNc', 'cErrInvalidState', 'Internal step error.'),
+}
+TEMPLATE_FAMILY = 'twincat-motion template (not an NC code)'
+
+
 # --- Parsing ------------------------------------------------------------------------
 
 def family_of(code):
@@ -683,6 +709,21 @@ def link(fam):
 def lookup(text):
     value, how = parse(text)
     result = {'input': text, 'code': '0x%04X' % value, 'decimal': value, 'read_as': how}
+    if 0x00010000 <= value <= 0x0001FFFF:
+        result['family'] = TEMPLATE_FAMILY
+        result['link'] = 'templates/README.md'
+        entry = TEMPLATE_CODES.get(value)
+        if entry:
+            block, const, meaning = entry
+            result['known'] = True
+            result.update({'label': '%s.%s' % (block, const), 'meaning': meaning,
+                           'check': ['Not an NC code. If the axis also has an error, '
+                                     'look up the axis ErrorID separately.']})
+        else:
+            result['known'] = False
+            result['note'] = ('In the range the templates use for their own codes, but not '
+                              'one of them: check the cErr constants in your copy.')
+        return result
     key, fam = family_of(value)
     if fam is None:
         result['known'] = False

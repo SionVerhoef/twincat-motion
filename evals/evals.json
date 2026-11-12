@@ -9,16 +9,16 @@
       "name": "triage-feed-enable",
       "category": "triage",
       "scored": "discriminating",
-      "prompt": "TwinCAT 3.1.4024, Tc2_MC2, an AX8000 servo axis. Our new axis code, called every cycle:\n\n```\nfbPower(Axis := stAxisX, Enable := bEnable, Override := 100.0);\nfbMove(Axis := stAxisX, Execute := bStart, Position := 250.0, Velocity := 100.0);\n```\n\nMC_Power reports no error, but every time we start the move fbMove.Error goes TRUE with ErrorID 17240. A move towards negative positions gives a different number. What is wrong?",
-      "expected_output": "17240 decimal = 0x4358: feed enable plus missing. MC_Power.Enable_Positive and Enable_Negative are not connected and default to FALSE, so the NC has controller enable but no direction enables; a move in the negative direction gives 0x4357 (feed enable minus). Fix: hold Enable, Enable_Positive and Enable_Negative TRUE on the MC_Power call (every cycle), wait for Status before moving, then trigger the move again (and MC_Reset if the axis shows the error). Not a drive, STO or tuning problem.",
+      "prompt": "TwinCAT 3.1.4024, Tc2_MC2, an AX8000 servo axis. Our new axis code, called every cycle:\n\n```\nfbPower(Axis := stAxisX, Enable := bEnable, Override := 100.0);\nfbMove(Axis := stAxisX, Execute := bStart, Position := 250.0, Velocity := 100.0);\n```\n\nMC_Power reports no error, but every time we start the move fbMove.Error goes TRUE with ErrorID 16931. A move towards negative positions gives the same number. MC_Power.Status is TRUE. What is wrong?",
+      "expected_output": "16931 decimal = 0x4223: controller or feed (direction) enable missing when the move started. MC_Power.Enable_Positive and Enable_Negative are not connected and default to FALSE, so the NC has controller enable but no direction enables. MC_Power.Status can be TRUE without them, so Status does not show it. 0x4223 does not name a direction, which is why both directions give the same code (observed on 4024.55 with a simulated axis; 0x4357 / 0x4358 did not appear there). It is a block error: the axis takes no error and needs no MC_Reset. Fix: hold Enable, Enable_Positive and Enable_Negative TRUE on the MC_Power call (every cycle), then trigger the move again. Not a drive, STO or tuning problem (that would be 0x4225, drive not ready).",
       "traps": [
-        "swaps the codes (0x4358 called minus)",
         "wrong decimal-to-hex conversion",
-        "blames the drive state, STO or hardware enable",
+        "reads 0x4223 as drive not ready (the 0x4225 meaning) and blames the drive state, STO or hardware enable",
+        "says the code shown is 0x4357 / 0x4358, or that 0x4223 names a direction",
         "names Override or Execute as the cause"
       ],
-      "grading": "right: 0x4358 and both Enable_Positive and Enable_Negative named as the fix. partly: the enable inputs named but the code misread, or only one direction enable. wrong: enable inputs not named.",
-      "sources": "triage.md step 2; nc_error.py 17240"
+      "grading": "right: 0x4223 read as an enable missing at the start of the move, and both Enable_Positive and Enable_Negative named as the fix. partly: the enable inputs named but the code misread. wrong: enable inputs not named.",
+      "sources": "triage.md step 2; nc_error.py 16931; field test 4024.55 (CHANGELOG)"
     },
     {
       "name": "nc-error-neighbour-unknown",

@@ -38,7 +38,7 @@ coupling scenarios `coupling.md` was written for, and a guardrail.
 
 | Eval | Tests |
 |---|---|
-| `triage-feed-enable` | decimal 17240 → 0x4358, missing `Enable_Positive` / `Enable_Negative` |
+| `triage-feed-enable` | decimal 16931 → 0x4223 for both directions, missing `Enable_Positive` / `Enable_Negative` |
 | `nc-error-neighbour-unknown` | 0x4225 is not 0x4223; 0x4B11 is outside the curated table and must not get a guessed meaning |
 | `mcstop-lock` | `MC_Stop` held in a CASE step locks the axis (0x42EF) |
 | `csp-kv-trap` | NC Kv is dead in CSP; dead-time compensation; no blind window widening |

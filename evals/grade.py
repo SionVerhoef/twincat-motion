@@ -138,16 +138,14 @@ def code_named(t: str, n: int) -> bool:
 
 def triage_feed_enable(t, code):
     c = {
-        "0x4358, feed enable plus": has(t, hexv(0x4358)) and has(
-            t, r"(plus|positive)[^.\n]{0,40}(feed|direction)?\s*enable", r"feed\s*enable\s*(plus|positive)"),
+        "0x4223, enable missing at start": has(t, hexv(0x4223)) and has(
+            t, r"(controller|feed|direction\w*)[^.\n]{0,30}enables?[^.\n]{0,30}(missing|not\s+set|absent|FALSE)",
+            r"(missing|no)\s+(\w+\s+){0,2}(feed|direction\w*|controller)\s+enables?"),
         "Enable_Positive and Enable_Negative named": has(t, r"enable_?positive") and has(t, r"enable_?negative"),
     }
-    # Sentence scope: '0x4358, the minus feed enable' splits into two clauses.
-    no_plus = r"(?:(?!plus|positive|4357)[^.\n])"
-    swapped = has(t, hexv(0x4358) + no_plus + r"{0,40}\b(minus|negative)\b(?!\s+(direction|positions?|moves?))",
-                  r"\b(minus|negative)\s+feed\s+enable" + no_plus + r"{0,20}" + hexv(0x4358))
-    if swapped:
-        c["0x4358, feed enable plus"] = False
+    # 0x4223 read as the drive not being ready is the 0x4225 meaning.
+    if asserts(t, hexv(0x4223) + r"[^.\n]{0,60}(drive|amplifier)[^.\n]{0,30}not\s+(\w+\s+)?ready"):
+        c["0x4223, enable missing at start"] = False
     if not c["Enable_Positive and Enable_Negative named"]:
         return "W", c
     return ("R" if all(c.values()) else "P"), c

@@ -13,7 +13,9 @@ program, so code was generated for them), and on a simulated drive and encoder:
   a velocity change, and an override change (`bBusy` and `bDone` FALSE, `bCommandAborted`
   TRUE while the axis runs on, as the header says) all behaved as documented.
 - `FB_HomePlc`: off the switch, on the switch, with and without the NC homed mark, and the
-  search timeout (`nErrorID` 16#0001_0103, axis halted) all behaved as documented.
+  search timeout (`nErrorID` 16#0001_0103, axis halted) all behaved as documented. One
+  change since that run, not yet re-run: after moving off the switch it checks the switch
+  again before searching, so a bouncing switch can't send the search through the cam.
 - `FB_HomeNc`: default homing completed with and without the faked cam. Its timeout path was
   **not** reached, because a simulated encoder always finds the sync pulse.
 
@@ -52,9 +54,10 @@ torque first. Nothing here is a safety function.
 - **Explicit where the library is easy to misread.** The homing blocks refuse a run without
   an explicit `MC_Halt` deceleration: 0 takes the last move's deceleration (seen on a simulated
   axis), which for a homing search is not a value anyone chose. `FB_Axis.Halt` never refuses a
-  stop, so pass it a value > 0. They set both feed enables on `MC_Power` (a missing one gives
-  only 0x4223 on the move, see `references/triage.md`), and clear and set the NC's homed state
-  with explicit `MC_Home` calls, because `MC_SetPosition` neither sets nor clears it.
+  stop, so pass it a value > 0. `FB_Axis` sets both feed enables on `MC_Power` (a missing one
+  gives only 0x4223 on the move, see `references/triage.md`). The homing blocks clear and set
+  the NC's homed state with explicit `MC_Home` calls, because `MC_SetPosition` neither sets nor
+  clears it.
 - **`FB_HomeNc`'s timeout.** It relies on `MC_Halt` stopping a running `MC_Home`, which the
   field test confirmed (`MC_Home` then reports 0x4B0A). To exercise the timeout on a simulated
   axis, hold `bCalibrationCam` FALSE with `stParams.bNoCam` FALSE, so the cam never arrives.

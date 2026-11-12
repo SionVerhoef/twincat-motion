@@ -162,7 +162,9 @@ CASE eState OF
                         bErr := fbHalt.Error, nErr := fbHalt.ErrorID,
                         bAborted := fbHalt.CommandAborted,
                         nTimeoutErr := cErrStepTime, bStop := FALSE) THEN
-            eState := E_HomePlcState.Search;
+            // check again: a bouncing switch can read "released" while the
+            // axis is still on it, and Search would then never see an edge
+            eState := E_HomePlcState.CheckSwitch;
         END_IF
 
     E_HomePlcState.Search:

@@ -1,12 +1,17 @@
 """Tests for scripts/nc_error.py. Standard library only."""
+import contextlib
+import io
 import json
 import os
+import pathlib
+import re
 import subprocess
 import sys
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, '..', 'scripts', 'nc_error.py')
+TEMPLATES = pathlib.Path(HERE, '..', 'templates')
 sys.path.insert(0, os.path.join(HERE, '..', 'scripts'))
 
 import nc_error  # noqa: E402
@@ -78,6 +83,25 @@ class Lookup(unittest.TestCase):
         r = nc_error.lookup('1798')
         self.assertNotIn('family', r)
         self.assertIn('ADS', r['note'])
+
+    def test_template_codes(self):
+        # The templates point users at this tool; their own codes must not read as ADS.
+        r = nc_error.lookup('16#0001_0103')
+        self.assertEqual(r['label'], 'FB_HomePlc.cErrSearchTime')
+        self.assertIn('template', r['family'])
+        self.assertEqual(nc_error.lookup('65794')['label'], 'FB_HomePlc.cErrMoveOffTime')
+        self.assertIn('not one of them', nc_error.lookup('0x00010999')['note'])
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(nc_error.main(['16#0001_0202']), 0)
+
+    def test_template_codes_match_templates(self):
+        # Every cErr constant in templates/ is in TEMPLATE_CODES, and nothing else is.
+        found = {}
+        for path in sorted(TEMPLATES.glob('*.TcPOU')):
+            for name, value in re.findall(r'(cErr\w+)\s*:\s*UDINT\s*:=\s*16#([0-9A-Fa-f_]+)',
+                                          path.read_text(encoding='utf-8-sig')):
+                found[int(value.replace('_', ''), 16)] = (path.stem, name)
+        self.assertEqual(found, {k: v[:2] for k, v in nc_error.TEMPLATE_CODES.items()})
 
     def test_superposition_partial_vs_refused(self):
         # One apart, different situations: one ran short, one never started.

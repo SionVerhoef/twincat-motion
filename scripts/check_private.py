@@ -26,7 +26,9 @@ IPV4_OK = re.compile(
     r"|1\.\d+\.\d+\.\d+"  # no machine network uses 1/8; file versions such as 1.0.0.3 do
 )
 # "Version 1.0.0.3", <FileVersion>15.0.0.0</FileVersion>: a version number, not an address.
-VERSION = re.compile(r"version", re.IGNORECASE)
+# Only when the keyword directly precedes the number (no digits between), so that
+# "version 4024, controller at <an address>" is still caught.
+VERSION = re.compile(r"version[^0-9]{0,20}$", re.IGNORECASE)
 MAC_OK = re.compile(
     r"00[:-]00[:-]00[:-]00[:-]00[:-]00|ff[:-]ff[:-]ff[:-]ff[:-]ff[:-]ff"
     r"|00[:-]00[:-]5e[:-]00[:-]53[:-][0-9a-f]{2}"  # RFC 7042 documentation range
@@ -49,7 +51,7 @@ def main():
         for number, line in enumerate(lines, 1):
             for label, pattern, allowed in CHECKS:
                 for match in pattern.finditer(line):
-                    if allowed.fullmatch(match.group()) or VERSION.search(line, 0, match.start()):
+                    if allowed.fullmatch(match.group()) or VERSION.search(line[:match.start()]):
                         continue
                     print(f"{path}:{number}: {label} {match.group()}")
                     found += 1
