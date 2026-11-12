@@ -59,6 +59,11 @@ axis level, NC error codes, homing in the NC, coupling, the `.xti` axis files.
 | Writing or reviewing PLC code: `Execute` edges, call sites, `CommandAborted` handling, OOP shape | **twincat-st** (and its reviewer) | This skill says *what* the axis code must do; twincat-st says how to write it. Its rule X11 catches level-driven `Execute` |
 | Diagnosing from a TwinCAT Scope recording, or building one | **twincat-scope** | This skill names the channels (set and actual position, lag, set and actual velocity, torque) and interprets the conclusion |
 
+**One master per drive.** A drive linked to an NC axis is commanded by the NC through the
+controlword (0x6040). Never also drive it from PLC code that writes the controlword itself,
+such as cia402-motion's `FB_Cia402Axis`: the two overwrite each other. Choose one per drive:
+NC axis with `Tc2_MC2`, or PLC-direct CiA 402 with the axis unlinked from the NC.
+
 **If a sibling skill is not installed**, say which one would own the question, answer only the
 TwinCAT NC part, and say that the rest is generic. For device facts without ethercat-esi,
 point at the drive's CoE tab in XAE or its ESI file rather than guessing an object or a type.

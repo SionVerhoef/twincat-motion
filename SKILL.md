@@ -1,12 +1,10 @@
 ---
 name: twincat-motion
-description: "Load before answering, or opening any file, about a Beckhoff TwinCAT 3 NC axis or Tc2_MC2 motion code: NC behaviour hides in axis parameters and look-alike error codes that models get wrong; this skill holds checked facts, an NC error table and an .xti lint and diff tool. Covers an axis that won't enable or move, MC_ blocks (MC_Power, MC_Home, MC_MoveAbsolute, MC_Halt, MC_Stop, MC_Reset) and axis wrappers, NC error codes, homing, scaling and controller parameters, gearing and cam coupling (MC_GearIn, MC_CamIn: a slave that jumps, lags or drops out), touch probe and registration (MC_TouchProbe, MC_PhasingRelative), and reading, linting or diffing any _Config/NC/Axes .xti file, also two versions of one. Not for Structured Text that only mentions an axis (twincat-st), a CiA 402 statusword or 0x6098 on its own (cia402-motion), AL status codes or working counters (ethercat-diagnostics), ESI files (ethercat-esi), TwinCAT CNC, or TwinSAFE design; never writes safety functions such as STO. DRAFT: under development."
+description: "Load before answering, or opening any file, about a Beckhoff TwinCAT 3 NC axis or Tc2_MC2 motion code: NC behaviour hides in axis parameters and look-alike error codes that models get wrong; this skill holds checked facts, an NC error table and an .xti lint and diff tool. Covers an axis that won't enable or move, MC_ blocks (MC_Power, MC_Home, MC_MoveAbsolute, MC_Halt, MC_Stop, MC_Reset) and axis wrappers, NC error codes, homing, scaling and controller parameters, gearing and cam coupling (MC_GearIn, MC_CamIn: a slave that jumps, lags or drops out), touch probe and registration (MC_TouchProbe, MC_PhasingRelative), and reading, linting or diffing any _Config/NC/Axes .xti file, also two versions of one. Not for Structured Text that only mentions an axis (twincat-st), a CiA 402 statusword or 0x6098 on its own (cia402-motion), AL status codes or working counters (ethercat-diagnostics), ESI files (ethercat-esi), TwinCAT CNC, or TwinSAFE design; never writes safety functions such as STO."
 ---
 
 # twincat-motion
 
-> **Draft.** This skill is under development and not ready to install.
->
 > **Reference material only. Not for safety functions.** Motion configuration must be
 > reviewed and validated by a qualified engineer before it runs on a machine.
 
