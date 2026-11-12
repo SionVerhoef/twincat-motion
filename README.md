@@ -80,7 +80,8 @@ python3 scripts/axis_xti.py diff old.xti new.xti   # what changed, by parameter 
 - **`nc_error.py`** explains 72 hand-picked NC error codes in its own words, each with what to
   check and a link to its Beckhoff Information System page. Lookup is exact: any other code
   gets its family and that family's page, never the nearest neighbour, because neighbouring
-  codes mean different things (0x4357 and 0x4358 are opposite directions).
+  codes mean different things (0x4357 and 0x4358 are opposite directions). It also explains
+  the templates' own error codes (16#0001_xxxx), which are not NC codes.
 - **`axis_xti.py`** reads `_Config/NC/Axes/*.xti` files without XAE. A file stores only values
   that differ from the default, so `lint` checks explicit values only. `diff` compares two
   versions by parameter, not by XML line. It never writes an `.xti` file. Exit codes: `lint`
@@ -94,7 +95,8 @@ The line between verified and not verified is the most important fact on this pa
 
 - **Field test on TwinCAT 4024.55, `Tc2_MC2` 3.3.59, simulated axes.** The templates built
   with no errors or warnings and behaved as documented; the references state what that run
-  observed and say so. Protocol: [`evals/field-test/README.md`](evals/field-test/README.md).
+  observed and say so. One later change to `FB_HomePlc` (it re-checks the switch after
+  moving off it) has not been re-run. Protocol: [`evals/field-test/README.md`](evals/field-test/README.md).
 - **The templates pass twincat-st v0.6.0's** `tcpou.py check` and `st_review.py --pedantic`
   with no findings. CI runs both at that pinned tag.
 - **`axis_xti.py` is tested on four public sample axes**, shipped with their licences in
