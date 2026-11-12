@@ -27,13 +27,14 @@ from grade import GRADERS, GUARDRAILS, grade  # noqa: E402
 
 ANSWERS = {
     "triage-feed-enable": {
-        "good": "17240 is 0x4358: feed enable plus missing. Your MC_Power call leaves Enable_Positive "
-                "and Enable_Negative unconnected, and they default to FALSE. A negative move gives "
-                "0x4357. Set both TRUE next to Enable, every cycle, then reset and trigger again.",
+        "good": "16931 is 0x4223: a controller or feed enable was missing when the move started. "
+                "Your MC_Power call leaves Enable_Positive and Enable_Negative unconnected, and they "
+                "default to FALSE; Status can be TRUE without them. 0x4223 names no direction, so "
+                "both moves give it. Set both TRUE next to Enable, every cycle, and trigger again.",
         "trapped": {
-            "P: codes swapped": "17240 is 0x4358, the minus feed enable missing. Set Enable_Positive "
-                                "and Enable_Negative TRUE.",
-            "W: blames the drive": "17240 means the drive is not ready. Check the AX8000 state and the "
+            "P: read as drive not ready": "16931 is 0x4223: the drive is not ready. Also set "
+                                          "Enable_Positive and Enable_Negative TRUE.",
+            "W: blames the drive": "16931 means the drive is not ready. Check the AX8000 state and the "
                                    "STO input, and make sure Override is 100.",
         },
     },
