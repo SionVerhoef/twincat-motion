@@ -50,22 +50,46 @@ installed. For an NC axis the calls that matter are:
 - `LookupTreeItem("TINC^NC-Task 1 SAF^Axes^<axis name>")` finds the axis. The path uses the
   names in the solution tree, joined with `^`.
 - `ProduceXml()` returns the axis's settings as XML.
-- `ConsumeXml(xml)` applies an XML fragment to the axis.
+- `ConsumeXml(xml)` applies XML to the axis.
 
-The XML from `ProduceXml` is the authority on element and attribute names; it is not
-guaranteed to match the `.xti` layout. So a safe script works in two passes: **produce**
-writes the current XML to a file for review; **apply** changes only named attributes, checks
-each old value first, keeps a copy of the before and after XML, and calls `ConsumeXml` on the
-project the person has open in XAE. It never saves and never activates: the person reviews
-the change in XAE and does both.
+The XML from `ProduceXml` is the authority on names, and it does **not** match the `.xti`
+layout. Observed on TwinCAT 4024.55 with a simulated axis:
+
+- The root is `<TreeItem>`, and the axis data sits under `<NcAxisDef>`.
+- **Every value is element text**; the XML has no attributes at all. Where the `.xti` has
+  `<Velo FastManual="600"/>`, the produced XML has `<Velo><FastManual>600</FastManual></Velo>`.
+- The parameter groups are named differently: `AxisParam`, `CtrParam`, `EncParam`,
+  `DrvParam` (the `.xti` has `AxisPara`, `CtrPara`, `EncPara`, `DrvPara`).
+- It lists every parameter with its current value, defaults included, and none of the
+  `.xti`'s `ParameterChanged` bookkeeping.
+
+Paths seen in that XML, for orientation (check them against your own produced XML):
+
+| Setting | Produced-XML path |
+|---|---|
+| Manual velocity, fast | `/TreeItem/NcAxisDef/AxisParam/Velo/FastManual` |
+| Motion commands to slave axis | `/TreeItem/NcAxisDef/AxisParam/OtherSettings/AllowMotionCmdToSlave` |
+| Motion commands to external set-point axis | `/TreeItem/NcAxisDef/AxisParam/OtherSettings/AllowMotionCmdToExtSetGenAxis` |
+| Position lag monitoring | `/TreeItem/NcAxisDef/Controller/CtrParam/PosDiffControl/Enable` |
+| Encoder time compensation | `/TreeItem/NcAxisDef/Encoder/EncParam/TimeComp/` `TimeCompMode`, `IoTimeAbsolute`, `EncDelayCycles`, `AdditionalTimeShift` |
+| Drive time compensation | `/TreeItem/NcAxisDef/Drive/DrvParam/TimeComp/` `TimeCompMode`, `IoTimeAbsolute`, `DriveDelayCycles`, `TaskDelayCycles`, `AdditionalTimeShift` |
+| Axis dead time | `/TreeItem/NcAxisDef/AxisParam/Dynamic/DelayTime` |
+
+So a safe script works in two passes: **produce** writes the current XML to a file for
+review; **apply** changes only the named value elements, checks each old value first, keeps a
+copy of the before and after XML, and calls `ConsumeXml` on the project the person has open
+in XAE. It never saves and never activates: the person reviews the change in XAE and does
+both.
 
 ```powershell
 # axis-change.ps1  -  propose, review, then apply NC axis parameter changes in XAE.
 # Open the project in XAE first; the script attaches to that instance and leaves it open.
 # Pass 1:  .\axis-change.ps1 -Solution C:\proj\Machine.sln -Axis "Axis_X" -Produce
 # Pass 2:  .\axis-change.ps1 -Solution C:\proj\Machine.sln -Axis "Axis_X" -Changes changes.csv
-# changes.csv columns: XPath,Attribute,Old,New   (XPath into the produced XML)
+# changes.csv columns: XPath,Old,New   (XPath to the value element in the produced XML,
+#   e.g. /TreeItem/NcAxisDef/AxisParam/Velo/FastManual,600,601)
 # Windows PowerShell 5.1 (GetActiveObject is not available in PowerShell 7).
+# Every run saves <Axis>-before-<stamp>.xml (on apply: the state it started from).
 # Never saves and never activates: review in XAE, then save and activate yourself.
 # Aborts unless the attached XAE has exactly this solution open. Close other XAE instances.
 param(
@@ -94,26 +118,38 @@ if ($Produce) { Write-Host "Wrote $Axis-before-$stamp.xml. Review it, then write
 
 $rows = Import-Csv $Changes
 foreach ($c in $rows) {                      # check everything before changing anything
-    $node = $xml.SelectSingleNode($c.XPath)
-    if ($null -eq $node) { throw "Not found: $($c.XPath). Nothing applied." }
-    $current = $node.GetAttribute($c.Attribute)
-    if ($current -ne $c.Old) { throw "$($c.XPath)@$($c.Attribute) is '$current', expected '$($c.Old)'. Nothing applied." }
+    $nodes = $xml.SelectNodes($c.XPath)
+    if ($nodes.Count -ne 1) { throw "$($c.XPath) matches $($nodes.Count) elements, not 1. Nothing applied." }
+    $node = $nodes[0]
+    if ($node.SelectNodes("*").Count -ne 0) { throw "$($c.XPath) is a group, not a value. Nothing applied." }
+    if ($node.InnerText -ne $c.Old) { throw "$($c.XPath) is '$($node.InnerText)', expected '$($c.Old)'. Nothing applied." }
 }
-foreach ($c in $rows) { $xml.SelectSingleNode($c.XPath).SetAttribute($c.Attribute, $c.New) }
+foreach ($c in $rows) { $xml.SelectSingleNode($c.XPath).InnerText = $c.New }
 $xml.Save("$PWD\$Axis-after-$stamp.xml")
 $item.ConsumeXml($xml.OuterXml)
 Write-Host "Applied to $Axis in XAE. Not saved, not activated: review it there."
 ```
 
+What has been run, on TwinCAT 4024.55 with a simulated axis: the produce pass of this script
+(attach, solution check, tree path, `ProduceXml`); and, from a separate test script, the
+apply method it uses: set the element text of one value in the full produced XML,
+`ConsumeXml` that XML, and the new value appears offline in XAE, with the axis marked
+modified and nothing saved. This version of the apply pass has not been run as a whole.
+`ConsumeXml` with a partial XML fragment has not been tried; the script always passes the
+full XML.
+
 When you hand this out:
 
-- Say that it has **not been run against XAE** as part of this skill: run the produce pass
-  first, and try the apply pass on a copy of the project.
-- Fill `changes.csv` from the produced XML, never from the `.xti` layout or from memory.
+- Say what has and has not been run (above): run the produce pass first, and try the apply
+  pass on a copy of the project.
+- Fill `changes.csv` from the produced XML, never from the `.xti` layout or from memory. Each
+  `XPath` names one value element, not its group.
 - The script checks every old value before it changes anything, so a stale table fails
   instead of half-applying.
 - After applying: review the axis in XAE, then the same steps as for a table (save,
-  activate when it suits, test at reduced limits, commit, `axis_xti.py diff`).
+  activate when it suits, test at reduced limits, commit, `axis_xti.py diff`). After a
+  `ConsumeXml` and save, XAE dropped all `ParameterChanged` entries from the `.xti`; expect
+  them in the diff.
 
 ## 3. Direct `.xti` edit, after acknowledgement
 
@@ -130,11 +166,31 @@ conversation is not enough. Then:
 4. **After**: `axis_xti.py diff` between the committed and the edited file must show exactly
    the intended changes. Show that diff to the user.
 5. The person opens the project in XAE, checks the values on the axis's parameter pages,
-   saves (XAE may reformat the file; diff again), and activates when it suits the machine,
-   then tests at reduced limits.
+   saves (diff again), and activates when it suits the machine, then tests at reduced limits.
 
-Whether XAE loads a hand-edited value unchanged has not been tested as part of this skill.
-Say so when you make the edit.
+Observed on TwinCAT 4024.55 (one changed value, simulated axis): XAE loaded the hand-edited
+value unchanged, without a warning, and a *Save All* with no change left the file alone.
+When XAE did rewrite the file later, it kept the layout and the CRLF line endings, but it
+added or removed bookkeeping: `ParameterChanged` elements, and once a
+`Drive/DrvPara/TimeComp@TaskDelayCycles="1"` nobody had set (see
+[axis-parameters.md](axis-parameters.md)). Expect those in the second diff. Other values and
+other XAE builds are untested; say so when you make the edit.
+
+## Online parameter download
+
+On an NC axis's *Parameter* tab, **Download** writes the offline values to the running NC
+without an activation. XAE then asks in a *Persistent Changes* dialog how long they should
+last. Observed on 4024.55:
+
+- **OK**: the change holds until the next TwinCAT restart.
+- **Save now**: the change is also stored in that runtime's boot configuration (the dialog
+  says it is saved in the registry; it takes a few seconds), so it survives a restart.
+
+Either way the project is not changed by the download: save it too, or the next activation
+from the project, or from another copy of it, overwrites the value. Not every parameter can
+be downloaded: *Data Persistence* (*Other Settings*) keeps the Download button greyed and
+takes effect only with an activation. Like an activation, a download changes a running
+machine: propose it, and let the person at the machine do it.
 
 ## Runtime parameter writes are not configuration
 

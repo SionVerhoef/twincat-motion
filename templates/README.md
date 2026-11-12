@@ -3,13 +3,22 @@
 TwinCAT 3 (4024) PLC objects for one NC axis on `Tc2_MC2`: a wrapper, and the two homing
 options most shops start from. UTF-8 with BOM, CRLF, valid GUIDs.
 
-**Reviewed, not run.** These templates pass twincat-st's `tcpou.py check` and
-`st_review.py --pedantic` (twincat-st v0.6.0, no findings), every `Tc2_MC2` identifier was
-checked against the library documentation, and an independent review read them scan by scan.
-The reviewer does not yet see `MC_` blocks held in arrays, so `FB_Axis`'s move pairs had only the
-human read. They have not been compiled, and they have not moved
-an axis. Compile them, run them against a simulated axis, then on the real axis at reduced
-velocity, acceleration and torque. Nothing here is a safety function.
+**Compiled and run on simulated axes, not on a real one.** These templates pass twincat-st's
+`tcpou.py check` and `st_review.py --pedantic` (twincat-st v0.6.0, no findings), and every
+`Tc2_MC2` identifier was checked against the library documentation. In a field test on
+TwinCAT 4024.55 with `Tc2_MC2` 3.3.59 they built with 0 errors and 0 warnings (called from a
+program, so code was generated for them), and on a simulated drive and encoder:
+
+- `FB_Axis`: power, reset, moves, retargeting a running move (no `bCommandAborted`), halt,
+  a velocity change, and an override change (`bBusy` and `bDone` FALSE, `bCommandAborted`
+  TRUE while the axis runs on, as the header says) all behaved as documented.
+- `FB_HomePlc`: off the switch, on the switch, with and without the NC homed mark, and the
+  search timeout (`nErrorID` 16#0001_0103, axis halted) all behaved as documented.
+- `FB_HomeNc`: default homing completed with and without the faked cam. Its timeout path was
+  **not** reached, because a simulated encoder always finds the sync pulse.
+
+They have not moved a real axis. Run them on yours at reduced velocity, acceleration and
+torque first. Nothing here is a safety function.
 
 | File | What it is |
 |---|---|
@@ -40,12 +49,19 @@ velocity, acceleration and torque. Nothing here is a safety function.
 - **A stop wins.** `Halt` is always accepted and replaces a move that is still waiting; while a
   Halt waits, moves and `Reset` are refused. Moves with a velocity <= 0 are refused, and `bBusy`
   stays TRUE while any instance runs, so a rejected retarget cannot hide a move that goes on. `MC_Halt`, not `MC_Stop`, which would lock the axis.
-- **Built around what is not yet verified on a target.** The homing blocks refuse a run without
-  an explicit `MC_Halt` deceleration (the manual's behaviour for 0 is unconfirmed); `FB_Axis.Halt`
-  never refuses a stop, so pass it a value > 0. They set both feed enables
-  on `MC_Power`, and clear and set the NC's homed state with explicit `MC_Home` calls instead of
-  relying on what `MC_SetPosition` does to it. `FB_HomeNc`'s timeout path assumes `MC_Halt`
-  stops a running `MC_Home`; test that on a simulated axis before relying on the timeout.
+- **Explicit where the library is easy to misread.** The homing blocks refuse a run without
+  an explicit `MC_Halt` deceleration: 0 takes the last move's deceleration (seen on a simulated
+  axis), which for a homing search is not a value anyone chose. `FB_Axis.Halt` never refuses a
+  stop, so pass it a value > 0. They set both feed enables on `MC_Power` (a missing one gives
+  only 0x4223 on the move, see `references/triage.md`), and clear and set the NC's homed state
+  with explicit `MC_Home` calls, because `MC_SetPosition` neither sets nor clears it.
+- **`FB_HomeNc`'s timeout.** It relies on `MC_Halt` stopping a running `MC_Home`, which the
+  field test confirmed (`MC_Home` then reports 0x4B0A). To exercise the timeout on a simulated
+  axis, hold `bCalibrationCam` FALSE with `stParams.bNoCam` FALSE, so the cam never arrives.
+- **Don't simulate the reference switch from `ActPos` for NC homing.** A test switch such as
+  `bRefSwitch := Axis.NcToPlc.ActPos <= fSwitchPos` works for `FB_HomePlc`, but during
+  `MC_DefaultHoming` the NC sets the position to −1.0E10 while searching (`references/homing.md`),
+  so that switch goes TRUE in the first cycle. Use a hand-written BOOL instead.
 - **Own error codes are above 16#FFFF** (`16#0001_xxxx`), clear of every NC and ADS code. Any
   other code is the NC's: look it up with `scripts/nc_error.py`.
 - **A homed flag is not retained.** After a restart an incremental axis is not homed; an

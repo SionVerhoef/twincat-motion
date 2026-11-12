@@ -21,6 +21,12 @@ What is compared: the attributes of the Axis element and its AxisPara, Encoder, 
 Controller sub-trees. The DataTypes block (most of the file) and the Vars blocks (I/O
 process-image structure) are skipped: they describe types, not settings.
 
+ParameterChanged elements are kept apart as bookkeeping. XAE writes them into AxisPara
+and EncPara when a parameter is changed in its UI, and drops some or all of them on later
+saves; they record that something was edited, not a setting. show hides them (it prints
+how many there are), and diff reports them on one line per group, compared as a set of
+values, never as parameter changes and never by position.
+
 The tool only reads. It never writes an .xti file; change an axis in XAE, through the
 Automation Interface, or from a parameter-change table a person applies.
 
@@ -36,6 +42,7 @@ import xml.etree.ElementTree as ET
 NC2_CLASS = 'CNcAxisDef'
 MC3_CLASS = 'CTComMcAxisDef'
 SKIPPED_TAGS = ('DataTypes', 'Vars')
+BOOKKEEPING_TAG = 'ParameterChanged'
 
 DEFAULTS_NOTE = ('An .xti stores only non-default parameters. Absent ones are at their '
                  'TwinCAT default, which this tool does not know: it checks explicit '
@@ -54,6 +61,10 @@ LABELS = {
     'AxisPara/Dynamic@Acceleration': 'default acceleration',
     'AxisPara/Dynamic@Deceleration': 'default deceleration',
     'AxisPara/Dynamic@Jerk': 'default jerk',
+    'AxisPara/Dynamic@DelayTime': 'axis dead time compensation, s',
+    'AxisPara/OtherSettings@AllowMotionCmdToSlave': 'allow motion commands to slave axis',
+    'AxisPara/OtherSettings@AllowMotionCmdToExtSetGenAxis':
+        'allow motion commands to external setpoint axis',
     'AxisPara/PositionAreaControl@Range': 'position range monitoring window',
     'Encoder/EncPara@ScaleFactorNumerator': 'encoder scaling numerator',
     'Encoder/EncPara@ScaleFactorDenominator': 'encoder scaling denominator',
@@ -62,6 +73,12 @@ LABELS = {
     'Encoder/EncPara/SoftEndMinControl@Range': 'soft limit minimum',
     'Encoder/EncPara/SoftEndMaxControl@Enable': 'soft limit maximum enabled',
     'Encoder/EncPara/SoftEndMaxControl@Range': 'soft limit maximum',
+    'Encoder/EncPara/TimeComp@TimeCompMode': 'encoder time compensation mode',
+    'Encoder/EncPara/TimeComp@EncDelayCycles': 'encoder delay in cycles',
+    'Encoder/EncPara/TimeComp@AdditionalTimeShift': 'additional encoder delay',
+    'Drive/DrvPara/TimeComp@TimeCompMode': 'drive time compensation mode',
+    'Drive/DrvPara/TimeComp@TaskDelayCycles': 'drive task delay in cycles',
+    'Drive/DrvPara/TimeComp@DriveDelayCycles': 'drive delay in cycles',
     'Drive/DrvPara/Analog@VeloReferenz': 'reference velocity',
     'Controller/CtrPara/PosDiffControl@Enable': 'position lag monitoring enabled',
     'Controller/CtrPara/PosDiffControl@Range': 'position lag monitoring window',
@@ -95,28 +112,32 @@ def load(path):
     axis = root.find('Axis')
     if cls != NC2_CLASS or axis is None:
         raise XtiError('%s: not an NC axis file (ClassName=%s)' % (path, cls))
-    params = {}
-    _flatten(axis, '', params)
+    params, book = {}, {}
+    _flatten(axis, '', params, book)
     name = params.get('Name')
     if not name or name == '__FILENAME__':
         name = os.path.splitext(os.path.basename(path))[0]
-    return {'path': path, 'version': root.get('TcVersion'), 'name': name, 'params': params}
+    return {'path': path, 'version': root.get('TcVersion'), 'name': name, 'params': params,
+            'bookkeeping': book}
 
 
-def _flatten(elem, prefix, out):
+def _flatten(elem, prefix, out, book):
     for key, value in elem.attrib.items():
         out[prefix + '@' + key] = value
     text = (elem.text or '').strip()
     if text and prefix:
         out[prefix] = text
-    children = [c for c in elem if c.tag not in SKIPPED_TAGS]
+    for child in elem:
+        if child.tag == BOOKKEEPING_TAG:
+            book.setdefault(prefix + '/' + child.tag, []).append((child.text or '').strip())
+    children = [c for c in elem if c.tag not in SKIPPED_TAGS and c.tag != BOOKKEEPING_TAG]
     tags = [c.tag for c in children]
     count = {}
     for child in children:
         count[child.tag] = count.get(child.tag, 0) + 1
         tag = child.tag if tags.count(child.tag) == 1 else '%s[%d]' % (child.tag,
                                                                         count[child.tag])
-        _flatten(child, (prefix + '/' if prefix else '') + tag, out)
+        _flatten(child, (prefix + '/' if prefix else '') + tag, out, book)
 
 
 def number(value):
@@ -255,6 +276,14 @@ def diff(old, new):
     return rows
 
 
+def bookkeeping_diff(old, new):
+    """ParameterChanged entries per group whose set of values differs."""
+    a, b = old.get('bookkeeping', {}), new.get('bookkeeping', {})
+    return [{'path': path, 'old': a.get(path, []), 'new': b.get(path, [])}
+            for path in sorted(set(a) | set(b))
+            if sorted(a.get(path, [])) != sorted(b.get(path, []))]
+
+
 # --- Command line -------------------------------------------------------------------
 
 def axis_files(paths):
@@ -294,6 +323,10 @@ def cmd_show(args):
             print(head(axis))
             for path in sorted(axis['params']):
                 print('  %s = %s' % (label(path), ascii_text(axis['params'][path])))
+            n = sum(len(v) for v in axis['bookkeeping'].values())
+            if n:
+                print('  (%d ParameterChanged entries hidden: XAE bookkeeping, not settings)'
+                      % n)
             print()
         for msg in problems:
             print('ERROR ' + ascii_text(msg))
@@ -334,9 +367,10 @@ def cmd_diff(args):
         print('ERROR ' + ascii_text(str(exc)), file=sys.stderr)
         return 2
     rows = diff(old, new)
+    book = bookkeeping_diff(old, new)
     if args.json:
         print(json.dumps({'old': args.old, 'new': args.new, 'changes': rows,
-                          'note': DEFAULTS_NOTE}, indent=2))
+                          'bookkeeping': book, 'note': DEFAULTS_NOTE}, indent=2))
     else:
         print('--- ' + head(old))
         print('+++ ' + head(new))
@@ -350,6 +384,10 @@ def cmd_diff(args):
             else:
                 text = '%s -> (default)' % r['old']
             print('  %-16s %s: %s' % (r['change'], label(r['path']), ascii_text(text)))
+        for r in book:
+            print('  %-16s %s: %s -> %s (XAE bookkeeping, not a setting)'
+                  % ('bookkeeping', r['path'], ', '.join(r['old']) or 'none',
+                     ', '.join(r['new']) or 'none'))
         print('note: "(default)" means the parameter is absent from the file: TwinCAT '
               'uses its default value, which this tool does not know.')
     return 1 if rows else 0
@@ -359,8 +397,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(
         description='Read, lint and diff TwinCAT NC2 axis files (_Config/NC/Axes/*.xti).',
         epilog='Absent parameters are at their TwinCAT default; only explicit values are '
-               'checked. Exit codes: lint 0 clean, 1 findings; diff 0 same, 1 different; '
-               '2 unreadable input.')
+               'checked. ParameterChanged elements are XAE bookkeeping: show hides them, '
+               'diff lists them apart and they do not count as a difference. Exit codes: '
+               'lint 0 clean, 1 findings; diff 0 same, 1 different; 2 unreadable input.')
     sub = ap.add_subparsers(dest='command')
     p = sub.add_parser('show', help='list the parameters an axis sets explicitly')
     p.add_argument('paths', nargs='+', help='.xti files or folders')

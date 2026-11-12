@@ -95,6 +95,13 @@ class Load(unittest.TestCase):
         self.assertEqual(p['Drive/DrvPara/Analog[2]@A'], '2')
 
 
+    def test_parameter_changed_is_bookkeeping(self):
+        ax = axis(axispara='<ParameterChanged>9</ParameterChanged><Velo FastManual="124"/>'
+                           '<ParameterChanged>33</ParameterChanged>')
+        self.assertFalse([k for k in ax['params'] if 'ParameterChanged' in k])
+        self.assertEqual(ax['bookkeeping'], {'AxisPara/ParameterChanged': ['9', '33']})
+
+
 class LintRealAxes(unittest.TestCase):
     def test_public_axes_only_get_the_simulation_note(self):
         for path in (HOMING, EXTSEQ, LCLS, SEAL):
@@ -195,6 +202,33 @@ class Diff(unittest.TestCase):
             self.assertEqual(axis_xti.diff(axis_xti.load(HOMING), axis_xti.load(path)), [])
         finally:
             shutil.rmtree(d)
+
+
+    def test_parameter_changed_never_a_parameter_change(self):
+        # Field test A4.2/A4.4: one entry becoming two, or an insertion in the middle,
+        # used to show up as removed, re-added and shifted index rows.
+        one = axis(axispara='<ParameterChanged>260</ParameterChanged>')
+        two = axis(axispara='<ParameterChanged>260</ParameterChanged>'
+                            '<ParameterChanged>33</ParameterChanged>'
+                            '<OtherSettings AllowMotionCmdToExtSetGenAxis="true"/>')
+        self.assertEqual([(r['path'], r['change']) for r in axis_xti.diff(one, two)], [
+            ('AxisPara/OtherSettings@AllowMotionCmdToExtSetGenAxis', 'set')])
+        self.assertEqual(axis_xti.bookkeeping_diff(one, two), [
+            {'path': 'AxisPara/ParameterChanged', 'old': ['260'], 'new': ['260', '33']}])
+        a = axis(axispara='<ParameterChanged>260</ParameterChanged>'
+                          '<ParameterChanged>33</ParameterChanged>'
+                          '<ParameterChanged>32</ParameterChanged>')
+        b = axis(axispara='<ParameterChanged>260</ParameterChanged>'
+                          '<ParameterChanged>16</ParameterChanged>'
+                          '<ParameterChanged>33</ParameterChanged>'
+                          '<ParameterChanged>32</ParameterChanged>')
+        self.assertEqual(axis_xti.diff(a, b), [])
+        self.assertEqual(len(axis_xti.bookkeeping_diff(a, b)), 1)
+        self.assertEqual(axis_xti.bookkeeping_diff(b, b), [])
+
+    def test_friendly_name_external_setpoint(self):
+        self.assertIn('external setpoint',
+                      axis_xti.label('AxisPara/OtherSettings@AllowMotionCmdToExtSetGenAxis'))
 
 
 class CommandLine(unittest.TestCase):

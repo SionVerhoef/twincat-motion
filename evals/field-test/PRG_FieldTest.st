@@ -11,8 +11,8 @@
 //    Every Execute is a plain BOOL: write FALSE again before the next TRUE, or there is
 //    no rising edge. Results latch until you write bClear := TRUE.
 //
-// Signatures were checked against the Tc2_MC2 and TF5050 documentation but this program
-// has not been compiled. Fix compile errors on site and note them in the results.
+// Built on TwinCAT 4024.55 with Tc2_MC2 3.3.59 and Tc2_MC2_Camming 3.4.0. On other
+// versions, fix compile errors on site and note them in the results.
 
 // ==== DECLARATION ====
 PROGRAM PRG_FieldTest
@@ -245,7 +245,8 @@ IF NOT bCamTableReady THEN                                      // CAM
     stCamRef.NoOfColumns := 2;                                  // CAM
     bCamTableReady := TRUE;                                     // CAM
 END_IF                                                          // CAM
-fbCamSelect(CamTable := stCamRef, Execute := bCamSelect,       // CAM
+fbCamSelect(Master := Axis1, Slave := Axis2,                    // CAM
+            CamTable := stCamRef, Execute := bCamSelect,       // CAM
             Periodic := FALSE, CamTableID := 1);                // CAM
 fbCamIn(Master := Axis1, Slave := Axis2, Execute := bCamIn,    // CAM
         MasterOffset := fMasterOffset, SlaveOffset := fSlaveOffset, // CAM

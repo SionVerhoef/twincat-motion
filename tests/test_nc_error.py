@@ -55,7 +55,7 @@ class Lookup(unittest.TestCase):
         self.assertEqual(drive['handoff'], 'cia402-motion')
 
     def test_unknown_code_gets_family_never_a_neighbour(self):
-        r = nc_error.lookup('0x4359')     # between two curated codes
+        r = nc_error.lookup('0x435A')     # between two curated codes
         self.assertFalse(r['known'])
         self.assertEqual(r['family'], 'Axis')
         self.assertNotIn('label', r)
@@ -95,6 +95,15 @@ class Lookup(unittest.TestCase):
             self.assertIn('table', nc_error.lookup(code)['label'].lower(), code)
         self.assertEqual(nc_error.lookup('0x4A06')['family'],
                          'Table (cam and characteristic tables)')
+
+    def test_field_test_codes(self):
+        # Codes seen in the 4024.55 field test, each tied to the call that raised it.
+        self.assertIn('MC_Halt', ' '.join(nc_error.lookup('0x4267')['check']))
+        self.assertIn('0x4267', ' '.join(nc_error.lookup('0x4B08')['check']))
+        self.assertIn('GearInDyn', ' '.join(nc_error.lookup('0x4251')['check']))
+        self.assertIn('zero', nc_error.lookup('17241')['meaning'])     # decimal of 0x4359
+        self.assertIn('master', nc_error.lookup('0x425A')['meaning'])
+        self.assertIn('MC_Halt', ' '.join(nc_error.lookup('0x4B0A')['check']))
 
     def test_bus_codes_hand_off(self):
         for code in ('0x4466', '0x4651', '0x4655'):

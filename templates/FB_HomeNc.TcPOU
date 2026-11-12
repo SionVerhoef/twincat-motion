@@ -16,10 +16,10 @@
     - a timeout over the whole run that stops the axis with MC_Halt
     - one error path, with the NC code passed on
 
-    TEMPLATE - reviewed, not run. Compile it, test it on a simulated
-    axis, then on the real axis at reduced velocity. Not verified: that
-    MC_Halt stops a running MC_Home (the timeout path relies on it). Test
-    that on a simulated axis before trusting the timeout. A cam is not a
+    TEMPLATE - built and run on a simulated axis (4024.55), not on a real
+    one. Test it on your axis at reduced velocity. MC_Halt stops a running
+    MC_Home (seen on a simulated axis), which the timeout path relies on;
+    the timeout itself has not been reached in a test yet. A cam is not a
     safety device; homing is not safe homing.
 
     CONTRACT

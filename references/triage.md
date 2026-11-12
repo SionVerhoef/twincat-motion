@@ -64,10 +64,14 @@ or 4.
 - `MC_Power` is called **every cycle**, unconditionally, with `Enable` held TRUE. Calling it
   only inside a state of a sequence drops the enable when the sequence moves on, and a
   stalled PLC task drops it too (0x4260).
-- **`Enable_Positive` and `Enable_Negative` are both TRUE** for normal operation. With only
-  `Enable`, the first move is refused: 0x4357 (minus feed
-  enable missing) or 0x4358 (plus), or 0x4223 / 0x422A at the start of a move. The two are
-  easy to swap; check with the tool.
+- **`Enable_Positive` and `Enable_Negative` are both TRUE** for normal operation.
+  `MC_Power.Status` can be TRUE without them, so Status alone does not show it. With only
+  `Enable`, the move is refused. Observed on 4024.55 / Tc2_MC2 3.3.59 with a simulated axis:
+  **0x4223 on the move block** for either direction, the axis itself taking no error and
+  needing no `MC_Reset`; 0x4223 says nothing about the direction. 0x422A is the same for a
+  coupled slave. 0x4357 (minus feed enable missing) and 0x4358 (plus) did not appear there;
+  they may belong to an enable that drops during a move (not tested). The two are easy to
+  swap; check with the tool.
 - **`Override` is 100.** It is a percentage applied to every move and defaults to 100.0;
   linked to a variable that sits at 0, every move starts and nothing moves.
 
@@ -93,10 +97,10 @@ readiness; on an analog drive it can only report the control side.
 | Check | How to see it |
 |---|---|
 | **`MC_Stop` still holds the axis.** It keeps the axis locked until its `Execute` goes FALSE after `Done`, and needs a few more cycles to release. | `ST_AxisStatus.MotionCommandsLocked`; error 0x42EF on the next command. Use `MC_Halt` for ordinary stops. |
-| **The axis is a coupled slave** (gear or cam), so it is in protected mode. What a move does depends on the axis parameter *Allow motion commands to slave axes*: FALSE refuses it with 0x4B08; TRUE, which XAE 4024.55 writes explicitly into every axis it creates (an axis without the attribute is unverified: read it in XAE), decouples the slave without an error and runs the move. | `ST_AxisStatus.ProtectedMode` or `Coupled`. Decouple first. If a slave drops out of sync instead, look for a motion block on it: `coupling.md`. |
+| **The axis is a coupled slave** (gear or cam), so it is in protected mode. What a move does depends on the axis parameter *Allow motion commands to slave axis*: FALSE refuses a move with 0x4B08 and an `MC_Halt` with 0x4267, and the slave stays coupled. FALSE is the default and is stored as absence, so an axis without the attribute in its `.xti` refuses too. TRUE, which XAE 4024.55 writes explicitly into every axis it creates, lets a move or a halt decouple the slave without an error and run. | `ST_AxisStatus.ProtectedMode` or `Coupled`. Decouple first. If a slave drops out of sync instead, look for a motion block on it: `coupling.md`. |
 | **The move never triggered.** `Execute` needs a rising edge; held TRUE it fires once. Re-triggering while the block is busy is ignored without an error. | twincat-st reviewer rule X11 catches level-driven `Execute`. |
 | **The block is not called every cycle while busy.** | 0x4B66, or the block hangs with `Busy` TRUE. |
-| **An input is invalid.** A velocity of 0 is not "use the default" (0x4231); acceleration 0 *is* (it takes the axis parameter). | The block's `ErrorID`. |
+| **An input is invalid.** A velocity of 0 is not "use the default": `MC_MoveAbsolute` returned 0x4359 for it on 4024.55 (0x4231 is the group-level code for the same mistake). Acceleration 0 is accepted (documented as the axis parameter). | The block's `ErrorID`. |
 | **Outside a software limit**, or a target beyond one. | `SoftLimitMinExceeded` / `SoftLimitMaxExceeded`; 0x4460–0x4463. |
 | **Another command owns the axis.** A newer command with the default `Aborting` mode replaces the running one, which then reports `CommandAborted`. | `CommandAborted` on the first block. Expected behaviour, not a fault: `axis-lifecycle.md`. |
 | **Your application waits for `Homed`** and the axis came up not referenced (absolute encoder without retain data, or a fresh start). | `ST_AxisStatus.Homed`; 0x4002 at start-up. `homing.md`. |
