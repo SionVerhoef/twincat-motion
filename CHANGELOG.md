@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `axis-parameters.md`: EL70x7 stepper terminals on the NC. Automatic mode follows the PDO
+  assignment, so a process-data edit can change the mode. Velocity scaling against 0x8012:05.
+  The positioning interface is an alternative to the NC. A stall is an error only with
+  0x8012:0A. `triage.md` asks for the EL70x7 mode.
+
 ## 0.1.0 — 2026-11-12
 
 First release: classic TwinCAT NC (`Tc2_MC2`) on 3.1.4024. Field-tested on 4024.55 with
