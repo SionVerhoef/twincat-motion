@@ -31,6 +31,12 @@ the file.
 | Axis_X | Encoder | Scaling Factor Denominator | `Encoder/EncPara@ScaleFactorDenominator` | default | 3145728 | 3:1 gearbox × 2^20 |
 | Axis_X | Parameter | Maximum Position Lag Value | `Controller/CtrPara/PosDiffControl@Range` | 0.5 | 2.0 | measured peak lag 1.4 at full acceleration |
 
+When the change already exists in another version of the axis (a test copy, another machine),
+`axis_xti.py diff old.xti new.xti --table` prints this table with Axis, the `.xti` path, Old
+and New filled in from the files. Add the XAE page and name and the *Why*; a parameter going
+back to its default shows "default (value not known to this tool)", so look the value up in
+XAE.
+
 Then tell the person how to apply and check it:
 
 1. Change the values in XAE and save.
@@ -144,6 +150,15 @@ When you hand this out:
   pass on a copy of the project.
 - Fill `changes.csv` from the produced XML, never from the `.xti` layout or from memory. Each
   `XPath` names one value element, not its group.
+- To carry a change from one version of an axis to another, let the tool fill it: run the
+  produce pass on the target axis, then
+  `axis_xti.py diff old.xti new.xti --ai-csv <Axis>-before-<stamp>.xml changes.csv`. It
+  looks each changed parameter up in the produced XML and takes **Old** from there (the
+  target's current value, defaults included). If any change cannot be found there, or goes
+  back to a default it cannot name, it writes nothing. A `NOTE` says where the target's
+  value differs from the old file. The `.xti`-to-produced-XML name mapping is checked against
+  the produced XML on every run, but has been tested only on XML shaped like the table above,
+  not on one captured from XAE.
 - The script checks every old value before it changes anything, so a stale table fails
   instead of half-applying.
 - After applying: review the axis in XAE, then the same steps as for a table (save,

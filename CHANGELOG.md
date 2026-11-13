@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- `axis_xti.py diff --table` prints a change as the parameter-change table of
+  `config-changes.md`; `diff --ai-csv PRODUCED_XML CHANGES_CSV` writes it as `changes.csv`
+  for `axis-change.ps1`, with each row looked up in the target axis's produced XML and its
+  old value read from there. Nothing is written unless every row resolves.
+
 ## 0.1.0 — 2026-11-12
 
 First release: classic TwinCAT NC (`Tc2_MC2`) on 3.1.4024. Field-tested on 4024.55 with
