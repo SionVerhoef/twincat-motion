@@ -231,7 +231,130 @@ class Diff(unittest.TestCase):
                       axis_xti.label('AxisPara/OtherSettings@AllowMotionCmdToExtSetGenAxis'))
 
 
+# Shaped like ProduceXml output as described in references/config-changes.md (root
+# TreeItem, values as element text, groups renamed to ...Param, defaults listed). Written
+# here, not captured from XAE.
+PRODUCED = '''<?xml version="1.0"?>
+<TreeItem>
+  <ItemName>Axis_X</ItemName>
+  <NcAxisDef>
+    <AxisParam>
+      <Velo><Maximum>2000</Maximum><Fast>1000</Fast><FastManual>600</FastManual></Velo>
+      <Dynamic><Acceleration>1500</Acceleration></Dynamic>
+    </AxisParam>
+    <Encoder>
+      <EncParam>
+        <ScaleFactorNumerator>0.0001</ScaleFactorNumerator>
+        <SoftEndMaxControl><Enable>false</Enable><Range>0</Range></SoftEndMaxControl>
+      </EncParam>
+    </Encoder>
+    <Controller><CtrParam><PosDiffControl><Range>5</Range></PosDiffControl></CtrParam>
+    </Controller>
+  </NcAxisDef>
+</TreeItem>
+'''
+
+
+def produced(text=PRODUCED):
+    return axis_xti.ET.fromstring(text)
+
+
+class AiChanges(unittest.TestCase):
+    def test_paths_map_to_produced_layout(self):
+        self.assertEqual(axis_xti.produced_path('AxisPara/Velo@FastManual'),
+                         '/TreeItem/NcAxisDef/AxisParam/Velo/FastManual')
+        self.assertEqual(axis_xti.produced_path('Controller/CtrPara/PosDiffControl@Enable'),
+                         '/TreeItem/NcAxisDef/Controller/CtrParam/PosDiffControl/Enable')
+        self.assertEqual(axis_xti.produced_path('Encoder/EncPara/TimeComp@EncDelayCycles'),
+                         '/TreeItem/NcAxisDef/Encoder/EncParam/TimeComp/EncDelayCycles')
+
+    def test_old_value_comes_from_produced_xml_defaults_included(self):
+        # HOMING -> EXTSEQ sets three parameters that were at their default in the .xti;
+        # the produced XML holds their current value, so the CSV can state it.
+        rows = axis_xti.diff(axis_xti.load(HOMING), axis_xti.load(EXTSEQ))
+        out, problems, notes = axis_xti.ai_changes(rows, produced())
+        self.assertEqual(problems, [])
+        self.assertEqual(notes, [])
+        self.assertEqual(out, [
+            ('/TreeItem/NcAxisDef/Encoder/EncParam/SoftEndMaxControl/Enable', 'false',
+             'true'),
+            ('/TreeItem/NcAxisDef/Encoder/EncParam/SoftEndMaxControl/Range', '0', '100'),
+            ('/TreeItem/NcAxisDef/Encoder/EncParam/ScaleFactorNumerator', '0.0001', '1'),
+        ])
+
+    def test_target_differs_from_old_xti_is_noted(self):
+        a = axis(axispara='<Velo FastManual="500"/>')
+        b = axis(axispara='<Velo FastManual="700"/>')
+        out, problems, notes = axis_xti.ai_changes(axis_xti.diff(a, b), produced())
+        self.assertEqual(out, [('/TreeItem/NcAxisDef/AxisParam/Velo/FastManual', '600',
+                                '700')])
+        self.assertEqual(problems, [])
+        self.assertEqual(len(notes), 1)
+        self.assertIn('500', notes[0])
+
+    def test_unresolvable_rows_are_problems(self):
+        a = axis(axispara='<Velo RefSearch="10"/><Dynamic Acceleration="900"/>',
+                 drvpara='<Analog A="1"/><Analog A="2"/>')
+        b = axis(axispara='<Velo RefSearch="20"/>', drvpara='<Analog A="1"/><Analog A="3"/>')
+        out, problems, notes = axis_xti.ai_changes(axis_xti.diff(a, b), produced())
+        text = '\n'.join(problems)
+        self.assertEqual(len(problems), 3, text)
+        self.assertIn('RefSearch', text)          # not in the produced XML
+        self.assertIn('Acceleration', text)       # back to default: value unknown
+        self.assertIn('Analog[2]', text)          # repeated element: position unreliable
+
+    def test_group_is_not_a_value(self):
+        rows = [{'path': 'AxisPara@Velo', 'change': 'set', 'old': None, 'new': '1'}]
+        self.assertIn('group', axis_xti.ai_changes(rows, produced())[1][0])
+
+    def test_not_produced_xml(self):
+        with self.assertRaises(axis_xti.XtiError):
+            axis_xti.ai_changes([], produced('<TcSmItem/>'))
+
+
 class CommandLine(unittest.TestCase):
+    def test_diff_table(self):
+        r = run('diff', HOMING, EXTSEQ, '--table')
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn('| `.xti` path (to check) | Old | New | Why |', r.stdout)
+        self.assertIn('| spt_ExternalSequence_Axis1 | encoder scaling numerator | '
+                      '`Encoder/EncPara@ScaleFactorNumerator` | default | 1 |  |', r.stdout)
+        r = run('diff', EXTSEQ, HOMING, '--table')
+        self.assertIn('| 100 | default (value not known to this tool) |', r.stdout)
+
+    def test_diff_ai_csv_written(self):
+        d = tempfile.mkdtemp()
+        try:
+            xml, csv_path = os.path.join(d, 'p.xml'), os.path.join(d, 'changes.csv')
+            with open(xml, 'w') as f:
+                f.write(PRODUCED)
+            r = run('diff', HOMING, EXTSEQ, '--ai-csv', xml, csv_path)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            with open(csv_path, encoding='utf-8-sig') as f:
+                lines = f.read().splitlines()
+            self.assertEqual(lines[0], 'XPath,Old,New')
+            self.assertIn('/TreeItem/NcAxisDef/Encoder/EncParam/ScaleFactorNumerator,'
+                          '0.0001,1', lines)
+            self.assertEqual(len(lines), 4)
+        finally:
+            shutil.rmtree(d)
+
+    def test_diff_ai_csv_all_or_nothing(self):
+        d = tempfile.mkdtemp()
+        try:
+            xml, csv_path = os.path.join(d, 'p.xml'), os.path.join(d, 'changes.csv')
+            with open(xml, 'w') as f:
+                f.write(PRODUCED)
+            r = run('diff', EXTSEQ, HOMING, '--ai-csv', xml, csv_path)  # back to default
+            self.assertEqual(r.returncode, 2)
+            self.assertFalse(os.path.exists(csv_path))
+            self.assertIn('nothing written', r.stdout)
+        finally:
+            shutil.rmtree(d)
+
+    def test_diff_formats_exclusive(self):
+        self.assertEqual(run('diff', LCLS, LCLS, '--table', '--json').returncode, 2)
+
     def test_lint_folder_clean_exit_and_defaults_note(self):
         r = run('lint', FIX)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)

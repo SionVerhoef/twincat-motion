@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `axis_xti.py diff --table` prints a change as the parameter-change table of
+  `config-changes.md`; `diff --ai-csv PRODUCED_XML CHANGES_CSV` writes it as `changes.csv`
+  for `axis-change.ps1`, with each row looked up in the target axis's produced XML and its
+  old value read from there. Nothing is written unless every row resolves.
 - `axis-parameters.md`: EL70x7 stepper terminals on the NC. Automatic mode follows the PDO
   assignment, so a process-data edit can change the mode. Velocity scaling against 0x8012:05.
   The positioning interface is an alternative to the NC. A stall is an error only with

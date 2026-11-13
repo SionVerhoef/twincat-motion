@@ -58,7 +58,8 @@ git add .claude/skills/twincat-motion
 A plain `git clone` of your repository leaves a submodule folder empty: clone with
 `--recurse-submodules`, or run `git submodule update --init`. Without submodules, unpack a
 release zip from [Releases](https://github.com/SionVerhoef/twincat-motion/releases) into the
-same folder. Other agents that read skill folders (GitHub Copilot in VS Code from
+same folder: the zip unpacks as `twincat-motion-<version>/`, so rename that folder to
+`twincat-motion` (`SKILL.md` must sit directly in `.claude/skills/twincat-motion/`). Other agents that read skill folders (GitHub Copilot in VS Code from
 `.github/skills/`, OpenAI Codex from `.agents/skills/`) should load it the same way; that is
 untested.
 
@@ -84,8 +85,10 @@ python3 scripts/axis_xti.py diff old.xti new.xti   # what changed, by parameter 
   the templates' own error codes (16#0001_xxxx), which are not NC codes.
 - **`axis_xti.py`** reads `_Config/NC/Axes/*.xti` files without XAE. A file stores only values
   that differ from the default, so `lint` checks explicit values only. `diff` compares two
-  versions by parameter, not by XML line. It never writes an `.xti` file. Exit codes: `lint`
-  0 clean, 1 findings; `diff` 0 same, 1 different; 2 unreadable input.
+  versions by parameter, not by XML line; `--table` prints the change as a parameter-change
+  table, and `--ai-csv` writes it as input for the Automation Interface script in
+  `references/config-changes.md`. It never writes an `.xti` file. Exit codes: `lint` 0 clean,
+  1 findings; `diff` 0 same, 1 different; 2 unreadable input.
 
 ## Status
 
