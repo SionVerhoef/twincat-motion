@@ -58,7 +58,8 @@ git add .claude/skills/twincat-motion
 A plain `git clone` of your repository leaves a submodule folder empty: clone with
 `--recurse-submodules`, or run `git submodule update --init`. Without submodules, unpack a
 release zip from [Releases](https://github.com/SionVerhoef/twincat-motion/releases) into the
-same folder. Other agents that read skill folders (GitHub Copilot in VS Code from
+same folder: the zip unpacks as `twincat-motion-<version>/`, so rename that folder to
+`twincat-motion` (`SKILL.md` must sit directly in `.claude/skills/twincat-motion/`). Other agents that read skill folders (GitHub Copilot in VS Code from
 `.github/skills/`, OpenAI Codex from `.agents/skills/`) should load it the same way; that is
 untested.
 
