@@ -65,6 +65,8 @@ skill does not cover. `--json` gives machine-readable output.
 python3 scripts/axis_xti.py show "_Config/NC/Axes/Axis 1.xti"   # explicit parameters
 python3 scripts/axis_xti.py lint _Config/NC/Axes                 # every axis in a folder
 python3 scripts/axis_xti.py diff old.xti new.xti                 # e.g. old from git show
+python3 scripts/axis_xti.py diff old.xti new.xti --table         # as a parameter-change table
+python3 scripts/axis_xti.py diff old.xti new.xti --ai-csv produced.xml changes.csv
 ```
 
 An `.xti` stores only non-default values and the tool has no defaults table: an absent
@@ -73,7 +75,8 @@ parameter is at its TwinCAT default (one exception: XAE 4024.55 writes
 attribute, is FALSE), lint checks explicit values only, and a clean lint is
 not a full audit. Say so when you report a result. The tool never writes an `.xti`;
 propose changes as a parameter-change table or an Automation Interface script
-(`references/config-changes.md`).
+(`references/config-changes.md`). `diff --table` and `diff --ai-csv` produce either from two
+versions of an axis; `--ai-csv` needs the target axis's produced XML.
 
 ## Where to read next
 

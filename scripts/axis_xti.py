@@ -4,6 +4,10 @@
     axis_xti.py show  Axis1.xti              the parameters this axis sets explicitly
     axis_xti.py lint  _Config/NC/Axes        check every NC axis file under a folder
     axis_xti.py diff  old.xti new.xti        what changed between two versions of an axis
+    axis_xti.py diff  old.xti new.xti --table
+                                             the change as a parameter-change table
+    axis_xti.py diff  old.xti new.xti --ai-csv produced.xml changes.csv
+                                             the change as changes.csv for axis-change.ps1
     axis_xti.py lint  Axis1.xti --json       the same result for a program
 
 To diff against git history, write the old version to a file first:
@@ -27,13 +31,20 @@ saves; they record that something was edited, not a setting. show hides them (it
 how many there are), and diff reports them on one line per group, compared as a set of
 values, never as parameter changes and never by position.
 
-The tool only reads. It never writes an .xti file; change an axis in XAE, through the
-Automation Interface, or from a parameter-change table a person applies.
+The tool never writes an .xti file; change an axis in XAE, through the Automation
+Interface, or from a parameter-change table a person applies. diff can write those last
+two for a person to review: --table prints the table, --ai-csv writes the changes.csv that
+the axis-change.ps1 script in references/config-changes.md applies. --ai-csv needs that
+script's produce-pass XML of the target axis: the produced XML names values differently
+from the .xti and lists defaults too, so each row is looked up in it and its old value is
+read from it. If any row cannot be found there, nothing is written. Running the script
+stays with the person.
 
 Standard library only, so it runs on an engineering PC with nothing but Python 3.8.
 Output is ASCII so a legacy Windows console prints it unchanged.
 """
 import argparse
+import csv
 import json
 import os
 import sys
@@ -284,6 +295,99 @@ def bookkeeping_diff(old, new):
             if sorted(a.get(path, [])) != sorted(b.get(path, []))]
 
 
+# --- Change output: table and Automation Interface CSV ---------------------------------
+
+PRODUCED_ROOT = '/TreeItem/NcAxisDef/'
+# Parameter groups the produced XML names differently (references/config-changes.md).
+PRODUCED_GROUPS = {'AxisPara': 'AxisParam', 'EncPara': 'EncParam', 'DrvPara': 'DrvParam',
+                   'CtrPara': 'CtrParam'}
+UNKNOWN_DEFAULT = 'default (value not known to this tool)'
+
+
+def produced_path(path):
+    """An .xti parameter path as the XPath of its value element in ProduceXml output."""
+    parts = path.replace('@', '/').strip('/').split('/')
+    return PRODUCED_ROOT + '/'.join(PRODUCED_GROUPS.get(part, part) for part in parts)
+
+
+def ai_changes(rows, root):
+    """Match diff rows to a produced axis XML. Returns (rows, problems, notes):
+    rows as (xpath, old, new) with old read from the produced XML; problems for diff rows
+    that cannot be written; notes where the target's value differs from the old file."""
+    if root.tag != 'TreeItem' or root.find('NcAxisDef') is None:
+        raise XtiError('not ProduceXml output of an NC axis (expected TreeItem/NcAxisDef)')
+    out, problems, notes = [], [], []
+    for r in rows:
+        path = r['path']
+        if r['change'] == 'back to default':
+            problems.append('%s: goes back to its default, a value this tool does not know. '
+                            'Set it in XAE.' % path)
+            continue
+        if '[' in path:
+            problems.append('%s: repeated element; its position in the produced XML is not '
+                            'known. Set it in XAE.' % path)
+            continue
+        xpath = produced_path(path)
+        nodes = root.findall(xpath[len('/TreeItem/'):])
+        if len(nodes) != 1:
+            problems.append('%s: %s matches %d elements in the produced XML, not 1.'
+                            % (path, xpath, len(nodes)))
+            continue
+        if len(nodes[0]):
+            problems.append('%s: %s is a group, not a value.' % (path, xpath))
+            continue
+        current = nodes[0].text or ''
+        if r['old'] is not None and not same(current, r['old']):
+            notes.append('%s: the target has %s, the old file had %s; the CSV expects %s.'
+                         % (xpath, current, r['old'], current))
+        out.append((xpath, current, r['new']))
+    return out, problems, notes
+
+
+def table_cell(value):
+    return ascii_text(value).replace('|', '\\|')
+
+
+def print_table(axis, rows):
+    print('| Axis | Parameter | `.xti` path (to check) | Old | New | Why |')
+    print('|---|---|---|---|---|---|')
+    for r in rows:
+        print('| %s | %s | `%s` | %s | %s |  |' % (
+            table_cell(axis['name']), LABELS.get(r['path'], ''), r['path'],
+            'default' if r['old'] is None else table_cell(r['old']),
+            UNKNOWN_DEFAULT if r['new'] is None else table_cell(r['new'])))
+
+
+def write_ai_csv(rows, produced_xml, csv_path):
+    try:
+        root = ET.parse(produced_xml).getroot()
+        out, problems, notes = ai_changes(rows, root)
+    except (ET.ParseError, OSError, XtiError) as exc:
+        print('ERROR %s: %s' % (ascii_text(produced_xml), ascii_text(str(exc))))
+        return 2
+    for msg in problems:
+        print('ERROR ' + ascii_text(msg))
+    if problems:
+        print('nothing written: every change must resolve, so the script never applies '
+              'half of it.')
+        return 2
+    if not out:
+        print('no parameter differences: nothing written.')
+        return 0
+    # UTF-8 with a BOM: Windows PowerShell 5.1 Import-Csv reads it without -Encoding.
+    with open(csv_path, 'w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.writer(f, lineterminator='\r\n')
+        writer.writerow(['XPath', 'Old', 'New'])
+        writer.writerows(out)
+    for xpath, old, new in out:
+        print('  %s: %s -> %s' % (xpath, ascii_text(old), ascii_text(new)))
+    for msg in notes:
+        print('NOTE ' + ascii_text(msg))
+    print('Wrote %s (%d rows). Review it, then run the apply pass of axis-change.ps1 '
+          '(references/config-changes.md).' % (ascii_text(csv_path), len(out)))
+    return 0
+
+
 # --- Command line -------------------------------------------------------------------
 
 def axis_files(paths):
@@ -361,12 +465,20 @@ def cmd_lint(args):
 
 
 def cmd_diff(args):
+    if sum(map(bool, (args.json, args.table, args.ai_csv))) > 1:
+        print('ERROR choose one of --json, --table, --ai-csv', file=sys.stderr)
+        return 2
     try:
         old, new = load(args.old), load(args.new)
     except XtiError as exc:
         print('ERROR ' + ascii_text(str(exc)), file=sys.stderr)
         return 2
     rows = diff(old, new)
+    if args.ai_csv:
+        return write_ai_csv(rows, *args.ai_csv)
+    if args.table:
+        print_table(new, rows)
+        return 1 if rows else 0
     book = bookkeeping_diff(old, new)
     if args.json:
         print(json.dumps({'old': args.old, 'new': args.new, 'changes': rows,
@@ -399,7 +511,8 @@ def main(argv=None):
         epilog='Absent parameters are at their TwinCAT default; only explicit values are '
                'checked. ParameterChanged elements are XAE bookkeeping: show hides them, '
                'diff lists them apart and they do not count as a difference. Exit codes: '
-               'lint 0 clean, 1 findings; diff 0 same, 1 different; 2 unreadable input.')
+               'lint 0 clean, 1 findings; diff 0 same, 1 different (--ai-csv: 0 written or '
+               'nothing to change); 2 unreadable input or nothing written.')
     sub = ap.add_subparsers(dest='command')
     p = sub.add_parser('show', help='list the parameters an axis sets explicitly')
     p.add_argument('paths', nargs='+', help='.xti files or folders')
@@ -410,6 +523,11 @@ def main(argv=None):
     p = sub.add_parser('diff', help='compare two versions of an axis')
     p.add_argument('old')
     p.add_argument('new')
+    p.add_argument('--table', action='store_true',
+                   help='print the change as a markdown parameter-change table')
+    p.add_argument('--ai-csv', nargs=2, metavar=('PRODUCED_XML', 'CHANGES_CSV'),
+                   help='write changes.csv for axis-change.ps1, checked against the '
+                        'target axis XML from its produce pass')
     p.set_defaults(run=cmd_diff)
     for p in sub.choices.values():
         p.add_argument('--json', action='store_true', help='machine-readable output')
