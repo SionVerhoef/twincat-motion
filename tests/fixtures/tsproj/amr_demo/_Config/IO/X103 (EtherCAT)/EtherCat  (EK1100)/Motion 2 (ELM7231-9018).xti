@@ -1,0 +1,165 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.21" ClassName="CFlbTermDef" SubType="9099">
+	<Box Id="20" BoxType="9099" BoxFlags="#x00000020">
+		<Name>__FILENAME__</Name>
+		<EtherCAT VendorId="#x00000002" ProductCode="#x502275f9" Type="ELM7231-9018 1Ch. Servo Terminal (48 V, 16 A RMS, OCT, STO, Safe Motion, TwinSAFE Logic)" Desc="ELM7231-9018">
+			<Pdo Name="FB Position" Index="#x1a00" Flags="#x0010" SyncMan="3">
+				<Entry Name="Position" Index="#x6000" Sub="#x11">
+					<Type>UDINT</Type>
+				</Entry>
+			</Pdo>
+			<Pdo Name="DRV Statusword" Index="#x1a10" Flags="#x0010" SyncMan="3">
+				<Entry Name="Statusword" Index="#x6010" Sub="#x01">
+					<Type>UINT</Type>
+					<Comment>Bit 0 : Ready to switch on
+Bit 1 : Switched on
+Bit 2 : Operation enabled
+Bit 3 : Fault
+Bit 4 : reserved
+Bit 5 : reserved
+Bit 6 : Switch on disabled
+Bit 7 : Warning
+Bit 8 + 9 : reserved
+Bit 10 : TxPDOToggle
+Bit 11 : Internal limit active
+Bit 12 : Drive follows the command value
+Bit 13 : Input cycle counter
+Bit 14 - 15 : reserved</Comment>
+				</Entry>
+			</Pdo>
+			<Pdo Name="DRV Following error actual value" Index="#x1a11" Flags="#x0010" SyncMan="3">
+				<Entry Name="Following error actual value" Index="#x6010" Sub="#x06">
+					<Type>DINT</Type>
+				</Entry>
+			</Pdo>
+			<Pdo Name="DRV Controlword" Index="#x1610" InOut="1" Flags="#x0010" SyncMan="2">
+				<Entry Name="Controlword" Index="#x7010" Sub="#x01">
+					<Type>UINT</Type>
+					<Comment>Bit 0 : Switch on
+Bit 1 : Enable voltage
+Bit 2 : reserved
+Bit 3 : Enable operation
+Bit 4 - 6 : reserved
+Bit 7 : Fault reset
+Bit 8 - 15 : reserved</Comment>
+				</Entry>
+			</Pdo>
+			<Pdo Name="DRV Target position" Index="#x1611" InOut="1" Flags="#x0010" SyncMan="2">
+				<Entry Name="Target position" Index="#x7010" Sub="#x05">
+					<Type>UDINT</Type>
+				</Entry>
+			</Pdo>
+			<Pdo Name="SAFETY FSoE Connection 1 Send Message" Index="#x1aa0" Flags="#x0080" SyncMan="7" SyncUnit="2">
+				<Entry Name="FSOE__FSoE Send Cmd" Index="#x6200" Sub="#x01">
+					<Type>USINT</Type>
+				</Entry>
+				<Entry Name="FSOE__STO_active_ChA" Index="#xf601" Sub="#x01">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__">
+					<Type GUID="{18071995-0000-0000-0000-002000000007}">ARRAY [0..6] OF BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__STO_active_ChB" Index="#xf601" Sub="#x02">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__">
+					<Type GUID="{18071995-0000-0000-0000-002000000007}">ARRAY [0..6] OF BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__FSoE Send CRC_0" Index="#x6200" Sub="#x03">
+					<Type>UINT</Type>
+				</Entry>
+				<Entry Name="FSOE__FSoE Send ConnID" Index="#x6200" Sub="#x02">
+					<Type>UINT</Type>
+				</Entry>
+			</Pdo>
+			<Pdo Name="SAFETY Standard Inputdata" Index="#x1ab0" Flags="#x0080" SyncMan="7" SyncUnit="2">
+				<Entry Name="FSOE__Std Input_0" Index="#xf606" Sub="#x01">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Input_1" Index="#xf606" Sub="#x02">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Input_2" Index="#xf606" Sub="#x03">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Input_3" Index="#xf606" Sub="#x04">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Input_4" Index="#xf606" Sub="#x05">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Input_5" Index="#xf606" Sub="#x06">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Input_6" Index="#xf606" Sub="#x07">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Input_7" Index="#xf606" Sub="#x08">
+					<Type>BIT</Type>
+				</Entry>
+			</Pdo>
+			<Pdo Name="FSLOGIC Inputs" Index="#x1abf" Flags="#x0091" SyncMan="7" SyncUnit="2">
+				<Entry Name="FSOE__Safe Logic State" Index="#xf100" Sub="#x01">
+					<Type>USINT</Type>
+				</Entry>
+				<Entry Name="FSOE__Cycle Counter" Index="#xf100" Sub="#x02">
+					<Type>USINT</Type>
+				</Entry>
+			</Pdo>
+			<Pdo Name="SAFETY FSoE Connection 1 Receive Message" Index="#x16a0" InOut="1" Flags="#x0080" SyncMan="6" SyncUnit="2">
+				<Entry Name="FSOE__FSoE Receive Cmd" Index="#x7200" Sub="#x01">
+					<Type>USINT</Type>
+				</Entry>
+				<Entry Name="FSOE__STO_ChA" Index="#xf701" Sub="#x01">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__">
+					<Type GUID="{18071995-0000-0000-0000-002000000007}">ARRAY [0..6] OF BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__STO_ChB" Index="#xf701" Sub="#x02">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__">
+					<Type GUID="{18071995-0000-0000-0000-002000000007}">ARRAY [0..6] OF BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__FSoE Receive CRC_0" Index="#x7200" Sub="#x03">
+					<Type>UINT</Type>
+				</Entry>
+				<Entry Name="FSOE__FSoE Receive ConnID" Index="#x7200" Sub="#x02">
+					<Type>UINT</Type>
+				</Entry>
+			</Pdo>
+			<Pdo Name="SAFETY Standard Outputdata" Index="#x16b0" InOut="1" Flags="#x0080" SyncMan="6" SyncUnit="2">
+				<Entry Name="FSOE__Connection ErrAck" Index="#xf706" Sub="#x01">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Output_1" Index="#xf706" Sub="#x02">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Output_2" Index="#xf706" Sub="#x03">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Output_3" Index="#xf706" Sub="#x04">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Output_4" Index="#xf706" Sub="#x05">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Output_5" Index="#xf706" Sub="#x06">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Output_6" Index="#xf706" Sub="#x07">
+					<Type>BIT</Type>
+				</Entry>
+				<Entry Name="FSOE__Std Output_7" Index="#xf706" Sub="#x08">
+					<Type>BIT</Type>
+				</Entry>
+			</Pdo>
+			<Pdo Name="FSLOGIC Outputs" Index="#x16bf" InOut="1" Flags="#x0091" SyncMan="6" SyncUnit="2">
+				<Entry Name="FSOE__">
+					<Type GUID="{18071995-0000-0000-0000-002000000010}">ARRAY [0..1] OF BYTE</Type>
+				</Entry>
+			</Pdo>
+		</EtherCAT>
+	</Box>
+</TcSmItem>

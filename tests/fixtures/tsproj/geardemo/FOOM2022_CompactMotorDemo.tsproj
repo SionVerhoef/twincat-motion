@@ -1,0 +1,346 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4024.53">
+	<ImageDatas>
+		<ImageData Id="1000">424dd6020000000000003600000028000000100000000e0000000100180000000000a0020000c40e0000c40e00000000000000000000ff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080808080808080808080808080808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c000ffffc0c0c000ffff808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0ff0000c0c0c0ff0000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c00000ffc0c0c00000ff808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0000000000000c0c0c0808080c0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ff000000c0c0c0c0c0c0000000808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0000000000000c0c0c0808080c0c0c0008000c0c0c0008000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ff</ImageData>
+		<ImageData Id="1001">424dd6020000000000003600000028000000100000000e0000000100180000000000a0020000c40e0000c40e00000000000000000000ff00ffff00ffff00ffff00ff808080808080808080808080808080808080808080808080808080808080808080808080ff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0000000c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffc0c0c0c0c0c0000000000000000000000000000000000000000000c0c0c0c0c0c0808080007fff007fff007fff007fffc0c0c0c0c0c00000000000000000000000000000000000000000000000ffc0c0c0808080007fff007fff007fff007fffc0c0c0c0c0c0000000000000000000000000000000000000000000c0c0c0c0c0c0808080007fff007fff007fff007fffc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0000000c0c0c0c0c0c0000000c0c0c0c0c0c0808080007fff007fff007fff007fffc0c0c0c0c0c0000000000000000000000000c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0808080007fff007fff007fff007fffc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0808080007fff007fff007fff007fffc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0808080007fff007fff007fff007fffc0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0808080</ImageData>
+		<ImageData Id="1002">424dd6020000000000003600000028000000100000000e0000000100180000000000a0020000c40e0000c40e00000000000000000000ff00ffff00ffff00ffff00ffff00ffff00ff808080808080808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff007fff007fff007fff007fff007fff007fffc0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff</ImageData>
+	</ImageDatas>
+	<Project ProjectGUID="{3FBED1FC-F881-4075-931F-960D1D6EE69E}" Target64Bit="true">
+		<Motion>
+			<NC>
+				<SafTask Priority="6" CycleTime="20000" AmsPort="501" IoAtBegin="true" SafTaskInfo="256">
+					<Name>NC-Task 1 SAF</Name>
+				</SafTask>
+				<SvbTask CreateSymbols="true" Priority="10" CycleTime="100000" AmsPort="511">
+					<Name>NC-Task 1 SVB</Name>
+				</SvbTask>
+				<Axis Id="1" CreateSymbols="true" AxisType="1">
+					<Name>Axis 1</Name>
+					<AxisPara>
+						<General UnitName="Degree" />
+						<Dynamic AccelerationMaximum="29071" DecelerationMaximum="29071" Acceleration="14535" Deceleration="14535" Jerk="43605" />
+						<Velo RefSearch="96.9" RefSync="96.9" SlowManual="484.5" FastManual="2907" Fast="9690" Maximum="9690" />
+						<OtherSettings AllowMotionCmdToSlave="true" />
+					</AxisPara>
+					<Encoder Name="Enc" EncType="19">
+						<EncPara ScaleFactorNumerator="360" ScaleFactorDenominator="1048576" MaxCount="#xffffffff" />
+					</Encoder>
+					<Drive Name="Drive" DrvType="16">
+						<DrvPara MaxCount="#xffffffff" DriveControlDWord="#x00020100">
+							<Analog VeloReferenz="10659" TorqueSetpointScale="10" ScaleFactorActTorque="0.1" />
+							<TimeComp TaskDelayCycles="1" />
+						</DrvPara>
+					</Drive>
+					<Controller Name="Ctrl" CtrType="1">
+						<CtrPara PriorControlFactor="1">
+							<Observer BandWidth="20" />
+						</CtrPara>
+					</Controller>
+				</Axis>
+				<Axis Id="2" CreateSymbols="true" AxisType="1">
+					<Name>Axis 2</Name>
+					<AxisPara>
+						<General UnitName="Degree" />
+						<Dynamic AccelerationMaximum="29071" DecelerationMaximum="29071" Acceleration="14535" Deceleration="14535" Jerk="43605" />
+						<Velo RefSearch="96.9" RefSync="96.9" FastManual="200" Fast="9690" Maximum="9690" />
+						<OtherSettings AllowMotionCmdToSlave="true" PulseDistancePos="1" PulseDistanceNeg="1" />
+					</AxisPara>
+					<Encoder Name="Enc" EncType="19">
+						<EncPara ScaleFactorNumerator="360" ScaleFactorDenominator="1048576" Inverse="true" MaxCount="#xffffffff" />
+					</Encoder>
+					<Drive Name="Drive" DrvType="16">
+						<DrvPara Inverse="true" MaxCount="#xffffffff" DriveControlDWord="#x00020100">
+							<Analog VeloReferenz="10659" TorqueSetpointScale="10" ScaleFactorActTorque="0.1" />
+							<TimeComp TaskDelayCycles="1" />
+						</DrvPara>
+					</Drive>
+					<Controller Name="Ctrl" CtrType="1">
+						<CtrPara PriorControlFactor="1">
+							<Observer BandWidth="20" />
+						</CtrPara>
+					</Controller>
+				</Axis>
+			</NC>
+		</Motion>
+		<Io>
+			<Device Id="2" DevType="111" DevFlags="#x0003" AmsPort="28674" RemoteName="Device 2 (EtherCAT)" InfoImageId="3">
+				<Name>Device 2 (EtherCAT)</Name>
+				<Box Id="1" BoxType="9099">
+					<Name>Term 1 (EK1101)</Name>
+					<EtherCAT VendorId="#x00000002" ProductCode="#x044d2c52" Type="EK1101 EtherCAT Coupler (2A E-Bus, ID switch)" Desc="EK1101">
+						<Pdo Name="ID" Index="#x1a00" Flags="#x0010" SyncMan="0">
+							<Entry Name="ID" Index="#x6000" Sub="#x01">
+								<Type>UINT</Type>
+							</Entry>
+						</Pdo>
+					</EtherCAT>
+					<Box Id="2" BoxType="9099" BoxFlags="#x00000020">
+						<Name>Drive 2 (EL7201-0011)</Name>
+						<EtherCAT VendorId="#x00000002" ProductCode="#x1c213052" Type="EL7201-0011 1Ch. DS402 Servo motor output stage with OCT (50V, 4A)" Desc="EL7201-0011">
+							<Pdo Name="DS402 Statusword" Index="#x1a00" Flags="#x0010" SyncMan="3">
+								<Entry Name="Statusword" Index="#x6041">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Position actual value" Index="#x1a01" Flags="#x0010" SyncMan="3">
+								<Entry Name="Position actual value" Index="#x6064">
+									<Type>UDINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Velocity actual value" Index="#x1a02" Flags="#x0010">
+								<Entry Name="Velocity actual value" Index="#x606c">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Torque actual value" Index="#x1a03" Flags="#x0010">
+								<Entry Name="Torque actual value" Index="#x6077">
+									<Type>INT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Following error actual value" Index="#x1a04" Flags="#x0010" SyncMan="3">
+								<Entry Name="Following error actual value" Index="#x60f4">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe status" Index="#x1a05" Flags="#x0010">
+								<Entry Name="Touch probe status" Index="#x60b9">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe 1 positive edge" Index="#x1a06" Flags="#x0010">
+								<Entry Name="Touch probe 1 positive edge" Index="#x60ba">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe 1 negative edge" Index="#x1a07" Flags="#x0010">
+								<Entry Name="Touch probe 1 negative edge" Index="#x60bb">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe 2 positive edge" Index="#x1a08" Flags="#x0010">
+								<Entry Name="Touch probe 2 positive edge" Index="#x60bc">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe 2 negative edge" Index="#x1a09" Flags="#x0010">
+								<Entry Name="Touch probe 2 negative edge" Index="#x60bd">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Controlword" Index="#x1600" InOut="1" Flags="#x0010" SyncMan="2">
+								<Entry Name="Controlword" Index="#x6040">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Target velocity" Index="#x1601" InOut="1" Flags="#x0010">
+								<Entry Name="Target velocity" Index="#x60ff">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Target torque" Index="#x1602" InOut="1" Flags="#x0010">
+								<Entry Name="Target torque" Index="#x6071">
+									<Type>INT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Commutation angle" Index="#x1603" InOut="1" Flags="#x0010">
+								<Entry Name="Commutation angle" Index="#x60ea">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Torque limitation" Index="#x1604" InOut="1" Flags="#x0010">
+								<Entry Name="Max torque" Index="#x6072">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Torque offset" Index="#x1605" InOut="1" Flags="#x0010">
+								<Entry Name="Torque offset" Index="#x2001" Sub="#x11">
+									<Type>INT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Target position" Index="#x1606" InOut="1" Flags="#x0010" SyncMan="2">
+								<Entry Name="Target position" Index="#x607a">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe function" Index="#x1607" InOut="1" Flags="#x0010">
+								<Entry Name="Touch probe function" Index="#x60b8">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+						</EtherCAT>
+					</Box>
+					<Box Id="3" BoxType="9099" BoxFlags="#x00000020">
+						<Name>Drive 3 (EL7201-0011)</Name>
+						<EtherCAT VendorId="#x00000002" ProductCode="#x1c213052" Type="EL7201-0011 1Ch. DS402 Servo motor output stage with OCT (50V, 2.8A RMS)" Desc="EL7201-0011">
+							<Pdo Name="DS402 Statusword" Index="#x1a00" Flags="#x0010" SyncMan="3">
+								<Entry Name="Statusword" Index="#x6041">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Position actual value" Index="#x1a01" Flags="#x0010" SyncMan="3">
+								<Entry Name="Position actual value" Index="#x6064">
+									<Type>UDINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Velocity actual value" Index="#x1a02" Flags="#x0010">
+								<Entry Name="Velocity actual value" Index="#x606c">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Torque actual value" Index="#x1a03" Flags="#x0010">
+								<Entry Name="Torque actual value" Index="#x6077">
+									<Type>INT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Following error actual value" Index="#x1a04" Flags="#x0010" SyncMan="3">
+								<Entry Name="Following error actual value" Index="#x60f4">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe status" Index="#x1a05" Flags="#x0010">
+								<Entry Name="Touch probe status" Index="#x60b9">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe 1 positive edge" Index="#x1a06" Flags="#x0010">
+								<Entry Name="Touch probe 1 positive edge" Index="#x60ba">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe 1 negative edge" Index="#x1a07" Flags="#x0010">
+								<Entry Name="Touch probe 1 negative edge" Index="#x60bb">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe 2 positive edge" Index="#x1a08" Flags="#x0010">
+								<Entry Name="Touch probe 2 positive edge" Index="#x60bc">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe 2 negative edge" Index="#x1a09" Flags="#x0010">
+								<Entry Name="Touch probe 2 negative edge" Index="#x60bd">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 TxPDO Data Invalid" Index="#x1a0a" Flags="#x0010">
+								<Entry>
+									<Type GUID="{18071995-0000-0000-0000-002000000001}">ARRAY [0..0] OF BIT</Type>
+								</Entry>
+								<Entry Name="Position actual value" Index="#x603e" Sub="#x02">
+									<Type>BIT</Type>
+								</Entry>
+								<Entry>
+									<Type GUID="{18071995-0000-0000-0000-00200000000E}">ARRAY [0..13] OF BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Info data 1" Index="#x1a0b" Flags="#x0010">
+								<Entry Name="Info data 1" Index="#x2008" Sub="#x01">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Info data 2" Index="#x1a0c" Flags="#x0010">
+								<Entry Name="Info data 2" Index="#x2008" Sub="#x02">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Controlword" Index="#x1600" InOut="1" Flags="#x0010" SyncMan="2">
+								<Entry Name="Controlword" Index="#x6040">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Target velocity" Index="#x1601" InOut="1" Flags="#x0010">
+								<Entry Name="Target velocity" Index="#x60ff">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Target torque" Index="#x1602" InOut="1" Flags="#x0010">
+								<Entry Name="Target torque" Index="#x6071">
+									<Type>INT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Commutation angle" Index="#x1603" InOut="1" Flags="#x0010">
+								<Entry Name="Commutation angle" Index="#x60ea">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Torque limitation" Index="#x1604" InOut="1" Flags="#x0010">
+								<Entry Name="Max torque" Index="#x6072">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Torque offset" Index="#x1605" InOut="1" Flags="#x0010">
+								<Entry Name="Torque offset" Index="#x2001" Sub="#x11">
+									<Type>INT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Target position" Index="#x1606" InOut="1" Flags="#x0010" SyncMan="2">
+								<Entry Name="Target position" Index="#x607a">
+									<Type>DINT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="DS402 Touch probe function" Index="#x1607" InOut="1" Flags="#x0010">
+								<Entry Name="Touch probe function" Index="#x60b8">
+									<Type>UINT</Type>
+								</Entry>
+							</Pdo>
+						</EtherCAT>
+					</Box>
+					<Box Id="4" BoxType="9099">
+						<Name>Term 4 (EL9011)</Name>
+						<EtherCAT VendorId="#x00000002" ProductCode="#x23333050" Type="EL9011 End Terminal" Desc="EL9011" />
+					</Box>
+				</Box>
+				<EtherCAT />
+			</Device>
+		</Io>
+	</Project>
+	<Mappings>
+		<MappingInfo Identifier="{00000000-0020-0304-1000-040320000403}" Id="#x02030010" />
+		<MappingInfo Identifier="{00000000-0030-0304-1000-040331000403}" Id="#x02030020" />
+		<MappingInfo Identifier="{08502003-0010-0500-0020-500810000403}" Id="#x02030030" Watchdog="08000000040000000400000004000000" />
+		<OwnerA Name="TINC^NC-Task 1 SAF^Axes^Axis 1">
+			<OwnerB Name="TIID^Device 2 (EtherCAT)^Term 1 (EK1101)^Drive 2 (EL7201-0011)">
+				<Link VarA="Drive^Inputs^In^nDataIn1" VarB="DS402 Following error actual value^Following error actual value" />
+				<Link VarA="Drive^Inputs^In^nDcOutputTime" VarB="InfoData^DcOutputShift" />
+				<Link VarA="Drive^Inputs^In^nState1" VarB="DS402 Statusword^Statusword" />
+				<Link VarA="Drive^Inputs^In^nState2" VarB="DS402 Statusword^Statusword" Size="8" OffsB="8" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^WcState" />
+				<Link VarA="Drive^Outputs^Out^nCtrl1" VarB="DS402 Controlword^Controlword" />
+				<Link VarA="Drive^Outputs^Out^nCtrl2" VarB="DS402 Controlword^Controlword" Size="8" OffsB="8" />
+				<Link VarA="Drive^Outputs^Out^nDataOut1" VarB="DS402 Target position^Target position" />
+				<Link VarA="Enc^Inputs^In^nDataIn1" VarB="DS402 Position actual value^Position actual value" />
+				<Link VarA="Enc^Inputs^In^nDcInputTime" VarB="InfoData^DcInputShift" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^WcState" />
+			</OwnerB>
+		</OwnerA>
+		<OwnerA Name="TINC^NC-Task 1 SAF^Axes^Axis 2">
+			<OwnerB Name="TIID^Device 2 (EtherCAT)^Term 1 (EK1101)^Drive 3 (EL7201-0011)">
+				<Link VarA="Drive^Inputs^In^nDataIn1" VarB="DS402 Following error actual value^Following error actual value" />
+				<Link VarA="Drive^Inputs^In^nDcOutputTime" VarB="InfoData^DcOutputShift" />
+				<Link VarA="Drive^Inputs^In^nState1" VarB="DS402 Statusword^Statusword" />
+				<Link VarA="Drive^Inputs^In^nState2" VarB="DS402 Statusword^Statusword" Size="8" OffsB="8" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^WcState" />
+				<Link VarA="Drive^Outputs^Out^nCtrl1" VarB="DS402 Controlword^Controlword" />
+				<Link VarA="Drive^Outputs^Out^nCtrl2" VarB="DS402 Controlword^Controlword" Size="8" OffsB="8" />
+				<Link VarA="Drive^Outputs^Out^nDataOut1" VarB="DS402 Target position^Target position" />
+				<Link VarA="Enc^Inputs^In^nDataIn1" VarB="DS402 Position actual value^Position actual value" />
+				<Link VarA="Enc^Inputs^In^nDcInputTime" VarB="InfoData^DcInputShift" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^WcState" />
+			</OwnerB>
+		</OwnerA>
+		<OwnerA Name="TIPC^PLC^PLC Instance">
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 1">
+				<Link VarA="PlcTask Inputs^MAIN.stAxis1.NcToPlc" VarB="Outputs^ToPlc" />
+				<Link VarA="PlcTask Outputs^MAIN.stAxis1.PlcToNc" VarB="Inputs^FromPlc" />
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 2">
+				<Link VarA="PlcTask Inputs^MAIN.stAxis2.NcToPlc" VarB="Outputs^ToPlc" />
+				<Link VarA="PlcTask Outputs^MAIN.stAxis2.PlcToNc" VarB="Inputs^FromPlc" />
+			</OwnerB>
+		</OwnerA>
+	</Mappings>
+</TcSmProject>

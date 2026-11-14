@@ -1,0 +1,537 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.24">
+	<ImageDatas>
+		<ImageData Id="1000">424de6000000000000007600000028000000100000000e000000010004000000000070000000000000000000000000000000000000000000000000008000008000000080800080000000800080008080000080808000c0c0c0000000ff0000ff000000ffff00ff000000ff00ff00ffff0000ffffff00ffccccffffffffffffcfecefffffffffffcfecefffffffffffcfeceff80008ffffcfeceff00000ffffcfeceff00900ffffcfeceff00000ffffcfeceff80008ffffcfecefffffffffffccccefffffffffffccccefffffffffffccccefffffffffffecceeffffffffffffeeeefffffffff</ImageData>
+		<ImageData Id="1001">424dd6020000000000003600000028000000100000000e0000000100180000000000a0020000c40e0000c40e00000000000000000000ff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080808080808080808080808080808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c000ffffc0c0c000ffff808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0ff0000c0c0c0ff0000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c00000ffc0c0c00000ff808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000bfff00bfffc0c0c0808080c0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0008000c0c0c0008000808080ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080c0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ff</ImageData>
+		<ImageData Id="1002">424dd6020000000000003600000028000000100000000e0000000100180000000000a0020000c40e0000c40e00000000000000000000ff00ffff00ffff00ffff00ffff00ffff00ff808080808080808080808080808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c000ffffc0c0c000ffff808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0ff0000c0c0c0ff0000808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ff00ffff00ffff00ffff00ffff00ffff00ffffc0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ff00ffff00ffff00ffff00ffff00ffff00ffffc0c0c00000ffc0c0c00000ff808080ff00ffff00ffff00ffff00ffff00ff00ffff00ffff00ffff00ffff00ffff00ffffc0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ff00ffff00ffff00ffff00ffff00ffff00ffffc0c0c0000000c0c0c0000000808080ff00ffff00ffff00ffff00ffff00ff00ffff00ffff00ffff00ffff00ffff00ffffc0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ff00ffff00ffff00ffff00ffff00ffff00ffffc0c0c0008000c0c0c0008000808080ff00ffff00ffff00ffff00ffff00ff00ffff00ffff00ffff00ffff00ffff00ffffc0c0c0c0c0c0c0c0c0c0c0c0808080ff00ffff00ffff00ffff00ffff00ff</ImageData>
+	</ImageDatas>
+	<Project ProjectGUID="{6F0C89C1-76FD-455E-9940-8CA812B616EE}" Target64Bit="true">
+		<Motion>
+			<NC>
+				<SafTask Priority="4" CycleTime="20000" AmsPort="501" IoAtBegin="true" SafTaskInfo="256" HighPrioAds="true">
+					<Name>NC-Task 1 SAF</Name>
+				</SafTask>
+				<SvbTask Priority="8" CycleTime="100000" AmsPort="511">
+					<Name>NC-Task 1 SVB</Name>
+				</SvbTask>
+				<Axis Id="1" CreateSymbols="true" AxisType="1" SimulationMode="true">
+					<Name>Axis_M</Name>
+					<AxisPara>
+						<OtherSettings AllowMotionCmdToSlave="true" />
+					</AxisPara>
+					<Encoder Name="Enc" EncType="19">
+						<EncPara MaxCount="#xffffffff" />
+					</Encoder>
+					<Drive Name="Drive" DrvType="16">
+						<DrvPara MaxCount="#xffffffff" DriveControlDWord="#x00020100">
+							<Analog TorqueSetpointScale="10" ScaleFactorActTorque="0.1" />
+							<TimeComp TaskDelayCycles="1" />
+						</DrvPara>
+					</Drive>
+					<Controller Name="Ctrl" CtrType="1">
+						<CtrPara PriorControlFactor="1">
+							<Observer BandWidth="20" />
+						</CtrPara>
+					</Controller>
+				</Axis>
+				<Axis Id="2" CreateSymbols="true" AxisType="1" SimulationMode="true">
+					<Name>Axis_S</Name>
+					<AxisPara>
+						<OtherSettings AllowMotionCmdToSlave="true" />
+					</AxisPara>
+					<Encoder Name="Enc" EncType="19">
+						<EncPara MaxCount="#xffffffff" />
+					</Encoder>
+					<Drive Name="Drive" DrvType="16">
+						<DrvPara MaxCount="#xffffffff" DriveControlDWord="#x00020100">
+							<Analog TorqueSetpointScale="10" ScaleFactorActTorque="0.1" />
+							<TimeComp TaskDelayCycles="1" />
+						</DrvPara>
+					</Drive>
+					<Controller Name="Ctrl" CtrType="1">
+						<CtrPara PriorControlFactor="1">
+							<Observer BandWidth="20" />
+						</CtrPara>
+					</Controller>
+				</Axis>
+			</NC>
+		</Motion>
+		<Io>
+			<Device Id="1" Disabled="true" DevType="111" DevFlags="#x0003" AmsPort="28673" RemoteName="Device 1 (EtherCAT)" InfoImageId="3">
+				<Name>Device 1 (EtherCAT)</Name>
+				<Box Id="1" BoxType="9099" BoxFlags="#x00000020">
+					<Name>Master (i950 (BS-STO))</Name>
+					<EtherCAT VendorId="#x0000003b" ProductCode="#x19004001" Type="i950 (BS-STO) FW V01.14 - TA CiA402 Advanced (1) V00" Desc="i950 (BS-STO)">
+						<Pdo Name="Inputs" Index="#x1a00" Flags="#x0490" SyncMan="3">
+							<Entry Name="CiA status word" Index="#x6041" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Inverter status word" Index="#x2831" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="CiA: Active operation mode" Index="#x6061" Flags="#x00002000">
+								<Type>SINT</Type>
+							</Entry>
+							<Entry Name="Error code" Index="#x603f" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Actual speed" Index="#x606c" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Actual torque" Index="#x6077" Flags="#x00002000">
+								<Type>INT</Type>
+							</Entry>
+							<Entry Name="Actual position" Index="#x6064" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Following error actual value" Index="#x60f4" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Touchprobe Inputs" Index="#x1a04" Flags="#x0480" SyncMan="3">
+							<Entry Name="Touch probe status" Index="#x60b9" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Touch probe 1: Position at pos. edge" Index="#x60ba" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Touch probe 1: Position at neg. edge" Index="#x60bb" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Touch probe 2: Position at pos. edge" Index="#x60bc" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Touch probe 2: Position at neg. edge" Index="#x60bd" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Additional state information" Index="#x1a06" Flags="#x0480" SyncMan="3">
+							<Entry Name="Inverter status word 2" Index="#x2833" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Digital input status" Index="#x60fd" Flags="#x00002000">
+								<Type>UDINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Outputs" Index="#x1600" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="CiA control word" Index="#x6040" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Inverter control word" Index="#x2830" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="CiA: Operation mode" Index="#x6060" Flags="#x00002000">
+								<Type>SINT</Type>
+							</Entry>
+							<Entry Name="Offset torque" Index="#x60b2" Flags="#x00002000">
+								<Type>INT</Type>
+							</Entry>
+							<Entry Name="Set position" Index="#x607a" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Offset speed" Index="#x60b1" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="I component load value" Index="#x2902" Flags="#x00002000">
+								<Type>INT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Touchprobe Outputs" Index="#x1604" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="Touch probe settings" Index="#x60b8" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Torque Limits" Index="#x1606" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="Positive torque limit" Index="#x60e0" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Negative torque limit" Index="#x60e1" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Speed Limits" Index="#x1607" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="Speed limitation: Upper speed limit" Index="#x2946" Sub="#x01" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Speed limitation: Lower speed limit" Index="#x2946" Sub="#x02" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+						</Pdo>
+					</EtherCAT>
+				</Box>
+				<Box Id="2" BoxType="9099" BoxFlags="#x00000020">
+					<Name>Slave (i950 (BS-STO))</Name>
+					<EtherCAT VendorId="#x0000003b" ProductCode="#x19004001" Type="i950 (BS-STO) FW V01.14 - TA CiA402 Advanced (1) V00" Desc="i950 (BS-STO)">
+						<Pdo Name="Inputs" Index="#x1a00" Flags="#x0490" SyncMan="3">
+							<Entry Name="CiA status word" Index="#x6041" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Inverter status word" Index="#x2831" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="CiA: Active operation mode" Index="#x6061" Flags="#x00002000">
+								<Type>SINT</Type>
+							</Entry>
+							<Entry Name="Error code" Index="#x603f" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Actual speed" Index="#x606c" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Actual torque" Index="#x6077" Flags="#x00002000">
+								<Type>INT</Type>
+							</Entry>
+							<Entry Name="Actual position" Index="#x6064" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Following error actual value" Index="#x60f4" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Touchprobe Inputs" Index="#x1a04" Flags="#x0480" SyncMan="3">
+							<Entry Name="Touch probe status" Index="#x60b9" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Touch probe 1: Position at pos. edge" Index="#x60ba" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Touch probe 1: Position at neg. edge" Index="#x60bb" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Touch probe 2: Position at pos. edge" Index="#x60bc" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Touch probe 2: Position at neg. edge" Index="#x60bd" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Additional state information" Index="#x1a06" Flags="#x0480" SyncMan="3">
+							<Entry Name="Inverter status word 2" Index="#x2833" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Digital input status" Index="#x60fd" Flags="#x00002000">
+								<Type>UDINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Outputs" Index="#x1600" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="CiA control word" Index="#x6040" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Inverter control word" Index="#x2830" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="CiA: Operation mode" Index="#x6060" Flags="#x00002000">
+								<Type>SINT</Type>
+							</Entry>
+							<Entry Name="Offset torque" Index="#x60b2" Flags="#x00002000">
+								<Type>INT</Type>
+							</Entry>
+							<Entry Name="Set position" Index="#x607a" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Offset speed" Index="#x60b1" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="I component load value" Index="#x2902" Flags="#x00002000">
+								<Type>INT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Touchprobe Outputs" Index="#x1604" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="Touch probe settings" Index="#x60b8" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Torque Limits" Index="#x1606" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="Positive torque limit" Index="#x60e0" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+							<Entry Name="Negative torque limit" Index="#x60e1" Flags="#x00002000">
+								<Type>UINT</Type>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Speed Limits" Index="#x1607" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="Speed limitation: Upper speed limit" Index="#x2946" Sub="#x01" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+							<Entry Name="Speed limitation: Lower speed limit" Index="#x2946" Sub="#x02" Flags="#x00002000">
+								<Type>DINT</Type>
+							</Entry>
+						</Pdo>
+					</EtherCAT>
+				</Box>
+				<Box Id="3" BoxType="9099">
+					<Name>Coupler (EK1100)</Name>
+					<EtherCAT VendorId="#x00000002" ProductCode="#x044c2c52" Type="EK1100 EtherCAT Coupler (2A E-Bus)" Desc="EK1100" />
+					<Box Id="4" BoxType="9099">
+						<Name>Master (EL1809)</Name>
+						<EtherCAT VendorId="#x00000002" ProductCode="#x07113052" Type="EL1809 16Ch. Dig. Input 24V, 3ms" Desc="EL1809">
+							<Pdo Name="Channel 1" Index="#x1a00" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6000" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 2" Index="#x1a01" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6010" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 3" Index="#x1a02" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6020" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 4" Index="#x1a03" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6030" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 5" Index="#x1a04" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6040" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 6" Index="#x1a05" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6050" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 7" Index="#x1a06" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6060" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 8" Index="#x1a07" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6070" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 9" Index="#x1a08" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6080" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 10" Index="#x1a09" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6090" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 11" Index="#x1a0a" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60a0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 12" Index="#x1a0b" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60b0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 13" Index="#x1a0c" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60c0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 14" Index="#x1a0d" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60d0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 15" Index="#x1a0e" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60e0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 16" Index="#x1a0f" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60f0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+						</EtherCAT>
+					</Box>
+					<Box Id="5" BoxType="9099">
+						<Name>Slave (EL1809)</Name>
+						<EtherCAT VendorId="#x00000002" ProductCode="#x07113052" Type="EL1809 16Ch. Dig. Input 24V, 3ms" Desc="EL1809">
+							<Pdo Name="Channel 1" Index="#x1a00" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6000" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 2" Index="#x1a01" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6010" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 3" Index="#x1a02" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6020" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 4" Index="#x1a03" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6030" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 5" Index="#x1a04" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6040" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 6" Index="#x1a05" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6050" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 7" Index="#x1a06" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6060" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 8" Index="#x1a07" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6070" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 9" Index="#x1a08" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6080" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 10" Index="#x1a09" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x6090" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 11" Index="#x1a0a" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60a0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 12" Index="#x1a0b" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60b0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 13" Index="#x1a0c" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60c0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 14" Index="#x1a0d" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60d0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 15" Index="#x1a0e" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60e0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+							<Pdo Name="Channel 16" Index="#x1a0f" Flags="#x0011" SyncMan="0">
+								<Entry Name="Input" Index="#x60f0" Sub="#x01">
+									<Type>BIT</Type>
+								</Entry>
+							</Pdo>
+						</EtherCAT>
+					</Box>
+				</Box>
+				<EtherCAT />
+			</Device>
+		</Io>
+	</Project>
+	<Mappings>
+		<MappingInfo Identifier="{05000010-2001-0850-1000-040300205008}" Id="#x02030010" Watchdog="14000000040000000400000004000000" />
+		<OwnerA Name="TINC^NC-Task 1 SAF^Axes^Axis_M">
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Master (i950 (BS-STO))">
+				<Link VarA="Drive^Inputs^In^nDataIn1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^Following error actual value" />
+				<Link VarA="Drive^Inputs^In^nDataIn3[0]" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^Actual torque" />
+				<Link VarA="Drive^Inputs^In^nState1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^CiA status word" />
+				<Link VarA="Drive^Inputs^In^nState2" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^CiA status word" Size="8" OffsB="8" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^WcState" />
+				<Link VarA="Drive^Inputs^In^nState5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^CiA: Active operation mode" />
+				<Link VarA="Drive^Outputs^Out^nCtrl1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^CiA control word" />
+				<Link VarA="Drive^Outputs^Out^nCtrl2" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^CiA control word" Size="8" OffsB="8" />
+				<Link VarA="Drive^Outputs^Out^nCtrl5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^CiA: Operation mode" />
+				<Link VarA="Drive^Outputs^Out^nDataOut1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^Set position" />
+				<Link VarA="Drive^Outputs^Out^nDataOut3[0]" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^Offset torque" />
+				<Link VarA="Enc^Inputs^In^nDataIn1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^Actual position" />
+				<Link VarA="Enc^Inputs^In^nDataIn3" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe 1: Position at pos. edge" />
+				<Link VarA="Enc^Inputs^In^nDataIn4" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe 1: Position at neg. edge" />
+				<Link VarA="Enc^Inputs^In^nDataIn5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe 2: Position at pos. edge" />
+				<Link VarA="Enc^Inputs^In^nDataIn6" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe 2: Position at neg. edge" />
+				<Link VarA="Enc^Inputs^In^nDataIn7" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^Actual speed" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^WcState" />
+				<Link VarA="Enc^Inputs^In^nState5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe status" />
+				<Link VarA="Enc^Inputs^In^nState6" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe status" Size="8" OffsB="8" />
+				<Link VarA="Enc^Outputs^Out^nCtrl5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Outputs^Touch probe settings" />
+				<Link VarA="Enc^Outputs^Out^nCtrl6" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Outputs^Touch probe settings" Size="8" OffsB="8" />
+			</OwnerB>
+		</OwnerA>
+		<OwnerA Name="TINC^NC-Task 1 SAF^Axes^Axis_S">
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Slave (i950 (BS-STO))">
+				<Link VarA="Drive^Inputs^In^nDataIn1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^Following error actual value" />
+				<Link VarA="Drive^Inputs^In^nDataIn3[0]" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^Actual torque" />
+				<Link VarA="Drive^Inputs^In^nState1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^CiA status word" />
+				<Link VarA="Drive^Inputs^In^nState2" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^CiA status word" Size="8" OffsB="8" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^WcState" />
+				<Link VarA="Drive^Inputs^In^nState5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^CiA: Active operation mode" />
+				<Link VarA="Drive^Outputs^Out^nCtrl1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^CiA control word" />
+				<Link VarA="Drive^Outputs^Out^nCtrl2" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^CiA control word" Size="8" OffsB="8" />
+				<Link VarA="Drive^Outputs^Out^nCtrl5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^CiA: Operation mode" />
+				<Link VarA="Drive^Outputs^Out^nDataOut1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^Set position" />
+				<Link VarA="Drive^Outputs^Out^nDataOut3[0]" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Outputs^Offset torque" />
+				<Link VarA="Enc^Inputs^In^nDataIn1" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^Actual position" />
+				<Link VarA="Enc^Inputs^In^nDataIn3" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe 1: Position at pos. edge" />
+				<Link VarA="Enc^Inputs^In^nDataIn4" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe 1: Position at neg. edge" />
+				<Link VarA="Enc^Inputs^In^nDataIn5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe 2: Position at pos. edge" />
+				<Link VarA="Enc^Inputs^In^nDataIn6" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe 2: Position at neg. edge" />
+				<Link VarA="Enc^Inputs^In^nDataIn7" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Inputs^Actual speed" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^WcState" />
+				<Link VarA="Enc^Inputs^In^nState5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe status" />
+				<Link VarA="Enc^Inputs^In^nState6" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Inputs^Touch probe status" Size="8" OffsB="8" />
+				<Link VarA="Enc^Outputs^Out^nCtrl5" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Outputs^Touch probe settings" />
+				<Link VarA="Enc^Outputs^Out^nCtrl6" VarB="Module 1 (Universal (CSP + Speed and Torque Limits))^Touchprobe Outputs^Touch probe settings" Size="8" OffsB="8" />
+			</OwnerB>
+		</OwnerA>
+		<OwnerA Name="TIPC^ComissioningPlc^ComissioningPlc Instance">
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Coupler (EK1100)^Master (EL1809)">
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xCalibrationCam" VarB="Channel 11^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xHaltBtn" VarB="Channel 8^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xHomeBtn" VarB="Channel 10^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xJogBkwFastBtn" VarB="Channel 4^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xJogBkwSlowBtn" VarB="Channel 5^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xJogFwdFastBtn" VarB="Channel 7^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xJogFwdSlowBtn" VarB="Channel 6^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xMoveAbsBtn" VarB="Channel 2^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xMoveVeloBtn" VarB="Channel 3^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xPowerEnableBtn" VarB="Channel 1^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xResetBtn" VarB="Channel 12^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stMaster_Physical_In^xStopBtn" VarB="Channel 9^Input" />
+			</OwnerB>
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Coupler (EK1100)^Slave (EL1809)">
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xCalibrationCam" VarB="Channel 11^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xHaltBtn" VarB="Channel 8^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xHomeBtn" VarB="Channel 10^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xJogBkwFastBtn" VarB="Channel 4^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xJogBkwSlowBtn" VarB="Channel 5^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xJogFwdFastBtn" VarB="Channel 7^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xJogFwdSlowBtn" VarB="Channel 6^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xMoveAbsBtn" VarB="Channel 2^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xMoveVeloBtn" VarB="Channel 3^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xPowerEnableBtn" VarB="Channel 1^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xResetBtn" VarB="Channel 12^Input" />
+				<Link VarA="PlcTask Inputs^GVL_IO.stSlave_Physical_In^xStopBtn" VarB="Channel 9^Input" />
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis_M">
+				<Link VarA="PlcTask Inputs^GVL_Motion.Axis_M.NcToPlc" VarB="Outputs^ToPlc" />
+				<Link VarA="PlcTask Outputs^GVL_Motion.Axis_M.PlcToNc" VarB="Inputs^FromPlc" />
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis_S">
+				<Link VarA="PlcTask Inputs^GVL_Motion.Axis_S.NcToPlc" VarB="Outputs^ToPlc" />
+				<Link VarA="PlcTask Outputs^GVL_Motion.Axis_S.PlcToNc" VarB="Inputs^FromPlc" />
+			</OwnerB>
+		</OwnerA>
+	</Mappings>
+</TcSmProject>

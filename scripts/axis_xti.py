@@ -3,6 +3,9 @@
 
     axis_xti.py show  Axis1.xti              the parameters this axis sets explicitly
     axis_xti.py lint  _Config/NC/Axes        check every NC axis file under a folder
+    axis_xti.py lint  MyProject              a project folder or .tsproj: its NC
+                                             configuration, axis files and links, then
+                                             every axis (inline ones too)
     axis_xti.py diff  old.xti new.xti        what changed between two versions of an axis
     axis_xti.py diff  old.xti new.xti --table
                                              the change as a parameter-change table
@@ -24,6 +27,16 @@ The output says so every time, so nobody reads a clean result as a full audit.
 What is compared: the attributes of the Axis element and its AxisPara, Encoder, Drive and
 Controller sub-trees. The DataTypes block (most of the file) and the Vars blocks (I/O
 process-image structure) are skipped: they describe types, not settings.
+
+Project lint reads the .tsproj with NC.xti, the axis files, the I/O tree and every
+Mappings block, in whichever mix of inline and separate files the project uses. It reports
+an axis file the NC lists but that is missing (P1), an axis file the NC does not list (P2),
+a shared axis Id (P3), a real drive or encoder linked to nothing (L1, L2; a LinkedTo
+TcCOM connection counts), an axis no PLC AXIS_REF is linked to (L3), links to an axis the
+NC does not have (L4), unrestored links still missing (L5), and outputs in the PDO
+assignment of an axis's drive that no link writes, which go out as 0: limits (L6) and the
+rest (L7). A box named in a link but not found in the I/O tree is reported, not guessed
+at (L8). MC3 (Tc3_Mc3) axes and their links are not read.
 
 ParameterChanged elements are kept apart as bookkeeping. XAE writes them into AxisPara
 and EncPara when a parameter is changed in its UI, and drops some or all of them on later
@@ -123,12 +136,17 @@ def load(path):
     axis = root.find('Axis')
     if cls != NC2_CLASS or axis is None:
         raise XtiError('%s: not an NC axis file (ClassName=%s)' % (path, cls))
+    return read_axis(axis, path, root.get('TcVersion'))
+
+
+def read_axis(axis, path, version):
+    """An Axis element, from an axis file or inline in NC.xti or a .tsproj, as load() returns it."""
     params, book = {}, {}
     _flatten(axis, '', params, book)
     name = params.get('Name')
     if not name or name == '__FILENAME__':
         name = os.path.splitext(os.path.basename(path))[0]
-    return {'path': path, 'version': root.get('TcVersion'), 'name': name, 'params': params,
+    return {'path': path, 'version': version, 'name': name, 'params': params,
             'bookkeeping': book}
 
 
@@ -267,6 +285,354 @@ def is_true(value):
 
 def is_false(value):
     return value is not None and value.lower() == 'false'
+
+
+# --- Project lint: NC configuration, axis files and links --------------------------------
+#
+# A project is its .tsproj. The NC configuration is either inline in it or in
+# _Config/NC/NC.xti; axes are either inline in that NC configuration or in
+# _Config/NC/Axes/*.xti; the I/O tree is inline or in _Config/IO/. Links (Mappings) sit in
+# the .tsproj, in NC.xti, in each axis file (owner left empty: the axis itself), in the
+# PLC instance .xti and in I/O files. Every layout seen in public projects mixes these.
+
+SIM_DRIVE, SIM_ENCODER = '5', '1'
+PLC_LINK_VARS = ('Inputs^FromPlc', 'Outputs^ToPlc')
+# CiA 402 limit objects (max torque, max current, positive and negative torque limit) for
+# drive channels 1 and 2 (+0x800); caught by index when a localised name hides "limit".
+# Channel 3 on would collide with terminals' own output objects from 0x7000. Beckhoff
+# servo terminals name theirs "Torque limitation", "... limit value" (0x7010).
+CIA402_LIMITS = {base + channel for base in (0x6072, 0x6073, 0x60E0, 0x60E1)
+                 for channel in (0, 0x800)}
+
+
+def _root(path):
+    try:
+        return ET.parse(path).getroot()
+    except (ET.ParseError, OSError):
+        return None
+
+
+def find_file(folder, name):
+    """A project-relative file name resolved under folder. Projects come from Windows:
+    separators are backslashes and the case on disk need not match. None if absent."""
+    path = folder
+    for part in name.replace('\\', '/').split('/'):
+        if os.path.exists(os.path.join(path, part)):
+            path = os.path.join(path, part)
+            continue
+        try:
+            match = [f for f in os.listdir(path) if f.lower() == part.lower()]
+        except OSError:
+            return None
+        if not match:
+            return None
+        path = os.path.join(path, match[0])
+    return path
+
+
+def item_name(elem, path):
+    name = (elem.findtext('Name') or '').strip()
+    if name in ('', '__FILENAME__'):
+        return os.path.splitext(os.path.basename(path))[0]
+    return name
+
+
+def axis_of(owner, tasks):
+    """The NC axis a link owner names: 'TINC^<task>^Axes^<axis>[^<sub-object>]' for one of
+    the NC tasks, or 'Axes^<axis>' inside NC.xti. None for any other owner, including the
+    axes of an MC3 project, which are named the same way under the project's name."""
+    if owner.startswith('TINC^') and '^Axes^' in owner:
+        task, rest = owner[len('TINC^'):].split('^Axes^', 1)
+        return rest.split('^', 1)[0] if task in tasks else None
+    if owner.startswith('Axes^'):
+        return owner[len('Axes^'):].split('^', 1)[0]
+    return None
+
+
+def mappings(root, self_name):
+    """Links in a file's Mappings block as (owner A, var A, owner B, var B). An owner
+    without a name is the item the file holds, passed as self_name."""
+    out = []
+    block = root.find('Mappings')
+    for oa in (block.findall('OwnerA') if block is not None else []):
+        for ob in oa.findall('OwnerB'):
+            for link in ob.findall('Link'):
+                out.append((oa.get('Name') or self_name, link.get('VarA', ''),
+                            ob.get('Name') or self_name, link.get('VarB', '')))
+    return out
+
+
+def unrestored(root):
+    """Links XAE kept but could not restore (UnrestoredVarLinks), as (owner A, owner B,
+    var A, var B, RestoreInfo). Owner A is written as a Prefix there."""
+    out = []
+    for block in root.iter('UnrestoredVarLinks'):
+        for oa in block.findall('OwnerA'):
+            for ob in oa.findall('OwnerB'):
+                for link in ob.findall('Link'):
+                    out.append((oa.get('Prefix') or oa.get('Name', ''), ob.get('Name', ''),
+                                link.get('VarA', ''), link.get('VarB', ''),
+                                link.get('RestoreInfo', '')))
+    return out
+
+
+def io_boxes(io, cfg):
+    """Every box of the I/O tree as {link name 'TIID^device^box...': Box element}, plus
+    {file: link name} for box and device files, whose own links leave the owner empty."""
+    boxes, files = {}, {}
+
+    def walk(elem, folder, file, prefix):
+        for child in elem.findall('Box'):
+            path, sub = file, folder
+            if child.get('File'):
+                path = find_file(folder, child.get('File'))
+                root = _root(path) if path else None
+                child = root.find('Box') if root is not None else None
+                if child is None:
+                    continue
+                sub = os.path.splitext(path)[0]
+            name = prefix + '^' + item_name(child, path or '')
+            boxes[name] = child
+            if path != file:
+                files[path] = name
+            walk(child, sub, path, name)
+
+    io_dir = os.path.join(cfg, 'IO')
+    for dev in io.findall('Device') if io is not None else []:
+        path = None
+        if dev.get('File'):
+            path = find_file(io_dir, dev.get('File'))
+            root = _root(path) if path else None
+            dev = root.find('Device') if root is not None else None
+            if dev is None:
+                continue
+        name = 'TIID^' + item_name(dev, path or '')
+        if path:
+            files[path] = name
+        # An inline device still keeps its box files in a folder named after it.
+        walk(dev, os.path.splitext(path)[0] if path else os.path.join(io_dir, name[5:]),
+             path, name)
+    return boxes, files
+
+
+def is_limit(entry):
+    name = entry.get('Name', '').lower()
+    if 'limit' in name:
+        return True
+    try:
+        return int(entry.get('Index', '').replace('#x', ''), 16) in CIA402_LIMITS
+    except ValueError:
+        return False
+
+
+def unlinked_outputs(box, box_vars):
+    """Output PDO entries the box sends (PDO assigned to a sync manager) that no link
+    writes, as (limits, others). Link names of modular and multi-channel drives put a
+    module or channel in front ('Ch A^<pdo>^<entry>'), so an entry matches on its tail.
+    FSoE frames are filled by TwinSAFE, not by links, and are left out."""
+    limits, others = [], []
+    for pdo in box.findall('EtherCAT/Pdo'):
+        if pdo.get('InOut') != '1' or not pdo.get('SyncMan') or 'FSoE' in pdo.get('Name', ''):
+            continue
+        for entry in pdo.findall('Entry'):
+            if entry.get('Index', '#x0') in ('#x0', '#x0000') or not entry.get('Name'):
+                continue  # padding
+            var = '%s^%s' % (pdo.get('Name'), entry.get('Name'))
+            if any(v == var or v.endswith('^' + var) for v in box_vars):
+                continue
+            group = limits if is_limit(entry) else others
+            if var not in group:
+                group.append(var)
+    return limits, others
+
+
+def load_project(tsproj):
+    """Read a project: its NC axes (inline or in files), links and I/O boxes.
+    Returns {'path', 'axes', 'findings'}; findings here are the file-level ones."""
+    root = _root(tsproj)
+    if root is None:
+        raise XtiError('%s: cannot read as XML' % tsproj)
+    base = os.path.dirname(tsproj)
+    cfg = os.path.join(base, '_Config')
+    found, axes, links, lost = [], [], [], []
+
+    def add(rule, level, message, axis=None):
+        found.append({'rule': rule, 'level': level, 'axis': axis, 'message': message})
+
+    links += mappings(root, 'file:' + tsproj)
+    lost += unrestored(root)
+    project = root.find('Project')
+    nc = project.find('Motion/NC') if project is not None else None
+    notes = []
+    if project is not None and project.find('Motion/MC') is not None:
+        notes.append('The project has an MC3 motion project (Tc3_Mc3); its axes and their links '
+                     'are not read.')
+    nc_path, version = tsproj, root.get('TcVersion')
+    if nc is not None and nc.get('File'):
+        nc_file = nc.get('File')
+        nc_path = find_file(os.path.join(cfg, 'NC'), nc_file)
+        nc_root = _root(nc_path) if nc_path else None
+        nc = nc_root.find('NC') if nc_root is not None else None
+        if nc is None:
+            add('P1', 'error', 'The project names NC configuration file %s, but it is %s.'
+                % (nc_file, 'missing' if not nc_path else 'not readable'))
+            return {'path': tsproj, 'axes': [], 'findings': found, 'notes': notes}
+        links += mappings(nc_root, 'file:' + nc_path)
+        lost += unrestored(nc_root)
+        version = nc_root.get('TcVersion') or version
+
+    axes_dir = os.path.join(cfg, 'NC', 'Axes')
+    listed = set()
+    for ref in nc.findall('Axis') if nc is not None else []:
+        if not ref.get('File'):
+            axis = read_axis(ref, nc_path, version)
+            axis['path'] = '%s, inline' % nc_path
+        else:
+            path = find_file(axes_dir, ref.get('File'))
+            if path is None:
+                add('P1', 'error', 'NC lists axis file %s (Id %s), but it is not in %s. '
+                    'TwinCAT cannot load that axis.' % (ref.get('File'), ref.get('Id'),
+                                                       os.path.relpath(axes_dir, base)))
+                axes.append({'name': os.path.splitext(ref.get('File'))[0], 'id': ref.get('Id'),
+                             'axis': None})
+                continue
+            listed.add(os.path.normcase(os.path.abspath(path)))
+            try:
+                axis = load(path)
+            except XtiError as exc:
+                add('P1', 'error', str(exc))
+                continue
+            axis_root = _root(path)
+            links += mappings(axis_root, 'TINC^^Axes^' + axis['name'])
+            lost += unrestored(axis_root)
+        axes.append({'name': axis['name'], 'id': ref.get('Id'), 'axis': axis})
+
+    if os.path.isdir(axes_dir):
+        for dirpath, dirnames, filenames in os.walk(axes_dir):
+            dirnames.sort()
+            for fn in sorted(filenames):
+                path = os.path.join(dirpath, fn)
+                if (fn.lower().endswith('.xti')
+                        and os.path.normcase(os.path.abspath(path)) not in listed):
+                    add('P2', 'info', '%s is not listed in the NC configuration: TwinCAT '
+                        'ignores it, and editing it changes nothing.'
+                        % os.path.relpath(path, base))
+
+    ids = {}
+    for a in axes:
+        ids.setdefault(a['id'], []).append(a['name'])
+    for axis_id, names in sorted(ids.items(), key=lambda kv: str(kv[0])):
+        if axis_id is not None and len(names) > 1:
+            add('P3', 'error', 'Axes %s share Id %s. Each NC axis needs its own Id.'
+                % (', '.join(names), axis_id))
+
+    boxes, io_files = io_boxes(project.find('Io') if project is not None else None, cfg)
+    if os.path.isdir(cfg):
+        seen = {os.path.normcase(os.path.abspath(p)) for p in [nc_path] + list(listed)}
+        for dirpath, dirnames, filenames in os.walk(cfg):
+            dirnames.sort()
+            for fn in sorted(filenames):
+                path = os.path.join(dirpath, fn)
+                if (not fn.lower().endswith('.xti')
+                        or os.path.normcase(os.path.abspath(path)) in seen):
+                    continue
+                file_root = _root(path)
+                if file_root is not None:
+                    links += mappings(file_root, io_files.get(path, 'file:' + path))
+                    lost += unrestored(file_root)
+
+    if nc is None:
+        notes.append('No classic NC configuration (Motion/NC) in this project: nothing to check.')
+    else:
+        # '' is the task of the implicit owner in axis files.
+        tasks = {(t.findtext('Name') or '').strip() for t in nc.findall('SafTask')} | {''}
+        check_links(axes, links, lost, boxes, tasks, add)
+    return {'path': tsproj, 'axes': axes, 'findings': found, 'notes': notes}
+
+
+def check_links(axes, links, lost, boxes, tasks, add):
+    """Link findings for the project's axes (rules L1-L8)."""
+    names = {a['name'] for a in axes}
+    on_axis = {}      # axis name -> [(axis var, partner owner)]
+    box_vars = {}     # box link name -> box-side vars of every link it has
+    for a, va, b, vb in links:
+        for owner, var, partner in ((a, va, b), (b, vb, a)):
+            if axis_of(owner, tasks) is not None:
+                on_axis.setdefault(axis_of(owner, tasks), []).append((var, partner))
+            if owner.startswith('TIID^'):
+                box_vars.setdefault(owner, set()).add(var)
+
+    for name in sorted(set(on_axis) - names):
+        partners = sorted({p for _, p in on_axis[name]})
+        add('L4', 'warning', 'Links name axis "%s", which the NC configuration does not have '
+            '(renamed or deleted?): %s. Those links connect nothing.'
+            % (name, ', '.join(partners)), name)
+
+    # UnrestoredVarLinks are links XAE could not restore, mostly after a PLC was renamed or
+    # re-imported. Most were made again since; only those still missing now matter.
+    stale = {}
+    for prefix, owner, var_a, var_b, info in lost:
+        for side, var in ((prefix, var_a), (owner, var_b)):
+            name = axis_of(side, tasks)
+            if name is not None and not any(v == var for v, _ in on_axis.get(name, [])):
+                stale.setdefault(name, set()).add(var)
+    for name in sorted(stale):
+        if name in names:
+            add('L5', 'warning', 'XAE could not restore the link(s) on %s, and they are not '
+                'linked now: the PLC or I/O side was renamed or removed. Link them again.'
+                % ', '.join(sorted(stale[name])), name)
+        else:
+            add('L5', 'info', 'Leftover unrestored link(s) to axis "%s", which the NC '
+                'configuration no longer has. They connect nothing; delete them in XAE.'
+                % name, name)
+
+    checked = set()
+    for a in axes:
+        ax = a['axis']
+        if ax is None:
+            continue
+        p, mine = ax['params'], on_axis.get(a['name'], [])
+        # Link names start with the Drive and Encoder sub-items' own names ('Drive^...',
+        # 'Enc^...' unless renamed). A LinkedTo element connects one to a TcCOM object
+        # instead (XTS and XPlanar movers), with no links at all.
+        drive, enc = p.get('Drive@Name', 'Drive'), p.get('Encoder@Name', 'Enc')
+        drv_type, enc_type = p.get('Drive@DrvType'), p.get('Encoder@EncType')
+        if (drv_type not in (None, SIM_DRIVE) and 'Drive/LinkedTo@ObjectId' not in p
+                and not any(v.startswith(drive + '^') for v, _ in mine)):
+            add('L1', 'warning', 'Drive (DrvType %s) is linked to nothing: the set point and '
+                'control word reach no drive, so the axis cannot enable or move. Link the '
+                'axis drive to its drive or terminal in XAE.' % drv_type, a['name'])
+        if (enc_type not in (None, SIM_ENCODER) and 'Encoder/LinkedTo@ObjectId' not in p
+                and not any(v.startswith(enc + '^') for v, _ in mine)):
+            add('L2', 'warning', 'Encoder (EncType %s) is linked to nothing: the actual '
+                'position never changes. Link the axis encoder in XAE.' % enc_type, a['name'])
+        if not any(v in PLC_LINK_VARS for v, _ in mine):
+            add('L3', 'info', 'Not linked to a PLC AXIS_REF (Inputs^FromPlc, '
+                'Outputs^ToPlc): MC_ blocks cannot command this axis.', a['name'])
+        for box in sorted({o for v, o in mine if o.startswith('TIID^')
+                           and v.split('^', 1)[0] in (drive, enc)}):
+            if box in checked:
+                continue
+            checked.add(box)
+            axes_on_box = sorted({n for n, items in on_axis.items()
+                                  for v, o in items if o == box})
+            if box not in boxes:
+                add('L8', 'info', 'Linked to %s, which is not in the I/O tree under that name, '
+                    'so its PDO outputs were not checked. If that box was renamed or removed, '
+                    'the link connects nothing.' % box[len('TIID^'):], a['name'])
+                continue
+            limits, others = unlinked_outputs(boxes[box], box_vars.get(box, set()))
+            where = '%s (axis %s)' % (box[len('TIID^'):], ', '.join(axes_on_box))
+            if limits:
+                add('L6', 'warning', '%s sends limit output(s) that nothing is linked to: %s. '
+                    'An unlinked PDO output goes out as 0, and depending on the drive a limit '
+                    'of 0 means no torque or no speed: the axis enables but does not move or '
+                    'lags out. Link it, write it from the PLC, or remove it from the PDO '
+                    'assignment.' % (where, ', '.join(limits)), a['name'])
+            if others:
+                add('L7', 'info', '%s sends output(s) nothing is linked to, so they go out as '
+                    '0: %s. Usually harmless; check each is meant to be 0.'
+                    % (where, ', '.join(others)), a['name'])
 
 
 # --- Diff ---------------------------------------------------------------------------
@@ -438,30 +804,86 @@ def cmd_show(args):
     return 2 if problems or not axes else 0
 
 
+def project_files(paths):
+    """Split lint arguments: .tsproj files, and folders holding one, are projects; the
+    rest are axis files and folders. Returns (projects, axis paths)."""
+    projects, rest = [], []
+    for path in paths:
+        if path.lower().endswith('.tsproj'):
+            projects.append(path)
+            continue
+        found = []
+        if os.path.isdir(path):
+            for dirpath, dirnames, filenames in os.walk(path):
+                dirnames.sort()
+                found += [os.path.join(dirpath, fn) for fn in sorted(filenames)
+                          if fn.lower().endswith('.tsproj')]
+        if found:
+            projects += found
+        else:
+            rest.append(path)
+    return projects, rest
+
+
+def lint_result(axis):
+    return {'name': axis['name'], 'path': axis['path'], 'version': axis['version'],
+            'findings': lint(axis)}
+
+
+def print_axis_result(res):
+    print('%s  (%s, TwinCAT %s)' % (ascii_text(res['name']), ascii_text(res['path']),
+                                    res['version'] or 'unknown'))
+    if not res['findings']:
+        print('  no findings')
+    for f in res['findings']:
+        print('  %-7s %s %s' % (f['level'].upper(), f['rule'], ascii_text(f['message'])))
+    print()
+
+
 def cmd_lint(args):
-    axes, problems = axis_files(args.paths)
-    results = [{'name': a['name'], 'path': a['path'], 'version': a['version'],
-                'findings': lint(a)} for a in axes]
+    tsprojs, paths = project_files(args.paths)
+    projects, problems = [], []
+    for tsproj in tsprojs:
+        try:
+            pr = load_project(tsproj)
+        except XtiError as exc:
+            problems.append(str(exc))
+            continue
+        projects.append({'path': tsproj, 'findings': pr['findings'], 'notes': pr['notes'],
+                         'axes': [lint_result(a['axis']) for a in pr['axes'] if a['axis']]})
+    axes, more = axis_files(paths) if paths else ([], [])
+    problems += more
+    results = [lint_result(a) for a in axes]
     if args.json:
-        print(json.dumps({'axes': results, 'problems': problems, 'note': DEFAULTS_NOTE},
-                         indent=2))
+        print(json.dumps({'projects': projects, 'axes': results, 'problems': problems,
+                          'note': DEFAULTS_NOTE}, indent=2))
     else:
-        for axis, res in zip(axes, results):
-            print(head(axis))
-            if not res['findings']:
-                print('  no findings')
-            for f in res['findings']:
-                print('  %-7s %s %s' % (f['level'].upper(), f['rule'], f['message']))
+        for pr in projects:
+            print('Project %s' % ascii_text(pr['path']))
+            if not pr['findings']:
+                print('  no project findings')
+            for f in pr['findings']:
+                print('  %-7s %s %s%s' % (f['level'].upper(), f['rule'],
+                                          '[%s] ' % ascii_text(f['axis']) if f['axis'] else '',
+                                          ascii_text(f['message'])))
+            for msg in pr['notes']:
+                print('  note: ' + ascii_text(msg))
             print()
+            for res in pr['axes']:
+                print_axis_result(res)
+        for res in results:
+            print_axis_result(res)
         for msg in problems:
             print('ERROR ' + ascii_text(msg))
-        if not axes and not problems:
-            print('No NC axis files (ClassName=%s) found.' % NC2_CLASS)
+        if not projects and not axes and not problems:
+            print('No NC axis files (ClassName=%s) or .tsproj found.' % NC2_CLASS)
         print('note: ' + DEFAULTS_NOTE)
-    if problems or not axes:
+    if problems or not (projects or axes):
         return 2
-    bad = any(f['level'] in ('error', 'warning') for r in results for f in r['findings'])
-    return 1 if bad else 0
+    every = [f for pr in projects for f in pr['findings']]
+    every += [f for r in results + [a for pr in projects for a in pr['axes']]
+              for f in r['findings']]
+    return 1 if any(f['level'] in ('error', 'warning') for f in every) else 0
 
 
 def cmd_diff(args):

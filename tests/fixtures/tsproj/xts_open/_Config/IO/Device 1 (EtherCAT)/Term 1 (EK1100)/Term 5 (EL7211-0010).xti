@@ -1,0 +1,49 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.27" ClassName="CFlbTermDef" SubType="9099">
+	<Box Id="5" BoxType="9099" BoxFlags="#x00000020">
+		<Name>__FILENAME__</Name>
+		<EtherCAT VendorId="#x00000002" ProductCode="#x1c2b3052" Type="EL7211-0010 1Ch. MDP742 Servo motor output stage with OCT (50V, 4.5A RMS)" Desc="EL7211-0010">
+			<Pdo Name="FB Position" Index="#x1a00" Flags="#x0010" SyncMan="3">
+				<Entry Name="Position" Index="#x6000" Sub="#x11">
+					<Type>UDINT</Type>
+				</Entry>
+			</Pdo>
+			<Pdo Name="DRV Statusword" Index="#x1a01" Flags="#x0010" SyncMan="3">
+				<Entry Name="Statusword" Index="#x6010" Sub="#x01">
+					<Type>UINT</Type>
+					<Comment>Bit 0 : Ready to switch on
+Bit 1 : Switched on
+Bit 2 : Operation enabled
+Bit 3 : Fault
+Bit 4 : reserved
+Bit 5 : reserved
+Bit 6 : Switch on disabled
+Bit 7 : Warning
+Bit 8 + 9 : reserved
+Bit 10 : TxPDOToggle
+Bit 11 : Internal limit active
+Bit 12 : Drive follows the command value
+Bit 13 : Input cycle counter
+Bit 14 - 15 : reserved</Comment>
+				</Entry>
+			</Pdo>
+			<Pdo Name="DRV Controlword" Index="#x1600" InOut="1" Flags="#x0010" SyncMan="2">
+				<Entry Name="Controlword" Index="#x7010" Sub="#x01">
+					<Type>UINT</Type>
+					<Comment>Bit 0 : Switch on
+Bit 1 : Enable voltage
+Bit 2 : reserved
+Bit 3 : Enable operation
+Bit 4 - 6 : reserved
+Bit 7 : Fault reset
+Bit 8 - 15 : reserved</Comment>
+				</Entry>
+			</Pdo>
+			<Pdo Name="DRV Target velocity" Index="#x1601" InOut="1" Flags="#x0010" SyncMan="2">
+				<Entry Name="Target velocity" Index="#x7010" Sub="#x06">
+					<Type>DINT</Type>
+				</Entry>
+			</Pdo>
+		</EtherCAT>
+	</Box>
+</TcSmItem>
