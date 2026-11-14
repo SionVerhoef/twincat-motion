@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.21" ClassName="CFlbTermDef" SubType="9099">
+	<Box Id="21" BoxType="9099" BoxFlags="#x00000020">
+		<Name>__FILENAME__</Name>
+		<EtherCAT VendorId="#x00000002" ProductCode="#x18503052" Type="EL6224-0090 (IO Link Master, TwinSAFE SC)" Desc="EL6224-0090">
+			</EtherCAT>
+	</Box>
+</TcSmItem>

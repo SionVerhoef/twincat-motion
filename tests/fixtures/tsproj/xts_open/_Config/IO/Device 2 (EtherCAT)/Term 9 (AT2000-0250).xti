@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.27" ClassName="CFlbTermDef" SubType="9099">
+	<Box Id="9" BoxType="9099" BoxFlags="#x00000020">
+		<Name>__FILENAME__</Name>
+		<EtherCAT VendorId="#x00000002" ProductCode="#x07d05012" Type="AT2000-0250 Motor module 250 mm, 48V" Desc="AT2000-0250">
+			</EtherCAT>
+		<Box File="Term 10 (AT2000-5250).xti" Id="10">
+			<EtherCAT />
+		</Box>
+	</Box>
+</TcSmItem>

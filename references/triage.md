@@ -48,6 +48,10 @@ or 4.
   drive allows that. What the object means and its units are **cia402-motion**'s; which
   entries this drive can map, **ethercat-esi**'s.
 
+With the project on disk, `axis_xti.py lint <project folder>` checks the link items of this
+step offline: the `AXIS_REF` link, the drive and encoder links, and unlinked outputs in the
+drive's PDO assignment. It cannot see the bus or the NC cycle; those stay online checks.
+
 ## 1. Is an axis error pending?
 
 `ST_AxisStatus.Error` and `ErrorId`, or `MC_ReadStatus.ErrorStop`. Look the code up.

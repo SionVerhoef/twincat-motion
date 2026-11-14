@@ -75,6 +75,7 @@ Both need nothing but Python 3.8 or newer (`py -3` on Windows):
 python3 scripts/nc_error.py 0x4357                 # also 17239 or 16#4357
 python3 scripts/axis_xti.py show "Axis 1.xti"      # the parameters the axis sets explicitly
 python3 scripts/axis_xti.py lint "Axis 1.xti"      # inconsistent parameters
+python3 scripts/axis_xti.py lint MyProject          # a project: NC config, axis files, links
 python3 scripts/axis_xti.py diff old.xti new.xti   # what changed, by parameter name
 ```
 
@@ -84,7 +85,10 @@ python3 scripts/axis_xti.py diff old.xti new.xti   # what changed, by parameter 
   codes mean different things (0x4357 and 0x4358 are opposite directions). It also explains
   the templates' own error codes (16#0001_xxxx), which are not NC codes.
 - **`axis_xti.py`** reads `_Config/NC/Axes/*.xti` files without XAE. A file stores only values
-  that differ from the default, so `lint` checks explicit values only. `diff` compares two
+  that differ from the default, so `lint` checks explicit values only. On a project folder
+  or `.tsproj` it also checks the NC configuration and the links: missing or unlisted axis
+  files, shared Ids, an axis whose drive, encoder or PLC side is linked to nothing, and drive
+  outputs that nothing links, which go out as 0. `diff` compares two
   versions by parameter, not by XML line; `--table` prints the change as a parameter-change
   table, and `--ai-csv` writes it as input for the Automation Interface script in
   `references/config-changes.md`. It never writes an `.xti` file. Exit codes: `lint` 0 clean,

@@ -4,9 +4,11 @@ What this skill was built from, and what each source gave it.
 
 ## Bundled third-party content
 
-Only the four NC axis files in `tests/fixtures/xti/`, used unmodified as test fixtures, each
-with its upstream licence next to it (rows below). Everything else is original prose, code or
-tables written for this skill. `CLAUDE.md` says which licences may ship at all.
+Only test fixtures, each with its upstream licence next to it (rows below): the four NC axis
+files in `tests/fixtures/xti/`, unmodified, and six projects in `tests/fixtures/tsproj/`,
+trimmed (content removed, nothing changed; that folder's README lists what). Everything else
+is original prose, code or tables written for this skill. `CLAUDE.md` says which licences
+may ship at all.
 
 ## Sources
 
@@ -19,6 +21,8 @@ tables written for this skill. `CLAUDE.md` says which licences may ship at all.
 | [SPT_V4_Samples](https://github.com/Beckhoff-USA-Community/SPT_V4_Samples) (0BSD) | Two NC axis files, unmodified, as test fixtures in `tests/fixtures/xti/`. Licence alongside. |
 | [lcls-twincat-motion](https://github.com/pcdshub/lcls-twincat-motion) (BSD-3-Clause, SLAC) | One NC axis file, unmodified, as a test fixture. Licence alongside. |
 | [PackML_PLC_Example](https://github.com/Beckhoff-USA-Community/PackML_PLC_Example) (MIT) | One NC axis file, unmodified, as a test fixture. Licence alongside. |
+| [GearDemo](https://github.com/Beckhoff-JP/GearDemo) (MIT), [AMR_Demo](https://github.com/Beckhoff-USA-Community/AMR_Demo) (0BSD), [twincat-dual-axis-coordinator](https://github.com/milanlazov/twincat-dual-axis-coordinator) (MIT), [NcEtherCat](https://github.com/Triamec/NcEtherCat) and [NcTriaLink](https://github.com/Triamec/NcTriaLink) (Unlicense), [Xts_Library](https://github.com/chris-k84/Xts_Library) (MIT) | One project each, trimmed, as project-lint fixtures in `tests/fixtures/tsproj/`. Licence alongside each. |
+| Other public TwinCAT projects on GitHub (various or no licence) | Read only, to check project lint for false findings. Nothing bundled. |
 | [twincat-st](https://github.com/SionVerhoef/twincat-st) (MIT, same maintainer) | Tool. CI runs its `tcpou.py check` and `st_review.py --pedantic` on `templates/` from release v0.6.0. Not bundled. |
 
 Identifiers (error codes, block and parameter names) are quoted as facts; everything else

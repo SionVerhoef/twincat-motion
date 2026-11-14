@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.27" ClassName="CNcAxisDef" SubType="1">
+	<Axis Id="2" CreateSymbols="true" AxisType="1">
+		<Name>__FILENAME__</Name>
+		<AxisPara>
+			<OtherSettings AllowMotionCmdToSlave="true" />
+		</AxisPara>
+		<Encoder Name="Enc" EncType="19">
+			<EncPara MaxCount="#xffffffff" />
+		</Encoder>
+		<Drive Name="Drive" DrvType="16">
+			<DrvPara MaxCount="#xffffffff">
+				<Analog TorqueSetpointScale="10" ScaleFactorActTorque="0.1" />
+				<TimeComp TaskDelayCycles="1" />
+			</DrvPara>
+		</Drive>
+		<Controller Name="Ctrl" CtrType="1">
+			<CtrPara PriorControlFactor="1">
+				<Observer BandWidth="20" />
+			</CtrPara>
+		</Controller>
+	</Axis>
+	<Mappings>
+		<OwnerA>
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Term 1 (EK1100)^Term 5 (EL7211-0010)">
+				<Link VarA="Drive^Inputs^In^nDcOutputTime" VarB="InfoData^DcOutputShift" />
+				<Link VarA="Drive^Inputs^In^nState1" VarB="DRV Statusword^Statusword" Size="8" />
+				<Link VarA="Drive^Inputs^In^nState2" VarB="DRV Statusword^Statusword" Size="8" OffsB="8" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^WcState" Size="1" />
+				<Link VarA="Drive^Outputs^Out^nCtrl1" VarB="DRV Controlword^Controlword" Size="8" />
+				<Link VarA="Drive^Outputs^Out^nCtrl2" VarB="DRV Controlword^Controlword" Size="8" OffsB="8" />
+				<Link VarA="Drive^Outputs^Out^nDataOut2" VarB="DRV Target velocity^Target velocity" />
+				<Link VarA="Enc^Inputs^In^nDataIn1" VarB="FB Position^Position" />
+				<Link VarA="Enc^Inputs^In^nDcInputTime" VarB="InfoData^DcInputShift" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^WcState" Size="1" />
+			</OwnerB>
+		</OwnerA>
+	</Mappings>
+</TcSmItem>

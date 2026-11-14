@@ -1,0 +1,232 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4024.53" ClassName="CDevEtherCATDef" SubType="111">
+	<Device Id="2" DevType="111" DevFlags="#x0003" AmsPort="28674" RemoteName="Device 2 (EtherCAT)" InfoImageId="3">
+		<Name>__FILENAME__</Name>
+		<Box Id="1" BoxType="9099">
+			<Name>Term 1 (EK1101)</Name>
+			<EtherCAT VendorId="#x00000002" ProductCode="#x044d2c52" Type="EK1101 EtherCAT Coupler (2A E-Bus, ID switch)" Desc="EK1101">
+				<Pdo Name="ID" Index="#x1a00" Flags="#x0010" SyncMan="0">
+					<Entry Name="ID" Index="#x6000" Sub="#x01">
+						<Type>UINT</Type>
+					</Entry>
+				</Pdo>
+			</EtherCAT>
+			<Box Id="2" BoxType="9099" BoxFlags="#x00000020">
+				<Name>Drive 2 (EL7201-0011)</Name>
+				<EtherCAT VendorId="#x00000002" ProductCode="#x1c213052" Type="EL7201-0011 1Ch. DS402 Servo motor output stage with OCT (50V, 4A)" Desc="EL7201-0011">
+					<Pdo Name="DS402 Statusword" Index="#x1a00" Flags="#x0010" SyncMan="3">
+						<Entry Name="Statusword" BitLen="16" Index="#x6041">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Position actual value" Index="#x1a01" Flags="#x0010" SyncMan="3">
+						<Entry Name="Position actual value" BitLen="32" Index="#x6064">
+							<Type>UDINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Velocity actual value" Index="#x1a02" Flags="#x0010">
+						<Entry Name="Velocity actual value" BitLen="32" Index="#x606c">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Torque actual value" Index="#x1a03" Flags="#x0010">
+						<Entry Name="Torque actual value" BitLen="16" Index="#x6077">
+							<Type>INT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Following error actual value" Index="#x1a04" Flags="#x0010" SyncMan="3">
+						<Entry Name="Following error actual value" BitLen="32" Index="#x60f4">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe status" Index="#x1a05" Flags="#x0010">
+						<Entry Name="Touch probe status" BitLen="16" Index="#x60b9">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe 1 positive edge" Index="#x1a06" Flags="#x0010">
+						<Entry Name="Touch probe 1 positive edge" BitLen="32" Index="#x60ba">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe 1 negative edge" Index="#x1a07" Flags="#x0010">
+						<Entry Name="Touch probe 1 negative edge" BitLen="32" Index="#x60bb">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe 2 positive edge" Index="#x1a08" Flags="#x0010">
+						<Entry Name="Touch probe 2 positive edge" BitLen="32" Index="#x60bc">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe 2 negative edge" Index="#x1a09" Flags="#x0010">
+						<Entry Name="Touch probe 2 negative edge" BitLen="32" Index="#x60bd">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Controlword" Index="#x1600" InOut="1" Flags="#x0010" SyncMan="2">
+						<Entry Name="Controlword" BitLen="16" Index="#x6040">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Target velocity" Index="#x1601" InOut="1" Flags="#x0010">
+						<Entry Name="Target velocity" BitLen="32" Index="#x60ff">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Target torque" Index="#x1602" InOut="1" Flags="#x0010">
+						<Entry Name="Target torque" BitLen="16" Index="#x6071">
+							<Type>INT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Commutation angle" Index="#x1603" InOut="1" Flags="#x0010">
+						<Entry Name="Commutation angle" BitLen="16" Index="#x60ea">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Torque limitation" Index="#x1604" InOut="1" Flags="#x0010">
+						<Entry Name="Max torque" BitLen="16" Index="#x6072">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Torque offset" Index="#x1605" InOut="1" Flags="#x0010">
+						<Entry Name="Torque offset" BitLen="16" Index="#x2001" Sub="#x11">
+							<Type>INT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Target position" Index="#x1606" InOut="1" Flags="#x0010" SyncMan="2">
+						<Entry Name="Target position" BitLen="32" Index="#x607a">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe function" Index="#x1607" InOut="1" Flags="#x0010">
+						<Entry Name="Touch probe function" BitLen="16" Index="#x60b8">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+				</EtherCAT>
+			</Box>
+			<Box Id="3" BoxType="9099" BoxFlags="#x00000020">
+				<Name>Drive 3 (EL7201-0011)</Name>
+				<EtherCAT VendorId="#x00000002" ProductCode="#x1c213052" Type="EL7201-0011 1Ch. DS402 Servo motor output stage with OCT (50V, 2.8A RMS)" Desc="EL7201-0011">
+					<Pdo Name="DS402 Statusword" Index="#x1a00" Flags="#x0010" SyncMan="3">
+						<Entry Name="Statusword" BitLen="16" Index="#x6041">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Position actual value" Index="#x1a01" Flags="#x0010" SyncMan="3">
+						<Entry Name="Position actual value" BitLen="32" Index="#x6064">
+							<Type>UDINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Velocity actual value" Index="#x1a02" Flags="#x0010">
+						<Entry Name="Velocity actual value" BitLen="32" Index="#x606c">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Torque actual value" Index="#x1a03" Flags="#x0010">
+						<Entry Name="Torque actual value" BitLen="16" Index="#x6077">
+							<Type>INT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Following error actual value" Index="#x1a04" Flags="#x0010" SyncMan="3">
+						<Entry Name="Following error actual value" BitLen="32" Index="#x60f4">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe status" Index="#x1a05" Flags="#x0010">
+						<Entry Name="Touch probe status" BitLen="16" Index="#x60b9">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe 1 positive edge" Index="#x1a06" Flags="#x0010">
+						<Entry Name="Touch probe 1 positive edge" BitLen="32" Index="#x60ba">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe 1 negative edge" Index="#x1a07" Flags="#x0010">
+						<Entry Name="Touch probe 1 negative edge" BitLen="32" Index="#x60bb">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe 2 positive edge" Index="#x1a08" Flags="#x0010">
+						<Entry Name="Touch probe 2 positive edge" BitLen="32" Index="#x60bc">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe 2 negative edge" Index="#x1a09" Flags="#x0010">
+						<Entry Name="Touch probe 2 negative edge" BitLen="32" Index="#x60bd">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 TxPDO Data Invalid" Index="#x1a0a" Flags="#x0010">
+						<Entry Name="TxPDO Data invalid__" BitLen="1">
+							<Type GUID="{18071995-0000-0000-0000-002000000001}">ARRAY [0..0] OF BIT</Type>
+						</Entry>
+						<Entry Name="TxPDO Data invalid__Position actual value" BitLen="1" Index="#x603e" Sub="#x02">
+							<Type>BIT</Type>
+						</Entry>
+						<Entry Name="TxPDO Data invalid__" BitLen="14">
+							<Type GUID="{18071995-0000-0000-0000-00200000000E}">ARRAY [0..13] OF BIT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Info data 1" Index="#x1a0b" Flags="#x0010">
+						<Entry Name="Info data 1" BitLen="16" Index="#x2008" Sub="#x01">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Info data 2" Index="#x1a0c" Flags="#x0010">
+						<Entry Name="Info data 2" BitLen="16" Index="#x2008" Sub="#x02">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Controlword" Index="#x1600" InOut="1" Flags="#x0010" SyncMan="2">
+						<Entry Name="Controlword" BitLen="16" Index="#x6040">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Target velocity" Index="#x1601" InOut="1" Flags="#x0010">
+						<Entry Name="Target velocity" BitLen="32" Index="#x60ff">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Target torque" Index="#x1602" InOut="1" Flags="#x0010">
+						<Entry Name="Target torque" BitLen="16" Index="#x6071">
+							<Type>INT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Commutation angle" Index="#x1603" InOut="1" Flags="#x0010">
+						<Entry Name="Commutation angle" BitLen="16" Index="#x60ea">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Torque limitation" Index="#x1604" InOut="1" Flags="#x0010">
+						<Entry Name="Max torque" BitLen="16" Index="#x6072">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Torque offset" Index="#x1605" InOut="1" Flags="#x0010">
+						<Entry Name="Torque offset" BitLen="16" Index="#x2001" Sub="#x11">
+							<Type>INT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Target position" Index="#x1606" InOut="1" Flags="#x0010" SyncMan="2">
+						<Entry Name="Target position" BitLen="32" Index="#x607a">
+							<Type>DINT</Type>
+						</Entry>
+					</Pdo>
+					<Pdo Name="DS402 Touch probe function" Index="#x1607" InOut="1" Flags="#x0010">
+						<Entry Name="Touch probe function" BitLen="16" Index="#x60b8">
+							<Type>UINT</Type>
+						</Entry>
+					</Pdo>
+				</EtherCAT>
+			</Box>
+			<Box Id="4" BoxType="9099">
+				<Name>Term 4 (EL9011)</Name>
+				<EtherCAT VendorId="#x00000002" ProductCode="#x23333050" Type="EL9011 End Terminal" Desc="EL9011" />
+			</Box>
+		</Box>
+		<EtherCAT />
+	</Device>
+</TcSmItem>

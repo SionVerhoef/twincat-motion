@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `axis_xti.py lint` on a project folder or `.tsproj` checks the project, not only axis
+  files: NC configuration inline or in `NC.xti`, axes inline or in files, links wherever
+  they are stored. Rules P1-P3 (axis file missing or unlisted, shared Id) and L1-L8 (drive,
+  encoder or PLC side linked to nothing; links to an axis that is gone; unrestored links
+  still missing; drive outputs in the PDO assignment that nothing links, a limit as a
+  warning). Inline axes now get the per-axis lint too. Checked against the 30 public projects
+  with NC axes (132 axes) found among 352; six of them, trimmed, are the new fixtures in
+  `tests/fixtures/tsproj/`.
 - `axis_xti.py diff --table` prints a change as the parameter-change table of
   `config-changes.md`; `diff --ai-csv PRODUCED_XML CHANGES_CSV` writes it as `changes.csv`
   for `axis-change.ps1`, with each row looked up in the target axis's produced XML and its

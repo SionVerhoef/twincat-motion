@@ -312,7 +312,219 @@ class AiChanges(unittest.TestCase):
             axis_xti.ai_changes([], produced('<TcSmItem/>'))
 
 
+PROJ = os.path.join(HERE, 'fixtures', 'tsproj')
+
+
+def tsproj_in(folder):
+    return os.path.join(folder, [f for f in os.listdir(folder) if f.endswith('.tsproj')][0])
+
+
+def project(folder):
+    """Load a project folder. Returns (result, sorted (rule, axis) pairs)."""
+    pr = axis_xti.load_project(tsproj_in(folder))
+    return pr, sorted((f['rule'], f['axis'] or '') for f in pr['findings'])
+
+
+def edit(path, old, new):
+    with open(path, encoding='utf-8') as f:
+        text = f.read()
+    if old not in text:
+        raise AssertionError('%r not in %s' % (old, path))
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(text.replace(old, new))
+
+
+class ProjectRealProjects(unittest.TestCase):
+    """Public projects (tests/fixtures/tsproj, see README.md there)."""
+
+    def test_clean_inline_project(self):
+        pr, found = project(os.path.join(PROJ, 'geardemo'))
+        self.assertEqual(found, [])
+        self.assertEqual([a['name'] for a in pr['axes']], ['Axis 1', 'Axis 2'])
+        self.assertTrue(pr['axes'][0]['axis']['path'].endswith(', inline'))
+
+    def test_separate_files_drive_links_in_axis_files(self):
+        pr, found = project(os.path.join(PROJ, 'amr_demo'))
+        self.assertEqual(found, [('L5', 'Lift'), ('L7', 'WheelLeft'), ('L7', 'WheelRight')])
+        self.assertEqual([a['name'] for a in pr['axes']], ['WheelLeft', 'WheelRight'])
+        l5 = [f for f in pr['findings'] if f['rule'] == 'L5'][0]
+        self.assertEqual(l5['level'], 'info')  # axis no longer exists: leftover, not a fault
+
+    def test_unlinked_torque_and_speed_limits(self):
+        pr, found = project(os.path.join(PROJ, 'i950_dual_axis'))
+        self.assertEqual(found, [('L6', 'Axis_M'), ('L6', 'Axis_S'),
+                                 ('L7', 'Axis_M'), ('L7', 'Axis_S')])
+        l6 = [f for f in pr['findings'] if f['rule'] == 'L6'][0]
+        self.assertEqual(l6['level'], 'warning')
+        for entry in ('Torque Limits^Positive torque limit', 'Torque Limits^Negative torque '
+                      'limit', 'Speed Limits^Speed limitation: Upper speed limit'):
+            self.assertIn(entry, l6['message'])
+        self.assertNotIn('Offset speed', l6['message'])  # not a limit: L7
+
+    def test_channel_prefixed_link_names_count_as_linked(self):
+        pr, found = project(os.path.join(PROJ, 'triamec_ethercat'))
+        self.assertEqual(found, [('L7', 'Axis 1')])
+        msg = pr['findings'][0]['message']
+        self.assertIn('MainOutputs^Auxiliary Byte', msg)
+        self.assertNotIn('Control Word', msg)
+        self.assertIn('Axis 1, Axis 2', msg)  # one two-channel drive, reported once
+
+    def test_drive_and_encoder_linked_to_plc(self):
+        self.assertEqual(project(os.path.join(PROJ, 'triamec_trialink'))[1], [])
+
+    def test_xts_mover_linked_to_tcom_object(self):
+        found = project(os.path.join(PROJ, 'xts_open'))[1]
+        self.assertNotIn(('L1', 'Mover Axis 1'), found)
+        self.assertNotIn(('L2', 'Mover Axis 1'), found)
+        self.assertEqual(found, [('L3', 'Axis 1'), ('L3', 'Axis 2')])
+
+
+class ProjectRules(unittest.TestCase):
+    """Rules no public project triggers, on edited copies of a public project."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def copy(self, name):
+        dst = os.path.join(self.tmp, name)
+        shutil.copytree(os.path.join(PROJ, name), dst)
+        return dst
+
+    def amr(self, path=''):
+        return os.path.join(self.tmp, 'amr_demo', path)
+
+    def test_p1_axis_file_missing(self):
+        self.copy('amr_demo')
+        os.remove(self.amr('_Config/NC/Axes/WheelLeft.xti'))
+        pr, found = project(self.amr())
+        self.assertIn(('P1', ''), found)
+        self.assertIn('WheelLeft.xti', pr['findings'][0]['message'])
+
+    def test_p1_nc_file_missing(self):
+        self.copy('amr_demo')
+        os.remove(self.amr('_Config/NC/NC.xti'))
+        self.assertEqual(project(self.amr())[1], [('P1', '')])
+
+    def test_file_names_resolve_ignoring_case(self):
+        self.copy('amr_demo')
+        edit(self.amr('_Config/NC/NC.xti'), 'File="WheelLeft.xti"', 'File="wheelleft.XTI"')
+        self.assertNotIn('P1', [r for r, _ in project(self.amr())[1]])
+
+    def test_p2_axis_file_not_listed(self):
+        self.copy('amr_demo')
+        shutil.copy(self.amr('_Config/NC/Axes/WheelLeft.xti'),
+                    self.amr('_Config/NC/Axes/Spare.xti'))
+        pr, found = project(self.amr())
+        self.assertIn(('P2', ''), found)
+        self.assertTrue(any('Spare.xti' in f['message'] for f in pr['findings']))
+
+    def test_p3_duplicate_axis_id(self):
+        self.copy('amr_demo')
+        edit(self.amr('_Config/NC/NC.xti'), 'Id="3"', 'Id="2"')
+        self.assertIn(('P3', ''), project(self.amr())[1])
+
+    def test_l1_l2_drive_and_encoder_not_linked(self):
+        self.copy('amr_demo')
+        path = self.amr('_Config/NC/Axes/WheelLeft.xti')
+        root = axis_xti.ET.parse(path)
+        root.getroot().remove(root.getroot().find('Mappings'))
+        root.write(path)
+        found = project(self.amr())[1]
+        self.assertIn(('L1', 'WheelLeft'), found)
+        self.assertIn(('L2', 'WheelLeft'), found)
+        self.assertNotIn(('L1', 'WheelRight'), found)
+
+    def test_l1_follows_a_renamed_drive_sub_item(self):
+        self.copy('geardemo')
+        path = tsproj_in(os.path.join(self.tmp, 'geardemo'))
+        edit(path, '<Drive Name="Drive"', '<Drive Name="Servo"')
+        found = project(os.path.join(self.tmp, 'geardemo'))[1]
+        self.assertIn(('L1', 'Axis 1'), found)  # links still say Drive^: not this drive
+        edit(path, 'VarA="Drive^', 'VarA="Servo^')
+        self.assertEqual(project(os.path.join(self.tmp, 'geardemo'))[1], [])
+
+    def test_l3_l4_axis_renamed_after_linking(self):
+        self.copy('amr_demo')
+        os.rename(self.amr('_Config/NC/Axes/WheelLeft.xti'),
+                  self.amr('_Config/NC/Axes/WheelL.xti'))
+        edit(self.amr('_Config/NC/NC.xti'), 'File="WheelLeft.xti"', 'File="WheelL.xti"')
+        pr, found = project(self.amr())
+        self.assertIn(('L4', 'WheelLeft'), found)   # PLC links still name the old axis
+        self.assertIn(('L3', 'WheelL'), found)
+        self.assertNotIn(('L1', 'WheelL'), found)   # drive links travel with the axis file
+
+    def test_l5_unrestored_link_to_an_existing_axis(self):
+        self.copy('amr_demo')
+        plc = self.amr('_Config/PLC/PLC Instance.xti')
+        edit(plc, 'Axes^Lift">', 'Axes^WheelLeft">')
+        edit(plc, '<OwnerB Name="TINC^NC-Task 1 SAF^Axes^WheelLeft">\n\t\t\t\t<Link VarA="PlcTask '
+             'Inputs^MAIN.AmrModule.WheelLeftRef.NcToPlc" VarB="Outputs^ToPlc" />\n\t\t\t\t<Link '
+             'VarA="PlcTask Outputs^MAIN.AmrModule.WheelLeftRef.PlcToNc" VarB="Inputs^FromPlc" />'
+             '\n\t\t\t</OwnerB>', '')
+        pr, found = project(self.amr())
+        self.assertIn(('L5', 'WheelLeft'), found)
+        l5 = [f for f in pr['findings'] if f['rule'] == 'L5'][0]
+        self.assertEqual(l5['level'], 'warning')
+        self.assertIn('Inputs^FromPlc', l5['message'])
+
+    def test_l5_quiet_when_the_link_was_made_again(self):
+        self.copy('amr_demo')
+        edit(self.amr('_Config/PLC/PLC Instance.xti'), 'Axes^Lift">', 'Axes^WheelLeft">')
+        self.assertNotIn('L5', [r for r, _ in project(self.amr())[1]])
+
+    def test_l8_linked_box_not_in_io_tree(self):
+        self.copy('amr_demo')
+        edit(self.amr('_Config/NC/Axes/WheelLeft.xti'), 'Motion 1 (ELM7231-9018)',
+             'Motion 9 (ELM7231-9018)')
+        self.assertIn(('L8', 'WheelLeft'), project(self.amr())[1])
+
+    def test_mc3_axes_are_not_nc_axes(self):
+        d = os.path.join(self.tmp, 'mc3')
+        os.makedirs(d)
+        with open(os.path.join(d, 'P.tsproj'), 'w') as f:
+            f.write('<TcSmProject><Project><Motion><MC File="MC Project1.xti"/>'
+                    '<NC><SafTask><Name>NC-Task 1 SAF</Name></SafTask></NC></Motion></Project>'
+                    '<Mappings><OwnerA Name="TIPC^PLC^PLC Instance">'
+                    '<OwnerB Name="TINC^MC Project1^Axes^Master">'
+                    '<Link VarA="x" VarB="Inputs^FromPlc"/></OwnerB></OwnerA></Mappings>'
+                    '</TcSmProject>')
+        pr, found = project(d)
+        self.assertEqual(found, [])
+        self.assertIn('MC3', ' '.join(pr['notes']))
+
+    def test_limit_by_name_or_cia402_index(self):
+        def entry(name, index):
+            return axis_xti.ET.fromstring('<Entry Name="%s" Index="%s"/>' % (name, index))
+        self.assertTrue(axis_xti.is_limit(entry('Torque limitation', '#x7010')))
+        self.assertTrue(axis_xti.is_limit(entry('Max torque', '#x6072')))
+        self.assertTrue(axis_xti.is_limit(entry('Drehmoment', '#x68e1')))  # channel 2
+        self.assertFalse(axis_xti.is_limit(entry('Output', '#x70e0')))     # digital output
+        self.assertFalse(axis_xti.is_limit(entry('Offset torque', '#x60b2')))
+
+
 class CommandLine(unittest.TestCase):
+    def test_lint_project_folder(self):
+        r = run('lint', os.path.join(PROJ, 'i950_dual_axis'))
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn('WARNING L6 [Axis_M]', r.stdout)
+        self.assertIn('Axis_M  (', r.stdout)   # per-axis lint of inline axes follows
+        r.stdout.encode('ascii')
+
+    def test_lint_clean_project_exit_0(self):
+        r = run('lint', tsproj_in(os.path.join(PROJ, 'geardemo')))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn('no project findings', r.stdout)
+
+    def test_lint_project_json(self):
+        data = json.loads(run('lint', os.path.join(PROJ, 'amr_demo'), '--json').stdout)
+        self.assertEqual(data['axes'], [])
+        pr = data['projects'][0]
+        self.assertEqual([a['name'] for a in pr['axes']], ['WheelLeft', 'WheelRight'])
+        self.assertIn('L5', [f['rule'] for f in pr['findings']])
+
     def test_diff_table(self):
         r = run('diff', HOMING, EXTSEQ, '--table')
         self.assertEqual(r.returncode, 1, r.stderr)

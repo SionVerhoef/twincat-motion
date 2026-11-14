@@ -1,0 +1,16 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.21" ClassName="CDevEtherCATDef" SubType="111">
+	<Device Id="2" DevType="111" DevFlags="#x0003" AmsPort="28674" RemoteName="X103 (EtherCAT)" InfoImageId="6">
+		<Name>__FILENAME__</Name>
+		<Box File="EtherCat  (EK1100).xti" Id="18">
+			<EtherCAT />
+		</Box>
+		<Box File="Gyroscope (EP3751-0260).xti" Id="24">
+			<EtherCAT />
+		</Box>
+		<Box File="Hokuyo Scanner (UAM-05LECA).xti" Id="25">
+			<EtherCAT />
+		</Box>
+		<EtherCAT />
+	</Device>
+</TcSmItem>

@@ -64,6 +64,7 @@ skill does not cover. `--json` gives machine-readable output.
 ```bash
 python3 scripts/axis_xti.py show "_Config/NC/Axes/Axis 1.xti"   # explicit parameters
 python3 scripts/axis_xti.py lint _Config/NC/Axes                 # every axis in a folder
+python3 scripts/axis_xti.py lint MyProject                       # project: NC config + links
 python3 scripts/axis_xti.py diff old.xti new.xti                 # e.g. old from git show
 python3 scripts/axis_xti.py diff old.xti new.xti --table         # as a parameter-change table
 python3 scripts/axis_xti.py diff old.xti new.xti --ai-csv produced.xml changes.csv
@@ -77,6 +78,13 @@ not a full audit. Say so when you report a result. The tool never writes an `.xt
 propose changes as a parameter-change table or an Automation Interface script
 (`references/config-changes.md`). `diff --table` and `diff --ai-csv` produce either from two
 versions of an axis; `--ai-csv` needs the target axis's produced XML.
+
+Given a project folder or `.tsproj`, `lint` also checks the NC configuration and the links
+(`triage.md` step 0 offline): axis files missing or not listed, shared axis Ids, a real
+drive or encoder linked to nothing, no PLC `AXIS_REF`, links to an axis that no longer
+exists, and drive outputs in the PDO assignment that nothing links (sent as 0; a limit is
+a warning). It reads classic NC only, not MC3, and reports a link it cannot resolve
+instead of guessing.
 
 ## Where to read next
 

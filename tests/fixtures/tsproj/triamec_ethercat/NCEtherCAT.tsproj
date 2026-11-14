@@ -1,0 +1,311 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4024.56">
+	<ImageDatas>
+		<ImageData Id="1000">424dd6020000000000003600000028000000100000000e0000000100180000000000a0020000c40e0000c40e00000000000000000000ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ff808080808080808080808080808080ff00ffff00ffff00ffff00ffff00ffff00ffff00ff000000ff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c08080800000ff000000000000000000000000000000000000000000ff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c08080800000ff0000000000000000000000000000000000000000000000ff0000ffff00ffc0c0c0c0c0c0ff0000c0c0c08080800000ff000000000000000000000000000000000000000000ff00ffff00ffff00ffc0c0c0ff0000ff0000ff00008080800000ffff00ffff00ffff00ff000000ff00ffff00ff000000ff00ffff00ffff00ffc0c0c0c0c0c0ff0000c0c0c0808080000000000000000000000000000000ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0ff0000c0c0c0808080000000ff00ffff00ffff00ffff00ffff00ffff00ff000000ff00ffff00ffff00ffc0c0c0c0c0c0ff0000c0c0c0808080000000000000000000000000000000000000000000000000ff00ffff00ffff00ffc0c0c0c0c0c0ff0000c0c0c08080800000000000000000000000000000000000000000000000000000ff0000ffff00ffc0c0c0c0c0c0ff0000c0c0c0808080000000000000000000000000000000000000000000000000ff00ffff00ffff00ffc0c0c0c0c0c0ff0000c0c0c0808080000000ff00ffff00ffff00ff000000ff00ffff00ff000000ff00ffff00ffff00ffc0c0c0c0c0c0ff0000c0c0c0808080000000000000000000000000000000ff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080000000ff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffff00ffc0c0c0c0c0c0c0c0c0c0c0c0808080</ImageData>
+	</ImageDatas>
+	<Project ProjectGUID="{5CC583A5-F253-4D56-9D2B-439724B2A2BC}" Target64Bit="true">
+		<Motion>
+			<NC>
+				<SafTask Priority="4" CycleTime="20000" AmsPort="501" IoAtBegin="true" SafTaskInfo="256">
+					<Name>NC-Task 1 SAF</Name>
+				</SafTask>
+				<SvbTask Priority="8" CycleTime="100000" AmsPort="511">
+					<Name>NC-Task 1 SVB</Name>
+				</SvbTask>
+				<Axis Id="1" CreateSymbols="true" AxisType="1">
+					<Name>Axis 1</Name>
+					<AxisPara>
+						<OtherSettings SwitchToActValuesIfDisabled="true" AllowMotionCmdToSlave="true" />
+					</AxisPara>
+					<Encoder Name="Enc" EncType="19">
+						<EncPara ScaleFactorNumerator="1e-06" MaxCount="#xffffffff" />
+					</Encoder>
+					<Drive Name="Drive" DrvType="16">
+						<DrvPara MaxCount="#xffffffff" DriveControlDWord="#x00020100">
+							<Analog TorqueSetpointScale="10" ScaleFactorActTorque="0.1" />
+							<TimeComp TaskDelayCycles="1" />
+						</DrvPara>
+					</Drive>
+					<Controller Name="Ctrl" CtrType="9">
+						<CtrPara PriorControlFactor="1">
+							<Observer BandWidth="20" />
+						</CtrPara>
+					</Controller>
+				</Axis>
+				<Axis Id="2" CreateSymbols="true" AxisType="1">
+					<Name>Axis 2</Name>
+					<AxisPara>
+						<OtherSettings SwitchToActValuesIfDisabled="true" AllowMotionCmdToSlave="true" />
+					</AxisPara>
+					<Encoder Name="Enc" EncType="19">
+						<EncPara ScaleFactorNumerator="1e-06" MaxCount="#xffffffff" />
+					</Encoder>
+					<Drive Name="Drive" DrvType="16">
+						<DrvPara MaxCount="#xffffffff" DriveControlDWord="#x00020100">
+							<Analog TorqueSetpointScale="10" ScaleFactorActTorque="0.1" />
+							<TimeComp TaskDelayCycles="1" />
+						</DrvPara>
+					</Drive>
+					<Controller Name="Ctrl" CtrType="9">
+						<CtrPara PriorControlFactor="1">
+							<Observer BandWidth="20" />
+						</CtrPara>
+					</Controller>
+				</Axis>
+			</NC>
+		</Motion>
+		<Io>
+			<Device Id="1" DevType="111" DevFlags="#x0003" AmsPort="28673" RemoteName="Device 1 (EtherCAT)" InfoImageId="2">
+				<Name>Device 1 (EtherCAT)</Name>
+				<Box Id="1" BoxType="9099" BoxFlags="#x00000020">
+					<Name>Drive 1 (TSD)</Name>
+					<EtherCAT VendorId="#x0000abba" ProductCode="#x00000171" Type="TSD_minFW4.22" Desc="TSD">
+						<Pdo Name="MainInputs" Index="#x1a06" Flags="#x0490" SyncMan="3">
+							<Entry Name="Status Word" Index="#x6041" Flags="#x00002000">
+								<Type>UINT</Type>
+								<Comment>object 0x6041:0
+- Bit 0: Ready to switch on
+- Bit 1: Switched on
+- Bit 2: Operation enabled
+- Bit 3: Fault
+- Bit 5: Quick stop
+- Bit 6: Switch on disabled
+- Bit 7: Warning
+- Bit 8: Follow me
+- Bit 10: Target reached (PP/PV/HM)
+- Bit 11: Internal limit active
+- Bit 12: Drive follows the command value (cyclic modes of operation), Setpoint acknowledge (PP), Speed (PV), Homing attained (HM)
+- Bit 13: Following error (PP), Homing error (HM)
+- Bit 15: Reference done</Comment>
+							</Entry>
+							<Entry Name="Mode of Operation Display" Index="#x6061" Flags="#x00002000">
+								<Type>SINT</Type>
+								<Comment>object 0x6061:0</Comment>
+							</Entry>
+							<Entry>
+								<Type GUID="{18071995-0000-0000-0000-002000000008}">ARRAY [0..0] OF BYTE</Type>
+							</Entry>
+							<Entry Name="ActualPosition" Index="#x6064" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x6064:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="MainOutputs" Index="#x1606" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="Control Word" Index="#x6040" Flags="#x00002000">
+								<Type>UINT</Type>
+								<Comment>object 0x6040:0
+- Bit 0: Switch on
+- Bit 1: Enable voltage
+- Bit 2: Quick stop
+- Bit 3: Enable operation
+- Bit 4: New setpoint (PP), Start homing (HM) 
+- Bit 5: Change set immediately (PP)
+- Bit 6: Relative target value (PP)
+- Bit 7: Fault reset
+- Bit 8: Halt
+- Bit 9: Change on setpoint (PP)
+- Bit 11: Limit velocity and acceleration (PP)</Comment>
+							</Entry>
+							<Entry Name="Mode of Operation" Index="#x6060" Flags="#x00002000">
+								<Type>SINT</Type>
+								<Comment>object 0x6060:0</Comment>
+							</Entry>
+							<Entry Name="Auxiliary Byte" Index="#x2098" Flags="#x00002000">
+								<Type>USINT</Type>
+								<Comment>object 0x2098:0, mapped to Axes[..]/Commands/General/ExternalInput</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="PositionInputs" Index="#x1a07" Flags="#x0490" SyncMan="3">
+							<Entry Name="PositionError" Index="#x60f4" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x60F4:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="PositionOutputs" Index="#x1607" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="TargetPosition" Index="#x607a" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x607A:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="VelocityInputs" Index="#x1a08" Flags="#x0490" SyncMan="3">
+							<Entry Name="ActualVelocity" Index="#x606c" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x606C:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="VelocityOutputs" Index="#x1608" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="TargetVelocity" Index="#x60ff" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x60FF:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Diagnostic / Digital Inputs" Index="#x1a0a" Flags="#x0490" SyncMan="3">
+							<Entry Name="DigitalInputs" Index="#x229c" Flags="#x00002000">
+								<Type>UINT</Type>
+								<Comment>object 0x229C:0</Comment>
+							</Entry>
+							<Entry Name="MessageId" Index="#x603f" Flags="#x00002000">
+								<Type>UINT</Type>
+								<Comment>object 0x603F:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="MainInputs" Index="#x1a16" Flags="#x0490" SyncMan="3">
+							<Entry Name="Status Word" Index="#x6841" Flags="#x00002000">
+								<Type>UINT</Type>
+								<Comment>object 0x6041:0
+- Bit 0: Ready to switch on
+- Bit 1: Switched on
+- Bit 2: Operation enabled
+- Bit 3: Fault
+- Bit 5: Quick stop
+- Bit 6: Switch on disabled
+- Bit 7: Warning
+- Bit 8: Follow me
+- Bit 10: Target reached (PP/PV/HM)
+- Bit 11: Internal limit active
+- Bit 12: Drive follows the command value (cyclic modes of operation), Setpoint acknowledge (PP), Speed (PV), Homing attained (HM)
+- Bit 13: Following error (PP), Homing error (HM)
+- Bit 15: Reference done</Comment>
+							</Entry>
+							<Entry Name="Mode of Operation Display" Index="#x6861" Flags="#x00002000">
+								<Type>SINT</Type>
+								<Comment>object 0x6061:0</Comment>
+							</Entry>
+							<Entry>
+								<Type GUID="{18071995-0000-0000-0000-002000000008}">ARRAY [0..0] OF BYTE</Type>
+							</Entry>
+							<Entry Name="ActualPosition" Index="#x6864" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x6064:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="MainOutputs" Index="#x1616" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="Control Word" Index="#x6840" Flags="#x00002000">
+								<Type>UINT</Type>
+								<Comment>object 0x6040:0
+- Bit 0: Switch on
+- Bit 1: Enable voltage
+- Bit 2: Quick stop
+- Bit 3: Enable operation
+- Bit 4: New setpoint (PP), Start homing (HM) 
+- Bit 5: Change set immediately (PP)
+- Bit 6: Relative target value (PP)
+- Bit 7: Fault reset
+- Bit 8: Halt
+- Bit 9: Change on setpoint (PP)
+- Bit 11: Limit velocity and acceleration (PP)</Comment>
+							</Entry>
+							<Entry Name="Mode of Operation" Index="#x6860" Flags="#x00002000">
+								<Type>SINT</Type>
+								<Comment>object 0x6060:0</Comment>
+							</Entry>
+							<Entry Name="Auxiliary Byte" Index="#x2898" Flags="#x00002000">
+								<Type>USINT</Type>
+								<Comment>object 0x2098:0, mapped to Axes[..]/Commands/General/ExternalInput</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="PositionInputs" Index="#x1a17" Flags="#x0490" SyncMan="3">
+							<Entry Name="PositionError" Index="#x68f4" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x60F4:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="PositionOutputs" Index="#x1617" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="TargetPosition" Index="#x687a" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x607A:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="VelocityInputs" Index="#x1a18" Flags="#x0490" SyncMan="3">
+							<Entry Name="ActualVelocity" Index="#x686c" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x606C:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="VelocityOutputs" Index="#x1618" InOut="1" Flags="#x0490" SyncMan="2">
+							<Entry Name="TargetVelocity" Index="#x68ff" Flags="#x00002000">
+								<Type>DINT</Type>
+								<Comment>object 0x60FF:0</Comment>
+							</Entry>
+						</Pdo>
+						<Pdo Name="Diagnostic / Digital Inputs" Index="#x1a1a" Flags="#x0490" SyncMan="3">
+							<Entry Name="DigitalInputs" Index="#x2a9c" Flags="#x00002000">
+								<Type>UINT</Type>
+								<Comment>object 0x229C:0</Comment>
+							</Entry>
+							<Entry Name="MessageId" Index="#x683f" Flags="#x00002000">
+								<Type>UINT</Type>
+								<Comment>object 0x603F:0</Comment>
+							</Entry>
+						</Pdo>
+					</EtherCAT>
+				</Box>
+				<EtherCAT />
+			</Device>
+		</Io>
+	</Project>
+	<Mappings>
+		<MappingInfo Identifier="{00000000-0010-0304-3000-040310000403}" Id="#x02030010" />
+		<MappingInfo Identifier="{00000000-0020-0304-3000-040321000403}" Id="#x02030020" />
+		<MappingInfo Identifier="{08502001-0010-0304-0020-500810000403}" Id="#x02030040" Watchdog="00000000000000000000000000000000" />
+		<MappingInfo Identifier="{05000010-2001-0850-3000-040300205008}" Id="#x02030030" Watchdog="14000000040000000400000004000000" />
+		<OwnerA Name="TINC^NC-Task 1 SAF^Axes^Axis 1">
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Drive 1 (TSD)">
+				<Link VarA="Drive^Inputs^In^nDataIn1" VarB="Axis 0^PositionInputs^PositionError" />
+				<Link VarA="Drive^Inputs^In^nDcOutputTime" VarB="InfoData^DcOutputShift" />
+				<Link VarA="Drive^Inputs^In^nState1" VarB="Axis 0^MainInputs^Status Word" />
+				<Link VarA="Drive^Inputs^In^nState2" VarB="Axis 0^MainInputs^Status Word" Size="8" OffsB="8" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^WcState" />
+				<Link VarA="Drive^Inputs^In^nState5" VarB="Axis 0^MainInputs^Mode of Operation Display" />
+				<Link VarA="Drive^Outputs^Out^nCtrl1" VarB="Axis 0^MainOutputs^Control Word" />
+				<Link VarA="Drive^Outputs^Out^nCtrl2" VarB="Axis 0^MainOutputs^Control Word" Size="8" OffsB="8" />
+				<Link VarA="Drive^Outputs^Out^nDataOut1" VarB="Axis 0^PositionOutputs^TargetPosition" />
+				<Link VarA="Drive^Outputs^Out^nDataOut2" VarB="Axis 0^VelocityOutputs^TargetVelocity" />
+				<Link VarA="Enc^Inputs^In^nDataIn1" VarB="Axis 0^MainInputs^ActualPosition" />
+				<Link VarA="Enc^Inputs^In^nDataIn7" VarB="Axis 0^VelocityInputs^ActualVelocity" />
+				<Link VarA="Enc^Inputs^In^nDcInputTime" VarB="InfoData^DcInputShift" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^WcState" />
+			</OwnerB>
+		</OwnerA>
+		<OwnerA Name="TINC^NC-Task 1 SAF^Axes^Axis 2">
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Drive 1 (TSD)">
+				<Link VarA="Drive^Inputs^In^nDataIn1" VarB="Axis 1^PositionInputs^PositionError" />
+				<Link VarA="Drive^Inputs^In^nDcOutputTime" VarB="InfoData^DcOutputShift" />
+				<Link VarA="Drive^Inputs^In^nState1" VarB="Axis 1^MainInputs^Status Word" />
+				<Link VarA="Drive^Inputs^In^nState2" VarB="Axis 1^MainInputs^Status Word" Size="8" OffsB="8" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Drive^Inputs^In^nState4" VarB="WcState^WcState" />
+				<Link VarA="Drive^Inputs^In^nState5" VarB="Axis 1^MainInputs^Mode of Operation Display" />
+				<Link VarA="Drive^Outputs^Out^nCtrl1" VarB="Axis 1^MainOutputs^Control Word" />
+				<Link VarA="Drive^Outputs^Out^nCtrl2" VarB="Axis 1^MainOutputs^Control Word" Size="8" OffsB="8" />
+				<Link VarA="Drive^Outputs^Out^nDataOut1" VarB="Axis 1^PositionOutputs^TargetPosition" />
+				<Link VarA="Drive^Outputs^Out^nDataOut2" VarB="Axis 1^VelocityOutputs^TargetVelocity" />
+				<Link VarA="Enc^Inputs^In^nDataIn1" VarB="Axis 1^MainInputs^ActualPosition" />
+				<Link VarA="Enc^Inputs^In^nDataIn7" VarB="Axis 1^VelocityInputs^ActualVelocity" />
+				<Link VarA="Enc^Inputs^In^nDcInputTime" VarB="InfoData^DcInputShift" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^InputToggle" Size="1" OffsA="1" />
+				<Link VarA="Enc^Inputs^In^nState4" VarB="WcState^WcState" />
+			</OwnerB>
+		</OwnerA>
+		<OwnerA Name="TIPC^PLC^PLC Instance">
+			<OwnerB Name="TIID^Device 1 (EtherCAT)^Drive 1 (TSD)">
+				<Link VarA="PlcTask Inputs^MAIN.Axis[0].drvHoming.modeOfOperationDisplay" VarB="Axis 0^MainInputs^Mode of Operation Display" />
+				<Link VarA="PlcTask Inputs^MAIN.Axis[0].drvHoming.statusWord" VarB="Axis 0^MainInputs^Status Word" />
+				<Link VarA="PlcTask Inputs^MAIN.Axis[1].drvHoming.modeOfOperationDisplay" VarB="Axis 1^MainInputs^Mode of Operation Display" />
+				<Link VarA="PlcTask Inputs^MAIN.Axis[1].drvHoming.statusWord" VarB="Axis 1^MainInputs^Status Word" />
+				<Link VarA="PlcTask Outputs^MAIN.Axis[0].drvHoming.modeOfOperation" VarB="Axis 0^MainOutputs^Mode of Operation" />
+				<Link VarA="PlcTask Outputs^MAIN.Axis[1].drvHoming.modeOfOperation" VarB="Axis 1^MainOutputs^Mode of Operation" />
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 1">
+				<Link VarA="PlcTask Inputs^MAIN.Axis[0].ncRef.NcToPlc" VarB="Outputs^ToPlc" />
+				<Link VarA="PlcTask Outputs^MAIN.Axis[0].ncRef.PlcToNc" VarB="Inputs^FromPlc" />
+			</OwnerB>
+			<OwnerB Name="TINC^NC-Task 1 SAF^Axes^Axis 2">
+				<Link VarA="PlcTask Inputs^MAIN.Axis[1].ncRef.NcToPlc" VarB="Outputs^ToPlc" />
+				<Link VarA="PlcTask Outputs^MAIN.Axis[1].ncRef.PlcToNc" VarB="Inputs^FromPlc" />
+			</OwnerB>
+		</OwnerA>
+	</Mappings>
+</TcSmProject>

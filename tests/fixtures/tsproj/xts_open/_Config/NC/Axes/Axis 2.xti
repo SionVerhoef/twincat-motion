@@ -1,0 +1,21 @@
+<?xml version='1.0' encoding='utf-8'?>
+<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.27" ClassName="CNcAxisDef" SubType="1">
+	<Axis Id="3" CreateSymbols="true" AxisType="1">
+		<Name>__FILENAME__</Name>
+		<AxisPara>
+			<OtherSettings AllowMotionCmdToSlave="true" />
+		</AxisPara>
+		<Encoder Name="Enc" EncType="1">
+			</Encoder>
+		<Drive Name="Drive" DrvType="5">
+			<DrvPara>
+				<Analog TorqueSetpointScale="10" ScaleFactorActTorque="0.1" />
+			</DrvPara>
+		</Drive>
+		<Controller Name="Ctrl" CtrType="1">
+			<CtrPara PriorControlFactor="1">
+				<Observer BandWidth="20" />
+			</CtrPara>
+		</Controller>
+	</Axis>
+</TcSmItem>
