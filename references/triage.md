@@ -11,7 +11,8 @@ or 4.
   `out-of-scope.md`.
 - **The drive and its interface.** Simulated axis, AX5000 (SoE), AX8000 (CoE, CiA 402
   objects), EL72x1/EL70x7 terminal, or a third-party CoE drive. For a CoE drive: does it run
-  in position mode (CSP) or velocity mode (CSV)?
+  in position mode (CSP) or velocity mode (CSV)? For an EL70x7: which mode it is in, and
+  whether the NC or the terminal's own positioning interface runs it (`axis-parameters.md`).
 - **The `MC_Power` outputs**: `Status`, `Error`, `ErrorID`. And the move block's outputs.
 - **The axis status**, from `MC_ReadStatus` or `Axis.ReadStatus()` called this cycle, or
   from the axis's Online tab in XAE. A status that nobody refreshes is stale.

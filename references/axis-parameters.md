@@ -84,6 +84,40 @@ Sources: Beckhoff InfoSys, AX8xxx object dictionary v1.7.0 (`ax8xxx_objects`), p
 18797721227, 18797826827, 18797962251, 18797964299, read 2026-11-08. Drive-side details
 (modes, quick stop, statusword bits, PDO modules) are in **cia402-motion**'s Beckhoff notes.
 
+## Beckhoff EL70x7 stepper terminals on the NC
+
+An EL70x7 drives a stepper motor straight from the terminal. Four things decide how it behaves
+under an NC axis:
+
+- **The mode follows the process data.** Operation mode 0x8012:01 defaults to *Automatic*:
+  the terminal picks *velocity direct* or *position controller* from the predefined PDO
+  assignment, and picks again whenever that assignment changes. So editing the terminal's
+  process data can silently switch the mode, and with it who closes the position loop (first
+  question above). After any process-data change, check which mode is now active. Set
+  0x8012:01 explicitly if you want the mode pinned.
+- **Velocity scaling.** In velocity mode, the output value ±32767 means ±100 % of the speed
+  range in 0x8012:05 (default 2000 full steps per second). The NC reference velocity must be
+  that speed range converted to axis units, or the feed-forward is off and the lag grows with
+  speed (*Reference velocity* below). For example, with a 200-step motor on a 5 mm lead
+  screw, 2000 full steps/s is 10 rev/s, so the reference velocity is 50 mm/s. If someone
+  changes 0x8012:05, re-check the NC value.
+- **Positioning interface: an alternative to the NC, not a way to use it.** The terminal can
+  also run moves itself through its positioning interface (objects 0x7020 / 0x6020), with
+  its own homing (a "calibration" against a cam it polls). That is a separate way to run the
+  motor with its own PLC code, not something under an NC axis. Find out which way the
+  machine uses before debugging an axis that "won't move".
+- **Lost steps are not an NC error.** The terminal reports a stall in a status bit. It
+  becomes a terminal error only when 0x8012:0A enables that. Unless an encoder is fitted and
+  used as the NC encoder, the NC counts the steps it commanded, so lost steps do not show
+  up as position lag either.
+
+When the NC axis is linked to the terminal, XAE offers the drive type *CANopen DS402 or
+EtherCAT CoE* for it.
+
+Sources: Beckhoff InfoSys, EL70x7 documentation v2.3.0 (2026-07-09), pages 1305123211,
+11698650507, 11686582923, 1305115659, read 2026-11-08. Not tested on hardware. The example
+numbers are illustrative.
+
 ## Scaling
 
 The **encoder scaling factor** turns encoder increments into axis units: units per increment.
