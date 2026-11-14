@@ -9,6 +9,7 @@ names, local paths, serial numbers or licence keys.
 | | |
 |---|---|
 | Date | |
+| `twincat-motion` commit tested (`git rev-parse --short HEAD`) | |
 | TwinCAT build: XAE (Help > About), and runtime read on the runtime PC (for example the TwinCAT system-tray menu > About TwinCAT); write "not read" if you could not | |
 | `Tc2_MC2` version | |
 | `Tc2_MC2_Camming` version, licence | |
@@ -35,8 +36,9 @@ XAE shows them, values with units, and what `nc_error.py` said for each code.
 | A6 | Flying saw library and product number | | |
 | A7 | NC retain settings: menu path and option names | | |
 | B1 | Templates compile | | |
-| B2 | `PRG_FieldTest` compiles | | |
+| B2 | `PRG_FieldTest` and `PRG_FieldTestSeq` compile | | |
 | B3 | Example program copy, links, activation | | |
+| B4 | Project lint (`axis_xti.py lint <project>`) | | |
 | C0 | Runtime parameter values | | |
 | C1 | `MC_Power` with only `Enable` | | |
 | C2 | `MC_Stop` lock and release | | |
@@ -58,11 +60,15 @@ XAE shows them, values with units, and what `nc_error.py` said for each code.
 | E6 | Phasing on CamIn / GearIn / GearInDyn | | |
 | E7 | Move on a slave, commands not allowed | | |
 | F1 | 0x4002 on the first start | | |
-| G1 | Unlinked torque limit | | |
+| G1 | Unlinked torque limit; lint L6 before activation | | |
 
 ## Compile fixes
 
 One unified diff per template or test-program fix (B1, B2).
+
+## Sequencer log
+
+`fbLog.aLog` per section, as copied (C, D, E). Note which checks ran by hand instead.
 
 ## Problems with the protocol
 

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Field test: `evals/field-test/PRG_FieldTestSeq.st` runs sections C to E as step chains,
+  with a per-step timeout and operator WAIT steps. It logs results, codes in hex and FB-flag
+  changes as a 32-bit mask. Not built yet. `PRG_FieldTest`'s commands are now `VAR_INPUT`
+  so it can write them; B3 patches `PRG_AxisExample` the same way. New check B4 runs
+  project `lint` on the test project, and G1 expects L6 for the unlinked torque limit. The
+  results template records the commit tested.
 - `axis_xti.py lint` on a project folder or `.tsproj` checks the project, not only axis
   files: NC configuration inline or in `NC.xti`, axes inline or in files, links wherever
   they are stored. Rules P1-P3 (axis file missing or unlisted, shared Id) and L1-L8 (drive,
