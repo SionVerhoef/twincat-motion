@@ -9,17 +9,5 @@
 		<Box File="Motion 2 (ELM7231-9018).xti" Id="20">
 			<EtherCAT />
 		</Box>
-		<Box File="IO Link (EL6224-0090).xti" Id="21">
-			<EtherCAT />
-		</Box>
-		<Box File="Safety PLC (EL2911).xti" Id="22">
-			<EtherCAT />
-		</Box>
-		<Box File="CAN Open (EL6751).xti" Id="23">
-			<EtherCAT />
-		</Box>
-		<Box File="Term 17 (EL9011).xti" Id="26">
-			<EtherCAT />
-		</Box>
 	</Box>
 </TcSmItem>

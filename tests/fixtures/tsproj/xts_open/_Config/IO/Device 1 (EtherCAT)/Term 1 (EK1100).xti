@@ -3,19 +3,7 @@
 	<Box Id="1" BoxType="9099">
 		<Name>__FILENAME__</Name>
 		<EtherCAT VendorId="#x00000002" ProductCode="#x044c2c52" Type="EK1100 EtherCAT Coupler (2A E-Bus)" Desc="EK1100" />
-		<Box File="Term 2 (EL9227-5500).xti" Id="2">
-			<EtherCAT />
-		</Box>
-		<Box File="Term 3 (EL1004).xti" Id="3">
-			<EtherCAT />
-		</Box>
-		<Box File="Term 4 (EL2004).xti" Id="4">
-			<EtherCAT />
-		</Box>
 		<Box File="Term 5 (EL7211-0010).xti" Id="5">
-			<EtherCAT />
-		</Box>
-		<Box File="Term 6 (EL9011).xti" Id="6">
 			<EtherCAT />
 		</Box>
 	</Box>

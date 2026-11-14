@@ -5,12 +5,6 @@
 		<Box File="EtherCat  (EK1100).xti" Id="18">
 			<EtherCAT />
 		</Box>
-		<Box File="Gyroscope (EP3751-0260).xti" Id="24">
-			<EtherCAT />
-		</Box>
-		<Box File="Hokuyo Scanner (UAM-05LECA).xti" Id="25">
-			<EtherCAT />
-		</Box>
 		<EtherCAT />
 	</Device>
 </TcSmItem>

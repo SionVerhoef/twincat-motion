@@ -23,13 +23,13 @@ never added or changed:
 - Everywhere: removed `DataTypes`, and under the NC the `Vars` and `Image` process-image
   layouts. Removed the `AmsNetId` and `BIC` (serial number) attributes.
 - I/O devices and boxes: kept `Name`, child boxes and `EtherCAT/Pdo` (with entries);
-  removed address information, slave settings and init commands. In `amr_demo` and
-  `xts_open` the PDOs of boxes no axis is linked to were removed as well.
+  removed address information, slave settings and init commands.
 - Other `_Config` files: kept only `Mappings` and `UnrestoredVarLinks`; files with neither
   were dropped (PLC sources and TcCOM settings are not here).
-- `amr_demo`: the files of `Device 2 (EtherCAT)`, which the project does not reference,
-  were dropped. `xts_open`: the mover axis's embedded TcCOM `Module` and
-  `_Config/NC/Channels` were dropped.
+- `amr_demo` and `xts_open`: only the I/O path to the drives an axis is linked to is kept
+  (device, coupler, drive files); every other box, its file, the references to it and the
+  links to it were removed, and so were PDOs not assigned to a sync manager. `xts_open`
+  also lost the mover axis's embedded TcCOM `Module` and `_Config/NC/Channels`.
 
 ## What each one is for
 
