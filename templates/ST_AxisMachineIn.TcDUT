@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
+  <DUT Name="ST_AxisMachineIn" Id="{cca400b6-52cd-41f7-81e9-299b5b464d1e}">
+    <Declaration><![CDATA[// What the machine tells FB_Axis that the NC does not know: its limit
+// switches and, when homing keeps its own record, whether it is homed.
+TYPE ST_AxisMachineIn :
+STRUCT
+    // limit switches, NC contacts: TRUE = not at the limit. They go to
+    // MC_Power's feed enables; an open one stops that direction only.
+    bLimitPosOk : BOOL := TRUE;
+    bLimitNegOk : BOOL := TRUE;
+    // homed by the caller's own record (FB_HomePlc.bHomed with
+    // bMarkNcHomed FALSE). Leave FALSE when the NC's Homed is the record.
+    bHomedOwn   : BOOL;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

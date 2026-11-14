@@ -24,6 +24,12 @@
       until something replaces it, and Tc2_MC2 ends it with CommandAborted
       when the override changes while the axis keeps moving. To know
       whether the axis moves, read Axis.Status.Moving / NotMoving.
+    - MoveAbsolute is refused until the axis is homed: Axis.Status.Homed,
+      or stMachine.bHomedOwn when the homed record is the caller's own
+      (FB_HomePlc with bMarkNcHomed FALSE). One record per axis, not both.
+    - stMachine.bLimitPosOk / bLimitNegOk go to MC_Power's feed enables,
+      where hardware limit switches (NC contacts, TRUE = not at the
+      limit) are wired. An open one stops that direction only.
     - The hardware enable of the drive is not MC_Power's; see the
       triage reference. No part of this block is a safety function.
 
@@ -44,6 +50,7 @@
 VAR_INPUT
     bPowerOn  : BOOL;              // MC_Power software enable, both ways
     fOverride : LREAL := 100.0;    // velocity override, percent, 0..100
+    stMachine : ST_AxisMachineIn;  // limit switches, own homed record
 END_VAR
 VAR_IN_OUT
     Axis      : AXIS_REF;          // the NC axis, linked in the I/O tree
@@ -116,8 +123,8 @@ END_IF
 // 3. Every block, every cycle, unconditionally. Only Execute changes.
 fbPower(Axis := Axis,
         Enable := bPowerOn,
-        Enable_Positive := bPowerOn,
-        Enable_Negative := bPowerOn,
+        Enable_Positive := bPowerOn AND stMachine.bLimitPosOk,
+        Enable_Negative := bPowerOn AND stMachine.bLimitNegOk,
         Override := fOverride);
 fbReset(Axis := Axis, Execute := bExecReset);
 fbHalt(Axis := Axis, Execute := bExecHalt,
@@ -222,9 +229,10 @@ END_VAR
 // A velocity <= 0 is refused here: the block would reject it with an
 // error while the previous move keeps running. Other bad values are
 // reported by the block as an error.
-// An absolute target needs a homed axis: check that before calling.
+// An absolute target needs a homed axis: refused until it is.
 MoveAbsolute := bReady AND (ePending <> E_AxisCmd.Halt)
-                AND (fVelocity > 0.0);
+                AND (fVelocity > 0.0)
+                AND (Axis.Status.Homed OR stMachine.bHomedOwn);
 IF MoveAbsolute THEN
     fReqValue := fPosition;
     fReqVelo  := fVelocity;

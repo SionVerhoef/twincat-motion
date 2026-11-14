@@ -53,3 +53,10 @@ other pages.
 **Also not covered:** Motion Designer sizing (TE5910), drive tuning inside the drive
 (Drive Manager 2, TE5960 autotuning; this skill only says *that* a CSP axis is tuned there),
 and safety functions (`boundaries.md`).
+
+**CODESYS SoftMotion (SM3) axes** are not TwinCAT NC, and no sibling skill covers them. Say
+so; the CiA 402 drive under such an axis is cia402-motion's.
+
+**Servo loop tuning** as a procedure is covered by no skill. twincat-scope diagnoses a tuning
+problem from a recording; this skill covers only the NC's own Kv on a velocity-interface axis
+(`axis-parameters.md`).

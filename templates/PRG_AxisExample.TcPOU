@@ -28,6 +28,9 @@ VAR
                       tStepTimeout := T#60S);
     stHomeNc    : ST_HomeNcParams := (fDeceleration := 100.0);
     bRefSwitch AT %I* : BOOL;     // reference switch or cam, link it
+    bLimitPos AT %I* : BOOL;      // limit switches, NC contacts (TRUE =
+    bLimitNeg AT %I* : BOOL;      // not at the limit), link them
+    stMachine   : ST_AxisMachineIn;
 
     bPowerOn    : BOOL;           // placeholder commands: HMI, sequence
     bHomeCmd    : BOOL;           // hold TRUE until done or error
@@ -53,7 +56,12 @@ END_VAR
 ]]></Declaration>
     <Implementation>
       <ST><![CDATA[// 1. The wrapper first: it refreshes Axis1.Status for all code below.
-fbAxis(Axis := Axis1, bPowerOn := bPowerOn);
+//    bHomedOwn is FB_HomePlc's record (bMarkNcHomed FALSE above), one
+//    scan late because fbHomePlc runs after; that only delays a move.
+stMachine.bLimitPosOk := bLimitPos;
+stMachine.bLimitNegOk := bLimitNeg;
+stMachine.bHomedOwn   := fbHomePlc.bHomed;
+fbAxis(Axis := Axis1, bPowerOn := bPowerOn, stMachine := stMachine);
 
 // 2. Homing. Both blocks are called every scan; only one gets the
 //    command. Nothing else may command the axis while one is busy.

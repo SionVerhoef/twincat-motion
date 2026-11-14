@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `FB_Axis`: a `stMachine` input (`ST_AxisMachineIn`): its limit switches (default TRUE) feed
+  `MC_Power`'s feed enables, and `MoveAbsolute` is refused until the axis is homed
+  (`Axis.Status.Homed`, or `bHomedOwn` for `FB_HomePlc`'s own record). Not yet run.
+- `out-of-scope.md`: CODESYS SoftMotion axes and the servo tuning procedure are covered by no
+  skill.
 - `axis_xti.py lint` on a project folder or `.tsproj` checks the project, not only axis
   files: NC configuration inline or in `NC.xti`, axes inline or in files, links wherever
   they are stored. Rules P1-P3 (axis file missing or unlisted, shared Id) and L1-L8 (drive,

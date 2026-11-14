@@ -235,7 +235,7 @@ controller.
   "works" on a test PC proves nothing; test it on the target controller.
 - When retain data is missing and the NC starts, absolute axes are not homed. The application must
   check `ST_AxisStatus.Homed` at start-up and refuse absolute moves until the axis is
-  referenced again.
+  referenced again. `FB_Axis.MoveAbsolute` does that (`templates/README.md`).
 
 Encoder reference system (incremental or absolute, and its overflow handling) is an encoder
 parameter; read it with `axis_xti.py show`.
