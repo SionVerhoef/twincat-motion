@@ -52,6 +52,7 @@ XAE shows them, values with units, and what `nc_error.py` said for each code.
 | D2 | `FB_HomePlc` runs 1–4 | | |
 | D3 | `FB_Axis` moves 1–5 | | |
 | D4 | `FB_HomeNc` runs 1–2 | | |
+| D5 | `FB_Axis` limits (code when a direction enable drops mid-move) and homed gate | | |
 | E1 | Move on a slave, commands allowed | | |
 | E2 | Decoupling a moving slave | | |
 | E3 | `MC_Halt` 0 on a decoupled slave | | |

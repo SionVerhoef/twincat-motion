@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Field test: new check D5 for `FB_Axis`'s limit switches and homed gate, also recording
+  which code a direction enable dropping mid-move gives. B3 keeps `stMachine` in the test
+  copy and adds an ungated move; the sequencer runs D5.
 - `FB_Axis`: a `stMachine` input (`ST_AxisMachineIn`): its limit switches (default TRUE) feed
   `MC_Power`'s feed enables, and `MoveAbsolute` is refused until the axis is homed
   (`Axis.Status.Homed`, or `bHomedOwn` for `FB_HomePlc`'s own record). Not yet run.
