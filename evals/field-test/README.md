@@ -33,7 +33,8 @@ diff (B1).
 - **Simulated axes only**, except section G. Even there the operator decides and runs every
   step, at reduced limits, within reach of the stop. Never bridge, force or simulate STO, an
   enable circuit or a limit switch, not even for a test.
-- **Results go in `research/field-test-results.md`**: copy `results-template.md` there.
+- **Results go in `research/field-test-results.md`**: copy `results-template.md` there,
+  and fill in the commit of this repository you tested (`git rev-parse --short HEAD`).
   `research/` is gitignored. Do not commit, push, or open issues from this session; the
   operator carries the file back to the maintainer.
 - **Keep identities out of the results**, as `CLAUDE.md` asks: no AMS NetIDs, IP or MAC
@@ -172,29 +173,71 @@ a block's `Execute` from inside a method of `FB_Axis`, the `16#0001_0001` litera
 `DEFAULT_HOME_POSITION` as a default value in `ST_HomeNcParams`. For each fix you needed,
 record a unified diff against the template.
 
-**B2. The test program compiles.**
-Do: create `PRG_FieldTest` from `PRG_FieldTest.st` as its header says. Build. It was written
-against `Tc2_MC2_Camming` 3.4.0, whose `MC_CamTableSelect` takes `Master` and `Slave` as
-`VAR_IN_OUT`; on a library version without them, remove those two inputs from the call.
+**B2. The test programs compile.**
+Do: create `PRG_FieldTest` from `PRG_FieldTest.st`, and `FB_FieldTestLog` and
+`PRG_FieldTestSeq` from `PRG_FieldTestSeq.st`, as their headers say. Build after B3 (the
+sequencer writes the patched `PRG_AxisExample`). `PRG_FieldTest` was written against
+`Tc2_MC2_Camming` 3.4.0, whose `MC_CamTableSelect` takes `Master` and `Slave` as
+`VAR_IN_OUT`; on a library version without them, remove those two inputs from the call. The
+sequencer has not been built yet: expect to fix a few compile errors.
 Record: errors and the fixes, as in B1.
 
 **B3. A test copy of the example program.**
-`PRG_AxisExample` reads a real reference switch. Simulate one in the project's copy:
-1. Change `bRefSwitch AT %I* : BOOL;` to `bRefSwitch : BOOL;` and add
-   `fSwitchPos : LREAL := -50.0;` to its `VAR` block.
-2. Add as the first line of its code: `bRefSwitch := Axis1.NcToPlc.ActPos <= fSwitchPos;`
+`PRG_AxisExample` reads a real reference switch, and the sequencer must be able to write its
+commands. Patch the project's copy, not `templates/`:
+1. Move into a new `VAR_INPUT` block, unchanged: `bPowerOn`, `bHomeCmd`, `bMoveCmd`,
+   `bHaltCmd`, `bResetCmd`, `fTarget`, `stHomePlc` and `stHomeNc`. Move `cUseNcHoming`
+   there too, out of `VAR CONSTANT`, so it can change online. Another POU can write only a
+   PROGRAM's inputs: otherwise "... is no input of PRG_AxisExample".
+2. Change `bRefSwitch AT %I* : BOOL;` to `bRefSwitch : BOOL;` and add to the `VAR_INPUT`
+   block `fSwitchPos : LREAL := -50.0; bCamNc : BOOL; fOverrideCmd : LREAL := 100.0;`.
+3. Add as the first line of its code: `bRefSwitch := Axis1.NcToPlc.ActPos <= fSwitchPos;`
    The "switch" is then active below -50 and moves with the coordinates when homing sets a
    new position. That is fine for `FB_HomePlc` (D2), **not** for NC homing (C5, D4): during
    `MC_DefaultHoming` the NC sets the position to -1.0E10, so this switch goes TRUE in the
-   first cycle of the search. D4 uses its own cam BOOL.
-3. Add a velocity command for D3, in the declarations
-   `bVeloCmd : BOOL; fVeloCmd : LREAL := 50.0; fbVeloTrig : R_TRIG;` and after the other
-   commands:
+   first cycle of the search. So feed `fbHomeNc` from its own BOOL: change its
+   `bCalibrationCam := bRefSwitch` to `bCalibrationCam := bCamNc`.
+4. Override for D3: change the first call to
+   `fbAxis(Axis := Axis1, bPowerOn := bPowerOn, fOverride := fOverrideCmd);`
+5. Add a velocity command for D3: `bVeloCmd : BOOL; fVeloCmd : LREAL := 50.0;` in the
+   `VAR_INPUT` block, `fbVeloTrig : R_TRIG;` in `VAR`, and after the other commands:
    `fbVeloTrig(CLK := bVeloCmd); IF fbVeloTrig.Q THEN bAccepted := fbAxis.MoveVelocity(fVelocity := fVeloCmd, eDirection := MC_Direction.MC_Positive_Direction); END_IF`
-4. Call `PRG_FieldTest` and `PRG_AxisExample` from `MAIN`. Link Axis 1 and Axis 2 to
-   `PRG_FieldTest.Axis1` and `Axis2`, and Axis 3 to `PRG_AxisExample.Axis1`.
-5. Activate the configuration, log in, start the PLC.
+6. Call from `MAIN`, in this order: `PRG_FieldTestSeq(); PRG_FieldTest(); PRG_AxisExample();`
+   Link Axis 1 and Axis 2 to `PRG_FieldTest.Axis1` and `Axis2`, and Axis 3 to
+   `PRG_AxisExample.Axis1`. Leave Axis 4 unlinked.
+7. Activate the configuration, log in, start the PLC.
 Record: anything that did not work as described.
+
+**B4. Project lint.**
+Claim: `SKILL.md`, Tools: given a project folder, `axis_xti.py lint` checks the NC
+configuration and the links (rules P1–P3, L1–L8), then every axis.
+Do: after B3, *Save All*, then `py -3 scripts\axis_xti.py lint <project folder>` (the folder
+that holds the `.tsproj`).
+Record: every finding with its rule ID, and whether it is true. Expected: L3 for Axis 4
+(linked to no PLC `AXIS_REF`), and no P or L finding for Axes 1–3. If the tool reads
+nothing, or misreads the project's layout, that is a finding: record the message.
+
+### Running C, D and E from the sequencer
+
+`PRG_FieldTestSeq` runs the checks C1 to C8, D1 to D4 and E1 to E7 as written below, and
+logs what each **Record** asks for. C0, the PLC cycle time and `fbHomePlc.eState` in D2 stay
+with the online view. Write `PRG_FieldTestSeq.sRun := 'C3'` for one check, or `'C'` for the
+whole section (also `'D'`, `'E'`). Each check first settles its section: default
+parameters, axes enabled and reset, the slave decoupled, everything stopped, results cleared.
+A line `WAIT ...` in the log is for the operator (start Scope in C5, change Axis 2's slave
+setting in E1 and E7): do it, then write `bContinue := TRUE`. If an activation restarts the
+PLC, run the check again. A step that waits too long logs `TIMEOUT`, halts the axes and
+stops; `bAbort := TRUE` does the same. D2 homes the axis once more after its timeout run, so
+D3 can follow.
+
+After each section, copy `fbLog.aLog[1..fbLog.nLines]` into the results (*Sequencer log*),
+then `bClearLog := TRUE`. Lines are `<ms> <check> <text> [value]`. Codes are in hex. `M`
+lines hold the section's FB flags as a 32-bit mask and the bits that changed; the legend is
+in the file's header. The log replaces watching the online view; it does not replace Scope
+where a check asks for it (C5, C7). Moves in C1, C7 and C8 are relative to where the axis
+stands, not the absolute targets below. E3 runs the master at 500 mm/s, like C3.
+
+By hand instead: the steps below, with the online view.
 
 ## C. One simulated axis (Axis 1, `PRG_FieldTest`)
 
@@ -328,17 +371,16 @@ Claim: `templates/README.md`, design choices.
 3. Pulse `bHaltCmd` during a move. Expect a stop, `bDone`, no error.
 4. Pulse `bVeloCmd` (from B3); while it runs set `fVeloCmd := 100` and pulse again. Expect
    the new speed, no error. Then pulse `bHaltCmd`.
-5. With a velocity move running, write `fbAxis.fOverride := 50`. Record `bBusy`, `bDone`,
+5. With a velocity move running, write `fOverrideCmd := 50` (B3). Record `bBusy`, `bDone`,
    `bCommandAborted`, `bError`.
 Record: each step's outputs, and any refusal (`bAccepted` FALSE).
 
 **D4. `FB_HomeNc`.**
 Claim: `references/homing.md` option 2; `templates/README.md`: the timeout path relies on
 `MC_Halt` stopping `MC_Home`.
-Do: set `cUseNcHoming := TRUE` (a constant: change it and download), `stHomeNc.tTimeout :=
-T#10S`. Feed `FB_HomeNc`'s `bCalibrationCam` from a hand-written BOOL (for example a new
-`bCamNc : BOOL` written online), **not** from the `ActPos` switch of B3 (see there).
-1. Cam BOOL held FALSE, `stHomeNc.bNoCam := FALSE`: run homing. The cam never arrives, so it
+Do: set `cUseNcHoming := TRUE` (an input after B3), `stHomeNc.tTimeout := T#10S`.
+`FB_HomeNc`'s cam is `bCamNc` (B3), **not** the `ActPos` switch (see there).
+1. `bCamNc` held FALSE, `stHomeNc.bNoCam := FALSE`: run homing. The cam never arrives, so it
    must time out: expect `bError`, `nErrorID` 16#0001_0202, and the axis halted.
 2. `stHomeNc.bNoCam := TRUE`: run again. Expect the faked cam to start the sequence at
    `HomingState` 3; on a simulated encoder it then completes.
@@ -440,15 +482,19 @@ reach, and the operator's agreement to every step. Velocity, acceleration and to
 Claim: `references/triage.md` step 0: an output that is mapped but not linked is sent as 0.
 With a torque limit, the axis enables and `MC_Power.Status` is TRUE, but the motor gives no
 torque, and the position lag grows until 0x4550 or 0x435D.
-Do: map the drive's torque-limit object into its outputs and leave it unlinked. Activate,
-enable, command a short slow move.
-Record: drive type (product name only), `MC_Power.Status`, whether the motor moved, the NC
-code and the drive's own error. Then remove the mapping and activate again.
+Do: map the drive's torque-limit object into its outputs and leave it unlinked. *Save All*
+and run `py -3 scripts\axis_xti.py lint <project folder>` before activating: it should
+report the unlinked limit as L6 on that axis (B4). Then activate, enable, command a short
+slow move.
+Record: drive type (product name only), the lint finding (rule ID and the object it names,
+or none), `MC_Power.Status`, whether the motor moved, the NC code and the drive's own error.
+Then remove the mapping and activate again.
 
 ## H. Wrap up
 
 1. Fill every row of the results file, including `NOT RUN` rows with their reason.
-2. Put the compile fixes from B1 and B2 in it as diffs.
+2. Put the compile fixes from B1 and B2 in it as diffs, and the sequencer logs under
+   *Sequencer log*.
 3. Add anything in this protocol that was wrong or unclear: menu names, steps that didn't
    work, missing checks. That improves the next run.
 4. Read the file once more for identities (Rules). Then hand it to the operator. Leave the

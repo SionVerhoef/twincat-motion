@@ -7,7 +7,8 @@
 // 3. Libraries: Tc2_MC2. Sections E5 and E6 also need Tc2_MC2_Camming (TF5050; a 7-day
 //    trial licence is enough). Without it, delete every line that ends in // CAM.
 // 4. Link Axis1 and Axis2 to two simulated NC axes (NC axis > Settings > Link To PLC).
-// 5. Drive it from the online view: write TRUE to a b... command, read the results.
+// 5. Drive it from the online view: write TRUE to a b... command, read the results;
+//    or run sections C to E from PRG_FieldTestSeq.st, which writes these inputs.
 //    Every Execute is a plain BOOL: write FALSE again before the next TRUE, or there is
 //    no rising edge. Results latch until you write bClear := TRUE.
 //
@@ -16,10 +17,9 @@
 
 // ==== DECLARATION ====
 PROGRAM PRG_FieldTest
-VAR
-    Axis1            : AXIS_REF;   // simulated axis; master in section E
-    Axis2            : AXIS_REF;   // simulated axis; slave in section E
-
+// Commands and parameters are VAR_INPUT so PRG_FieldTestSeq can write them: a PROGRAM's
+// plain VAR cannot be written from another POU ("... is no input of PRG_FieldTest").
+VAR_INPUT
     // --- power and reset
     bEnable1         : BOOL;
     bEnPos1          : BOOL := TRUE;
@@ -30,10 +30,6 @@ VAR
     bEnNeg2          : BOOL := TRUE;
     bReset1          : BOOL;
     bReset2          : BOOL;
-    fbPower1         : MC_Power;
-    fbPower2         : MC_Power;
-    fbReset1         : MC_Reset;
-    fbReset2         : MC_Reset;
 
     // --- moves and stops on Axis1 (units of the axis, e.g. mm, mm/s, mm/s^2)
     fVelo            : LREAL := 100.0;
@@ -41,57 +37,67 @@ VAR
     fDec             : LREAL := 500.0;
     bMoveA           : BOOL;
     fPosA            : LREAL := 1000.0;
-    fbMoveA          : MC_MoveAbsolute;
     bMoveB           : BOOL;
     fPosB            : LREAL := 400.0;
-    fbMoveB          : MC_MoveAbsolute;
     bMoveVelo        : BOOL;
-    fbMoveVelo       : MC_MoveVelocity;
     bHalt1           : BOOL;
     fHaltDec1        : LREAL;            // 0 on purpose: test C3
-    fbHalt1          : MC_Halt;
     bStop1           : BOOL;
     fStopDec1        : LREAL := 500.0;
-    fbStop1          : MC_Stop;
     bSetPos1         : BOOL;
     fSetPos1         : LREAL;
     bSetPosRelative1 : BOOL;             // MC_SetPosition.Mode: TRUE relative
-    fbSetPos1        : MC_SetPosition;
     bHome1           : BOOL;
     eHomeMode1       : MC_HomingMode := MC_HomingMode.MC_Direct;
     fHomePos1        : LREAL;
     bCam1            : BOOL;             // bCalibrationCam for MC_DefaultHoming
-    fbHome1          : MC_Home;
 
     // --- coupling: Axis1 master, Axis2 slave
     fRatio           : LREAL := 1.0;
     bGearIn          : BOOL;
-    fbGearIn         : MC_GearIn;
     bGearOut         : BOOL;
-    fbGearOut        : MC_GearOut;
     bGearInDyn       : BOOL;             // this one is Enable: a level, not an edge
-    fbGearInDyn      : MC_GearInDyn;
     bMoveSlave       : BOOL;
     fPosSlave        : LREAL := 100.0;
-    fbMoveSlave      : MC_MoveAbsolute;
     bHalt2           : BOOL;
     fHaltDec2        : LREAL;            // 0 on purpose: test E3
-    fbHalt2          : MC_Halt;
     bPhasing         : BOOL;
     fPhaseShift      : LREAL := 10.0;
-    fbPhasing        : MC_PhasingRelative;
-    aCamTable        : ARRAY[0..36, 0..1] OF LREAL;  // CAM straight line, slave = master, 0..360
-    stCamRef         : MC_CAM_REF;                   // CAM
-    bCamTableReady   : BOOL;                         // CAM
     bCamSelect       : BOOL;                         // CAM
-    fbCamSelect      : MC_CamTableSelect;            // CAM
     bCamIn           : BOOL;                         // CAM
     fMasterOffset    : LREAL;                        // CAM
     fSlaveOffset     : LREAL;                        // CAM
     fMasterScaling   : LREAL := 1.0;                 // CAM
     fSlaveScaling    : LREAL := 1.0;                 // CAM
-    fbCamIn          : MC_CamIn;                     // CAM
     bCamOut          : BOOL;                         // CAM
+    bClear           : BOOL;             // clears the results below
+END_VAR
+VAR
+    Axis1            : AXIS_REF;   // simulated axis; master in section E
+    Axis2            : AXIS_REF;   // simulated axis; slave in section E
+
+    fbPower1         : MC_Power;
+    fbPower2         : MC_Power;
+    fbReset1         : MC_Reset;
+    fbReset2         : MC_Reset;
+    fbMoveA          : MC_MoveAbsolute;
+    fbMoveB          : MC_MoveAbsolute;
+    fbMoveVelo       : MC_MoveVelocity;
+    fbHalt1          : MC_Halt;
+    fbStop1          : MC_Stop;
+    fbSetPos1        : MC_SetPosition;
+    fbHome1          : MC_Home;
+    fbGearIn         : MC_GearIn;
+    fbGearOut        : MC_GearOut;
+    fbGearInDyn      : MC_GearInDyn;
+    fbMoveSlave      : MC_MoveAbsolute;
+    fbHalt2          : MC_Halt;
+    fbPhasing        : MC_PhasingRelative;
+    aCamTable        : ARRAY[0..36, 0..1] OF LREAL;  // CAM straight line, slave = master, 0..360
+    stCamRef         : MC_CAM_REF;                   // CAM
+    bCamTableReady   : BOOL;                         // CAM
+    fbCamSelect      : MC_CamTableSelect;            // CAM
+    fbCamIn          : MC_CamIn;                     // CAM
     fbCamOut         : MC_CamOut;                    // CAM
 
     // --- axis parameters as the running NC has them (test A3)
@@ -102,7 +108,6 @@ VAR
     fbAllowExt1      : MC_ReadBoolParameter;
 
     // --- results: first error per block and per axis, latched until bClear
-    bClear           : BOOL;
     nErrPower1       : UDINT;
     nErrPower2       : UDINT;
     nErrReset1       : UDINT;
