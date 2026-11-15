@@ -13,7 +13,9 @@ The checks are regular expressions over the answer, one per point in the eval's
 'grading' field in evals.json, and the verdict follows that field. They detect that a
 point was made, not that it was made well, so every verdict is worth a human read. A hand
 verdict wins over the checks: put {"verdict": "R" | "P" | "W" | "pass" | "fail", "why":
-"..."} in the cell's verdict.json.
+"..."} in the cell's verdict.json. judge.py has a model that wrote none of this read every
+answer against the rubric; its judge.json wins over the checks, a hand verdict over both,
+and every cell where the checks and the judge disagree is listed.
 
 Negative checks are refusal-aware. The best answers name the trap in order to reject
 it ("don't open the window to 20 mm"), so a claim only counts in a clause that does not
@@ -392,6 +394,7 @@ def main() -> int:
         if not (cell / "run.meta.json").exists():
             continue                                    # not run
         hand = json.loads((cell / "verdict.json").read_text()) if (cell / "verdict.json").exists() else {}
+        judged = json.loads((cell / "judge.json").read_text()) if (cell / "judge.json").exists() else {}
         finished = (cell / "run.json").exists() and (cell / "run.json").stat().st_size > 0
         if not finished and not hand:
             failed.append(m["cell"])                    # a partial answer is not graded
@@ -401,8 +404,9 @@ def main() -> int:
             auto, checks = grade(m["eval"], text)
         else:                                           # finished with no answer: that is wrong
             auto, checks = ("fail" if m["eval"] in GUARDRAILS else "W"), {"an answer": False}
-        final = hand.get("verdict", auto)
-        out.append({**m, "auto": auto, "verdict": final, "why": hand.get("why", ""),
+        final = hand.get("verdict", judged.get("verdict", auto))
+        out.append({**m, "auto": auto, "judge": judged.get("verdict"), "verdict": final,
+                    "why": hand.get("why", judged.get("why", "")),
                     "checks": {k: bool(v) for k, v in checks.items()}})
         table.setdefault(m["eval"], {}).setdefault(m["arm"], []).append(final)
     (run / "GRADES.json").write_text(json.dumps(out, indent=2) + "\n")
@@ -430,11 +434,18 @@ def main() -> int:
         g = table.get(next(iter(GUARDRAILS)), {}).get(a, [])
         if g:
             print(f"guardrail {a:13s} {g.count('pass')}/{len(g)} pass")
-    overridden = [r for r in out if r["auto"] != r["verdict"]]
+    judged = [r for r in out if r["judge"]]
+    if judged:
+        agree = sum(r["judge"] == r["auto"] for r in judged)
+        print(f"\njudge read {len(judged)} of {len(out)} cells; the checks agree on {agree}")
+        for r in judged:
+            if r["judge"] != r["auto"]:
+                print(f"  {r['cell']}: checks {r['auto']}, judge {r['judge']}")
+    overridden = [r for r in out if r["verdict"] != (r["judge"] or r["auto"])]
     if overridden:
-        print(f"\n{len(overridden)} hand verdict(s) differ from the checks:")
+        print(f"\n{len(overridden)} hand verdict(s):")
         for r in overridden:
-            print(f"  {r['cell']}: checks {r['auto']}, hand {r['verdict']} - {r['why']}")
+            print(f"  {r['cell']}: checks {r['auto']}, judge {r['judge'] or '-'}, hand {r['verdict']} - {r['why']}")
     if failed:
         print(f"\n!! {len(failed)} cell(s) not graded: the session failed or timed out. "
               f"Rerun run_cells.py to retry them:")
