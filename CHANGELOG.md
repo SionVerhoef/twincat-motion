@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `FB_Axis`: a `stMachine` input (`ST_AxisMachineIn`): its limit switches (default TRUE) feed
+  `MC_Power`'s feed enables, and `MoveAbsolute` is refused until the axis is homed
+  (`Axis.Status.Homed`, or `bHomedOwn` for `FB_HomePlc`'s own record). Not yet run.
+- `out-of-scope.md`: CODESYS SoftMotion axes and the servo tuning procedure are covered by no
+  skill.
 - Field test: `evals/field-test/PRG_FieldTestSeq.st` runs sections C to E as step chains,
   with a per-step timeout and operator WAIT steps. It logs results, codes in hex and FB-flag
   changes as a 32-bit mask. Not built yet. `PRG_FieldTest`'s commands are now `VAR_INPUT`

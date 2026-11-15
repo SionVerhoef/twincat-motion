@@ -26,6 +26,7 @@ torque first. Nothing here is a safety function.
 |---|---|
 | `FB_Axis.TcPOU` | Axis wrapper: `MC_Power`, `MC_Reset`, `MC_MoveAbsolute`, `MC_MoveRelative`, `MC_MoveVelocity`, `MC_Halt` behind methods (`MoveAbsolute`, `MoveRelative`, `MoveVelocity`, `Halt`, `Reset`, `SetDynamics`). Refreshes `Axis.Status` once per cycle; one error path (axis error before command error before power error). |
 | `E_AxisCmd.TcDUT` | The commands `FB_Axis` issues. |
+| `ST_AxisMachineIn.TcDUT` | Its limit-switch inputs and the caller's own homed record. |
 | `FB_HomePlc.TcPOU` | Homing option 1, PLC-based: move off the switch if on it, search, halt, `MC_SetPosition` relative so the switch edge becomes the reference, then mark homed by **your own flag** or the **NC's homed state** (`MC_ForceCalibration`), chosen by a parameter. |
 | `ST_HomePlcParams.TcDUT`, `E_HomePlcState.TcDUT` | Its parameters and steps. |
 | `FB_HomeNc.TcPOU` | Homing option 2, `MC_Home` with `MC_DefaultHoming`: cam input every cycle, a faked cam for a sync-pulse-only axis, a run timeout that halts the axis. |
@@ -54,8 +55,16 @@ torque first. Nothing here is a safety function.
 - **Explicit where the library is easy to misread.** The homing blocks refuse a run without
   an explicit `MC_Halt` deceleration: 0 takes the last move's deceleration (seen on a simulated
   axis), which for a homing search is not a value anyone chose. `FB_Axis.Halt` never refuses a
-  stop, so pass it a value > 0. `FB_Axis` sets both feed enables on `MC_Power` (a missing one
-  gives only 0x4223 on the move, see `references/triage.md`). The homing blocks clear and set
+  stop, so pass it a value > 0. `FB_Axis` feeds `MC_Power`'s feed enables from
+  `stMachine.bLimitPosOk` / `bLimitNegOk` (`ST_AxisMachineIn`, default TRUE), where hardware
+  limit switches are wired; an open one gives only 0x4223 on a move that way, see
+  `references/triage.md`. `MoveAbsolute` is refused until the axis is homed:
+  `Axis.Status.Homed`, or `stMachine.bHomedOwn`
+  when the record is the caller's own (`FB_HomePlc` with `bMarkNcHomed` FALSE). Keep one homed
+  record per axis: a stale NC `Homed` would let a move through after a failed PLC homing run.
+  A limit switch used as the homing reference must not also sit on the feed enable of the
+  search direction, or the search stops on it. The limit inputs and the homed gate were added
+  after the field test and have not been run. The homing blocks clear and set
   the NC's homed state with explicit `MC_Home` calls, because `MC_SetPosition` neither sets nor
   clears it.
 - **`FB_HomeNc`'s timeout.** It relies on `MC_Halt` stopping a running `MC_Home`, which the

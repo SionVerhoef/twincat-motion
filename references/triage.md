@@ -69,7 +69,9 @@ drive's PDO assignment. It cannot see the bus or the NC cycle; those stay online
 - `MC_Power` is called **every cycle**, unconditionally, with `Enable` held TRUE. Calling it
   only inside a state of a sequence drops the enable when the sequence moves on, and a
   stalled PLC task drops it too (0x4260).
-- **`Enable_Positive` and `Enable_Negative` are both TRUE** for normal operation.
+- **`Enable_Positive` and `Enable_Negative` are both TRUE** for normal operation. They are
+  where hardware limit switches are wired (NC contacts): an axis that moves one way only
+  may be standing on a limit switch.
   `MC_Power.Status` can be TRUE without them, so Status alone does not show it. With only
   `Enable`, the move is refused. Observed on 4024.55 / Tc2_MC2 3.3.59 with a simulated axis:
   **0x4223 on the move block** for either direction, the axis itself taking no error and
