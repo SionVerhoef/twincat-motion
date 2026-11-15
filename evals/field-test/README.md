@@ -56,7 +56,7 @@ diff (B1).
 | Git, or another tool that diffs two files | raw diffs in A |
 | Optional: an EtherCAT drive and motor on a bench, unloaded | G |
 
-About 3 to 4 hours. If time runs short, do these first: A1–A3, B1–B3, C1–C5, D2, D4, E1–E3.
+About 3 to 4 hours. If time runs short, do these first: A1–A3, B1–B4, C1–C5, D2, D4, D5, E1–E3.
 
 **Statuses** in the results: `CONFIRMED` (what the skill says happened), `DIFFERENT` (record
 what happened instead), `PARTIAL`, `NOT RUN` (say why).
@@ -186,7 +186,7 @@ Record: errors and the fixes, as in B1.
 `PRG_AxisExample` reads a real reference switch, and the sequencer must be able to write its
 commands. Patch the project's copy, not `templates/`:
 1. Move into a new `VAR_INPUT` block, unchanged: `bPowerOn`, `bHomeCmd`, `bMoveCmd`,
-   `bHaltCmd`, `bResetCmd`, `fTarget`, `stHomePlc` and `stHomeNc`. Move `cUseNcHoming`
+   `bHaltCmd`, `bResetCmd`, `fTarget`, `stHomePlc`, `stHomeNc` and `stMachine`. Move `cUseNcHoming`
    there too, out of `VAR CONSTANT`, so it can change online. Another POU can write only a
    PROGRAM's inputs: otherwise "... is no input of PRG_AxisExample".
 2. Change `bRefSwitch AT %I* : BOOL;` to `bRefSwitch : BOOL;` and add to the `VAR_INPUT`
@@ -197,11 +197,15 @@ commands. Patch the project's copy, not `templates/`:
    `MC_DefaultHoming` the NC sets the position to -1.0E10, so this switch goes TRUE in the
    first cycle of the search. So feed `fbHomeNc` from its own BOOL: change its
    `bCalibrationCam := bRefSwitch` to `bCalibrationCam := bCamNc`.
-4. Override for D3: change the first call to
-   `fbAxis(Axis := Axis1, bPowerOn := bPowerOn, fOverride := fOverrideCmd);`
-5. Add a velocity command for D3: `bVeloCmd : BOOL; fVeloCmd : LREAL := 50.0;` in the
-   `VAR_INPUT` block, `fbVeloTrig : R_TRIG;` in `VAR`, and after the other commands:
+4. Override for D3: add `fOverride := fOverrideCmd` to the `fbAxis(...)` call, keeping
+   `stMachine := stMachine`. Leave the limit-switch lines commented: in the test, D5 writes
+   `stMachine.bLimitPosOk` / `bLimitNegOk` directly (TRUE = not at the limit).
+5. Add a velocity command for D3 and an ungated move for D5:
+   `bVeloCmd : BOOL; fVeloCmd : LREAL := 50.0; bMoveRawCmd : BOOL;` in the `VAR_INPUT`
+   block, `fbVeloTrig : R_TRIG; fbRawTrig : R_TRIG;` in `VAR`, and after the other commands:
    `fbVeloTrig(CLK := bVeloCmd); IF fbVeloTrig.Q THEN bAccepted := fbAxis.MoveVelocity(fVelocity := fVeloCmd, eDirection := MC_Direction.MC_Positive_Direction); END_IF`
+   `fbRawTrig(CLK := bMoveRawCmd); IF fbRawTrig.Q THEN bAccepted := fbAxis.MoveAbsolute(fPosition := fTarget, fVelocity := cMoveVelo); END_IF`
+   The raw move skips the example's own `bHomed` check, so D5 sees `FB_Axis`'s gate alone.
 6. Call from `MAIN`, in this order: `PRG_FieldTestSeq(); PRG_FieldTest(); PRG_AxisExample();`
    Link Axis 1 and Axis 2 to `PRG_FieldTest.Axis1` and `Axis2`, and Axis 3 to
    `PRG_AxisExample.Axis1`. Leave Axis 4 unlinked.
@@ -219,7 +223,7 @@ nothing, or misreads the project's layout, that is a finding: record the message
 
 ### Running C, D and E from the sequencer
 
-`PRG_FieldTestSeq` runs the checks C1 to C8, D1 to D4 and E1 to E7 as written below, and
+`PRG_FieldTestSeq` runs the checks C1 to C8, D1 to D5 and E1 to E7 as written below, and
 logs what each **Record** asks for. C0, the PLC cycle time and `fbHomePlc.eState` in D2 stay
 with the online view. Write `PRG_FieldTestSeq.sRun := 'C3'` for one check, or `'C'` for the
 whole section (also `'D'`, `'E'`). Each check first settles its section: default
@@ -387,6 +391,25 @@ Do: set `cUseNcHoming := TRUE` (an input after B3), `stHomeNc.tTimeout := T#10S`
 Record: both runs, `Axis1.NcToPlc.HomingState` along the way, and whether the axis really
 stood still after the timeout. If homing completed, the final position (the default takes the
 reference position from the encoder parameters).
+
+**D5. `FB_Axis` limit switches and homed gate.**
+Claim: `templates/FB_Axis.TcPOU`, contract: `stMachine.bLimitPosOk` / `bLimitNegOk` feed
+MC_Power's `Enable_Positive` / `Enable_Negative`, so an open limit stops that direction
+only; `MoveAbsolute` is refused (`bAccepted` FALSE) until the axis is homed (NC `Homed` or
+`stMachine.bHomedOwn`); `MoveVelocity` is not gated. Also answers an open question in
+`references/triage.md` step 2: which code a direction enable dropping **during** a move gives
+(0x4357 or 0x4358, or none).
+Do (after D2, axis homed):
+1. Velocity move positive, then `stMachine.bLimitPosOk := FALSE` while it runs.
+2. Reset any error, limit still open: a positive velocity move again.
+3. A `MoveAbsolute` 100 below the current position (negative), limit still open. Then close
+   the limit (`TRUE`).
+4. Unhome: a homing run that fails (`fSwitchPos := -100000`, `tStepTimeout := T#2S`). Then
+   `bMoveRawCmd` (B3) to 100 above, and `bVeloCmd`. Halt, restore, home again.
+Record: per step whether the axis moved or stopped, `bAccepted`, `fbAxis.bError` and
+`nErrorID`, and in step 1 `Axis1.Status.ErrorId` (look each up with `nc_error.py`). In step
+4: `bHomed`, `Axis1.Status.Homed`, and `bAccepted` for the raw move (expect FALSE) and the
+velocity move (expect TRUE).
 
 ## E. Coupling (Axis 1 master, Axis 2 slave, `PRG_FieldTest`)
 

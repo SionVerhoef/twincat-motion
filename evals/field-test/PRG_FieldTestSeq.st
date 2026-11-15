@@ -40,7 +40,7 @@
 //   0..4 fbAxis bReady, bBusy, bDone, bCommandAborted, bError   5 bAccepted
 //   6..9 fbHomePlc bBusy, bDone, bError, bHomed   10..12 fbHomeNc bBusy, bDone, bError
 //   13 bHomed  14 bError  15 Axis1 Homed  16 Axis1 Error  17 Axis1 NotMoving
-//   18 bRefSwitch  19 bCamNc  20 Axis1 HomingBusy
+//   18 bRefSwitch  19 bCamNc  20 Axis1 HomingBusy  21, 22 stMachine.bLimitPosOk/NegOk
 // E (PRG_FieldTest, Axis1 master, Axis2 slave):
 //   0, 1 fbPower1/2.Status  2, 3 Axis1/2 Error  4 Axis2 Coupled  5 Axis2 ProtectedMode
 //   6 Axis2 NotMoving  7 Axis2 ContinuousMotion
@@ -200,7 +200,7 @@ VAR
     nRetry       : INT;          // settle C: MC_Reset attempts
 
     aSecName     : ARRAY[1..3] OF STRING(1) := ['C', 'D', 'E'];
-    aLastCheck   : ARRAY[1..3] OF INT := [8, 4, 7];
+    aLastCheck   : ARRAY[1..3] OF INT := [8, 5, 7];
     aC3Dec       : ARRAY[1..4] OF LREAL := [500.0, 500.0, 200.0, 500.0];
     aC3Halt      : ARRAY[1..4] OF LREAL := [500.0, 0.0, 0.0, 100.0];
     aC3Run       : ARRAY[1..4] OF STRING(1) := ['a', 'b', 'c', 'd'];
@@ -1102,6 +1102,137 @@ ELSIF nStep >= 2000 AND nStep < 3000 THEN
             bCheckDone := TRUE;                        // settle sets cUseNcHoming back
         END_IF
 
+    // -- D5: limit switches to MC_Power's feed enables; FB_Axis's homed gate (needs D2)
+    2500:
+        IF NOT PRG_AxisExample.bHomed THEN
+            fbLog(sText := 'not homed: run D2 first');
+            bCheckDone := TRUE;
+        ELSE
+            PRG_AxisExample.fVeloCmd := 50.0;
+            PRG_AxisExample.bVeloCmd := TRUE;          // positive
+            nStep := 2501;
+        END_IF
+    2501, 2505, 2510, 2515, 2517, 2519:                // end of a command pulse
+        PRG_AxisExample.bVeloCmd := FALSE;
+        PRG_AxisExample.bMoveCmd := FALSE;
+        PRG_AxisExample.bMoveRawCmd := FALSE;
+        PRG_AxisExample.bHaltCmd := FALSE;
+        PRG_AxisExample.bResetCmd := FALSE;
+        fbLog(sText := 'bAccepted', nFmt := cBool, bVal := PRG_AxisExample.bAccepted);
+        nStep := nStep + 1;
+    2502:
+        IF tonStep.ET >= T#1S THEN
+            fbLog(sText := '1 positive limit opens while moving positive');
+            PRG_AxisExample.stMachine.bLimitPosOk := FALSE;
+            nStep := 2503;
+        END_IF
+    2503:
+        IF tonStep.ET >= T#2S THEN
+            fbLog(sText := 'NotMoving', nFmt := cBool, bVal := PRG_AxisExample.Axis1.Status.NotMoving);
+            fbLog(sText := 'fbAxis.bError', nFmt := cBool, bVal := PRG_AxisExample.fbAxis.bError);
+            fbLog(sText := 'nErrorID (0x4357 or 0x4358?)', nFmt := cHex,
+                  nVal := PRG_AxisExample.fbAxis.nErrorID);
+            fbLog(sText := 'Axis1 ErrorId', nFmt := cHex, nVal := PRG_AxisExample.Axis1.Status.ErrorId);
+            fbLog(sText := 'fbAxis.bReady', nFmt := cBool, bVal := PRG_AxisExample.fbAxis.bReady);
+            nStep := 2504;
+        END_IF
+    2504:
+        IF PRG_AxisExample.fbAxis.bError THEN          // clear it first, limit stays open
+            PRG_AxisExample.bResetCmd := TRUE;
+            nStep := 2505;
+        ELSE
+            nStep := 2506;
+        END_IF
+    2506:
+        IF tonStep.ET >= T#500MS THEN
+            fbLog(sText := '2 positive move with the positive limit open');
+            PRG_AxisExample.bVeloCmd := TRUE;
+            nStep := 2507;
+        END_IF
+    2507:
+        PRG_AxisExample.bVeloCmd := FALSE;
+        fbLog(sText := 'bAccepted', nFmt := cBool, bVal := PRG_AxisExample.bAccepted);
+        nStep := 2508;
+    2508:
+        IF tonStep.ET >= T#1S THEN
+            fbLog(sText := 'SetVelo', nFmt := cReal, fVal := PRG_AxisExample.Axis1.NcToPlc.SetVelo);
+            fbLog(sText := 'fbAxis.bError', nFmt := cBool, bVal := PRG_AxisExample.fbAxis.bError);
+            fbLog(sText := 'nErrorID', nFmt := cHex, nVal := PRG_AxisExample.fbAxis.nErrorID);
+            IF PRG_AxisExample.fbAxis.bError THEN
+                PRG_AxisExample.bResetCmd := TRUE;
+            END_IF
+            nStep := 2509;
+        END_IF
+    2509:
+        PRG_AxisExample.bResetCmd := FALSE;
+        IF tonStep.ET >= T#500MS THEN
+            fbLog(sText := '3 negative move with the positive limit open');
+            PRG_AxisExample.fTarget := PRG_AxisExample.Axis1.NcToPlc.ActPos - 100.0;
+            PRG_AxisExample.bMoveCmd := TRUE;
+            nStep := 2510;
+        END_IF
+    2511:
+        IF tonStep.ET >= T#100MS AND (PRG_AxisExample.fbAxis.bDone OR PRG_AxisExample.fbAxis.bError) THEN
+            fbLog(sText := 'bDone', nFmt := cBool, bVal := PRG_AxisExample.fbAxis.bDone);
+            fbLog(sText := 'nErrorID', nFmt := cHex, nVal := PRG_AxisExample.fbAxis.nErrorID);
+            PRG_AxisExample.stMachine.bLimitPosOk := TRUE;
+            fbLog(sText := '4 homed gate: unhome with a failing FB_HomePlc run (2 s)');
+            PRG_AxisExample.fSwitchPos := -100000.0;
+            PRG_AxisExample.stHomePlc.tStepTimeout := T#2S;
+            PRG_AxisExample.bHomeCmd := TRUE;
+            nStep := 2512;
+        END_IF
+    2512:
+        IF PRG_AxisExample.fbHomePlc.bDone OR PRG_AxisExample.fbHomePlc.bError THEN
+            PRG_AxisExample.bHomeCmd := FALSE;
+            PRG_AxisExample.fSwitchPos := -50.0;
+            PRG_AxisExample.stHomePlc.tStepTimeout := T#60S;
+            fbLog(sText := 'bHomed', nFmt := cBool, bVal := PRG_AxisExample.bHomed);
+            fbLog(sText := 'Axis1.Status.Homed', nFmt := cBool,
+                  bVal := PRG_AxisExample.Axis1.Status.Homed);
+            nStep := 2513;
+        END_IF
+    2513:
+        IF tonStep.ET >= T#500MS AND PRG_AxisExample.Axis1.Status.NotMoving THEN
+            IF PRG_AxisExample.fbAxis.bError THEN
+                PRG_AxisExample.bResetCmd := TRUE;
+            END_IF
+            nStep := 2514;
+        END_IF
+    2514:
+        PRG_AxisExample.bResetCmd := FALSE;
+        IF tonStep.ET >= T#500MS THEN
+            fbLog(sText := 'raw MoveAbsolute on an unhomed axis');
+            PRG_AxisExample.fTarget := PRG_AxisExample.Axis1.NcToPlc.ActPos + 100.0;
+            PRG_AxisExample.bMoveRawCmd := TRUE;
+            nStep := 2515;
+        END_IF
+    2516:
+        IF tonStep.ET >= T#1S THEN
+            fbLog(sText := 'NotMoving', nFmt := cBool, bVal := PRG_AxisExample.Axis1.Status.NotMoving);
+            fbLog(sText := 'MoveVelocity on an unhomed axis');
+            PRG_AxisExample.bVeloCmd := TRUE;
+            nStep := 2517;
+        END_IF
+    2518:
+        IF tonStep.ET >= T#1S THEN
+            fbLog(sText := 'SetVelo', nFmt := cReal, fVal := PRG_AxisExample.Axis1.NcToPlc.SetVelo);
+            PRG_AxisExample.bHaltCmd := TRUE;
+            nStep := 2519;
+        END_IF
+    2520:
+        IF tonStep.ET >= T#100MS AND (PRG_AxisExample.fbAxis.bDone OR PRG_AxisExample.fbAxis.bError) THEN
+            PRG_AxisExample.bHomeCmd := TRUE;          // home again for later checks
+            nStep := 2521;
+        END_IF
+    2521:
+        tStepMax := T#300S;
+        IF PRG_AxisExample.fbHomePlc.bDone OR PRG_AxisExample.fbHomePlc.bError THEN
+            PRG_AxisExample.bHomeCmd := FALSE;
+            fbLog(sText := 're-homed: bHomed', nFmt := cBool, bVal := PRG_AxisExample.bHomed);
+            bCheckDone := TRUE;
+        END_IF
+
     ELSE
         fbLog(sText := 'no such step', nFmt := cDec, nVal := INT_TO_UDINT(nStep));
         bCheckDone := TRUE;
@@ -1649,6 +1780,7 @@ IF bRelease THEN
     PRG_AxisExample.bHaltCmd := FALSE;
     PRG_AxisExample.bResetCmd := FALSE;
     PRG_AxisExample.bVeloCmd := FALSE;
+    PRG_AxisExample.bMoveRawCmd := FALSE;
 END_IF
 
 IF bDefaults THEN
@@ -1687,6 +1819,8 @@ IF bDefaults THEN
     PRG_AxisExample.stHomeNc.tTimeout := T#60S;
     PRG_AxisExample.fVeloCmd := 50.0;
     PRG_AxisExample.fOverrideCmd := 100.0;
+    PRG_AxisExample.stMachine.bLimitPosOk := TRUE;
+    PRG_AxisExample.stMachine.bLimitNegOk := TRUE;
 END_IF
 
 // ---- 8. Step timeout
@@ -1766,6 +1900,8 @@ IF nStep <> 0 THEN
         dwMask.18 := PRG_AxisExample.bRefSwitch;
         dwMask.19 := PRG_AxisExample.bCamNc;
         dwMask.20 := PRG_AxisExample.Axis1.Status.HomingBusy;
+        dwMask.21 := PRG_AxisExample.stMachine.bLimitPosOk;
+        dwMask.22 := PRG_AxisExample.stMachine.bLimitNegOk;
         nHs := PRG_AxisExample.Axis1.NcToPlc.HomingState;
     ELSE
         dwMask.0 := PRG_FieldTest.fbPower1.Status;
