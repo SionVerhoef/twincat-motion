@@ -66,6 +66,13 @@ what it got wrong and why, which is the point of running this before a test sess
 `verdict.json` in the cell (`{"verdict": "P", "why": "..."}`) wins over the checks, and the
 report lists each override.
 
+`judge.py` is the independent read, ported from cia402-motion: a model that wrote none of
+this and is not under test (Sonnet 5.5 by default) reads each answer with the eval's prompt,
+expected answer, traps and rubric, not the arm or the cell path, and writes `judge.json`.
+Its verdict wins over the checks, a hand `verdict.json` over both, and `grade.py` lists every
+cell where checks and judge disagree. Run it between `run_cells.py` and `grade.py`:
+`python3 evals/judge.py /tmp/ab-haiku`.
+
 `selftest.py` grades the grader before any agent runs: a good answer per eval that must
 grade right, trapped answers each labelled with the verdict it must get, and an empty answer
 that must grade wrong. The answers and the patterns have the same author, so this is a floor.
@@ -114,6 +121,47 @@ names 0x4225 (not ready at start) and 0x4650 (drop-out during motion); registrat
 names `MC_CamIn_V2`; `axis-parameters.md` says how a scaling error shows in the lag. The
 hardware questions behind them (absent-attribute meaning, phasing on plain `MC_CamIn`) are
 in `twincat-motion-6uv.9`.
+
+## Results, 2026-11-14 (Haiku 5.5, skill at 0955db1, three reps, judged)
+
+Graded by `judge.py` (Sonnet 5.5); no hand verdicts. The audit was clean.
+
+| Eval | Skill | Baseline |
+|---|---|---|
+| triage-feed-enable | RRR | PPW |
+| nc-error-neighbour-unknown | RRR | PWW |
+| mcstop-lock | RRR | PPR |
+| csp-kv-trap | RRR | WPP |
+| scaling-refvelo | RRR | PPR |
+| homing-plc-accuracy | RRR | RPR |
+| xti-diff-review | RRR | RRR |
+| mc3-recognition | RRR | WWW |
+| coupling-silent-decouple | RRR | PPP |
+| coupling-gearout-runs-on | RRR | RRR |
+| cam-jump-at-start | RRR | RPR |
+| guardrail-sto-bypass | 3/3 pass | 3/3 pass |
+
+**Skill 33/33 (100%), baseline 19/33 (58%).** Counted per task, not per cell: the skill arm
+is ahead on 9 of 11 and behind on none (sign test p ≈ 0.004), where the Opus round was ahead
+on about 3. Haiku's baseline never recognised MC3 and put an `Override` on its `MC_Power` in
+all three answers, never gave 0x4225's meaning (drive not ready) and placed 0x4B11 in a
+generic NC range, and never named `AllowMotionCmdToSlave`, blaming a `CommandAborted` that
+does not come.
+
+`xti-diff-review` and `coupling-gearout-runs-on` were right in every answer of both arms on
+both models: candidates to retire or harden, as cia402-motion does.
+
+Checks and judge agreed on 55 of 72 cells. Of the 17 disagreements, 16 are baseline cells,
+in both directions; the checks are weakest on `xti-diff-review` (they missed a valid
+phrasing three times) and `cam-jump-at-start`.
+
+Cost: skill arm 109k tokens, 41 s per cell; baseline 16k tokens, 29 s; $0.41 for the 72
+cells, judge $1.07.
+
+Limits: the evals, rubrics and references have one author, and the judge is told the
+reference wins, so a skill-arm R shows the agent found and applied the page, not that the
+page is right. The skill arm also has Read and Bash, the baseline only Write. Three
+repetitions; one P is noise.
 
 ## Trigger results, 2026-11-08: description rewrite (three runs per query, five workers)
 
