@@ -72,12 +72,17 @@ Decouple a slave before homing it.
 **`MC_GearInDyn`**: ratio as one `LREAL`, changeable every cycle while `Enable` is TRUE.
 `Acceleration` limits the slave when the ratio jumps (0 = the axis parameter).
 
+- Couple **at standstill**, as `MC_GearIn`: onto a master already moving it was refused with
+  0x425A (observed). `Enable` TRUE again on a slave that is still coupled by an earlier
+  `MC_GearInDyn` is not refused: the block takes the running coupling over (observed).
 - `Enable` FALSE **ends the command but does not decouple**: the ratio freezes at its last
   value and the slave keeps following. Decouple with `MC_GearOut`.
-- `MC_GearOut` while `Enable` is still TRUE: observed, the slave **stayed decoupled**, and
-  the block showed `InGear` FALSE with no error, while the slave ran on at its last velocity.
-  It had not coupled again a second later. So an `Enable`-held `MC_GearInDyn` can sit
-  silently uncoupled. Drop `Enable` first, and check `Coupled` after a decouple.
+- `MC_GearOut` while `Enable` is still TRUE: observed twice, the slave **stayed decoupled**
+  and ran on at its last velocity, with `InGear` FALSE. The block keeps trying to couple
+  again onto the now moving master and is refused each time, so `Error` pulses on and off
+  with 0x425A (about a quarter of the samples in one run): one read can show it either way.
+  So an `Enable`-held `MC_GearInDyn` can sit uncoupled. Drop `Enable` first, and check
+  `Coupled` after a decouple.
 - Not supported by the phasing blocks (refused with 0x4251, observed).
 
 **`MC_GearInMultiMaster`**: up to four masters, each with its own ratio; the slave moves by
@@ -97,8 +102,9 @@ velocity it had, like after `MC_MoveVelocity`, indefinitely. Follow every decoup
 slave with `MC_Halt` (or `MC_Stop`), or decouple only at standstill. Code that decouples and
 then waits for the slave to stand still waits for ever. (Observed: after `MC_GearOut` the
 slave kept its velocity, also after the master stopped, with `ContinuousMotion` TRUE.) An
-`MC_Halt` with `Deceleration` 0 on such a slave did not use the master's deceleration; most
-likely it uses the slave's own default (not confirmed).
+`MC_Halt` with `Deceleration` 0 on such a slave did not use the master's deceleration (observed
+twice, master at 500 and at 200); the peak fitted the slave's own default deceleration and
+jerk, but was jerk-limited, so the value itself is not confirmed.
 
 **Flying saw** (`Tc2_MC2_FlyingSaw`, TF5055, a separate licence): `MC_GearInPos` synchronises
 the slave so that a given slave position meets a given master position, then holds the
@@ -280,7 +286,7 @@ Points that trip people up:
 | Symptom | Look at |
 |---|---|
 | Coupling refused | the slave's `MC_Power` (0x422A), slave already coupled, wrong axis passed as master; look the `ErrorID` up with the tool |
-| Coupling refused with 0x425A | the master (or slave) still moving: `MC_GearIn` needs both at standstill |
+| Coupling refused with 0x425A | the master (or slave) still moving: `MC_GearIn` and `MC_GearInDyn` need both at standstill. An `MC_GearInDyn` held enabled after a decouple repeats the refusal, so its `Error` pulses |
 | Slave dropped out of sync on its own | `ST_AxisStatus.Coupled` FALSE: a motion block on the slave with motion commands allowed on slaves, or an `MC_GearOut`/`MC_CamOut` with `MC_GearInDyn.Enable` still TRUE. The coupling block may still show `InGear` and no `CommandAborted` |
 | Move on the slave fails with 0x4B08, halt with 0x4267 | protected mode: decouple first, or allow motion commands on the slave |
 | Phasing `Done` but no shift | the master was standing still: the shift is applied over master travel |

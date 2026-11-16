@@ -25,8 +25,9 @@
 // (which halts the axes) and stops; bAbort does the same.
 // Moves start from where the axis stands: C1, C7 and C8 put their targets relative to it.
 //
-// Written for TwinCAT 4024.55 with Tc2_MC2 3.3.59; not yet built. Fix compile errors on
-// site and record them as a diff (README B2).
+// Written for TwinCAT 4024.55 with Tc2_MC2 3.3.59. It built there unchanged and ran C, D
+// and E (November 2026); C7, C8, D5 step 4, E3, E4 and E7 were changed after that run and
+// have not run since. Fix compile errors on site and record them as a diff (README B2).
 //
 // Mask bits. C (PRG_FieldTest, Axis1):
 //   0 fbPower1.Status  1 Axis1 Error  2 Axis1 ErrorStop  3 Axis1 Homed
@@ -198,6 +199,9 @@ VAR
     nHs          : UDINT;
     nHsPrev      : UDINT;
     nRetry       : INT;          // settle C: MC_Reset attempts
+    nCnt         : INT;          // E4: samples taken
+    nCntErr      : INT;          // E4: samples with Error TRUE
+    nErrSeen     : UDINT;        // E4: last non-zero ErrorID seen
 
     aSecName     : ARRAY[1..3] OF STRING(1) := ['C', 'D', 'E'];
     aLastCheck   : ARRAY[1..3] OF INT := [8, 5, 7];
@@ -728,9 +732,23 @@ IF nStep >= 1000 AND nStep < 2000 THEN
     1703:
         IF tonStep.ET >= T#500MS THEN
             PRG_FieldTest.bReset1 := FALSE;
+            nIdx := 1;
+            nStep := 1705;
+        END_IF
+    // Two runs at 1200 mm/s: fAcc 500 (checks the measurement), then fAcc 0. The peak of a
+    // jerk-limited ramp is at most sqrt(v * jerk): with the new-axis jerk 2250 that is
+    // about 1640 at 1200 mm/s, above the default acceleration 1500, so 1500 can show.
+    // At 100 mm/s (the first run) the cap was about 474 and hid it.
+    1705:
+        IF tonStep.ET >= T#100MS THEN
             PRG_FieldTest.bClear := TRUE;
-            PRG_FieldTest.fVelo := 100.0;
-            PRG_FieldTest.fAcc := 0.0;
+            PRG_FieldTest.fVelo := 1200.0;
+            IF nIdx = 1 THEN
+                PRG_FieldTest.fAcc := 500.0;
+            ELSE
+                PRG_FieldTest.fAcc := 0.0;
+            END_IF
+            PRG_FieldTest.fPosA := PRG_FieldTest.Axis1.NcToPlc.ActPos + 3000.0;
             fPeak := 0.0;
             PRG_FieldTest.bMoveA := TRUE;
             nStep := 1704;
@@ -741,10 +759,19 @@ IF nStep >= 1000 AND nStep < 2000 THEN
         END_IF
         IF PRG_FieldTest.fbMoveA.Done OR PRG_FieldTest.fbMoveA.Error THEN
             PRG_FieldTest.bMoveA := FALSE;
-            fbLog(sText := 'acceleration 0: Done', nFmt := cBool, bVal := PRG_FieldTest.fbMoveA.Done);
+            fbLog(sText := 'v 1200, fAcc', nFmt := cReal, fVal := PRG_FieldTest.fAcc);
+            fbLog(sText := 'Done', nFmt := cBool, bVal := PRG_FieldTest.fbMoveA.Done);
             fbLog(sText := 'nErrMoveA', nFmt := cHex, nVal := PRG_FieldTest.nErrMoveA);
-            fbLog(sText := 'peak |SetAcc|, compare the axis defaults', nFmt := cReal, fVal := fPeak);
-            bCheckDone := TRUE;
+            fbLog(sText := 'peak |SetAcc| (fAcc 0: compare the axis default)', nFmt := cReal,
+                  fVal := fPeak);
+            nIdx := nIdx + 1;
+            IF nIdx <= 2 THEN
+                nStep := 1705;
+            ELSE
+                PRG_FieldTest.fVelo := 100.0;
+                PRG_FieldTest.fAcc := 500.0;           // the default, as settle sets it
+                bCheckDone := TRUE;
+            END_IF
         END_IF
 
     // -- C8: retargeting a running move
@@ -769,10 +796,16 @@ IF nStep >= 1000 AND nStep < 2000 THEN
               bVal := PRG_FieldTest.fbMoveA.Error);
         fbLog(sText := 'nErrMoveA', nFmt := cHex, nVal := PRG_FieldTest.nErrMoveA);
         nStep := 1804;
+    // Wait until the second edge is decided: A passing start + 330 means it was ignored
+    // (taken, A would have braked to stop at 300); A Done means it was taken. B must come
+    // after that, or both readings give the same profile (first run).
     1804:
-        IF tonStep.ET >= T#1S THEN
-            fbLog(sText := 'A target now (SetPos - start, still rising?)', nFmt := cReal,
+        IF (PRG_FieldTest.Axis1.NcToPlc.SetPos - fStart >= 330.0)
+           OR PRG_FieldTest.fbMoveA.Done OR PRG_FieldTest.fbMoveA.Error THEN
+            fbLog(sText := 'A at SetPos - start (past 300: second edge ignored)', nFmt := cReal,
                   fVal := PRG_FieldTest.Axis1.NcToPlc.SetPos - fStart);
+            fbLog(sText := 'fbMoveA.Done (stopped at 300: edge taken)', nFmt := cBool,
+                  bVal := PRG_FieldTest.fbMoveA.Done);
             PRG_FieldTest.bMoveB := TRUE;              // second instance, to start + 400
             nStep := 1805;
         END_IF
@@ -1176,9 +1209,12 @@ ELSIF nStep >= 2000 AND nStep < 3000 THEN
             fbLog(sText := 'bDone', nFmt := cBool, bVal := PRG_AxisExample.fbAxis.bDone);
             fbLog(sText := 'nErrorID', nFmt := cHex, nVal := PRG_AxisExample.fbAxis.nErrorID);
             PRG_AxisExample.stMachine.bLimitPosOk := TRUE;
+            // bMarkNcHomed TRUE so the failing run clears the NC mark too (its ClearNcHomed
+            // step). With it FALSE, a mark left by D4 keeps the gate open (first run).
             fbLog(sText := '4 homed gate: unhome with a failing FB_HomePlc run (2 s)');
             PRG_AxisExample.fSwitchPos := -100000.0;
             PRG_AxisExample.stHomePlc.tStepTimeout := T#2S;
+            PRG_AxisExample.stHomePlc.bMarkNcHomed := TRUE;
             PRG_AxisExample.bHomeCmd := TRUE;
             nStep := 2512;
         END_IF
@@ -1187,9 +1223,13 @@ ELSIF nStep >= 2000 AND nStep < 3000 THEN
             PRG_AxisExample.bHomeCmd := FALSE;
             PRG_AxisExample.fSwitchPos := -50.0;
             PRG_AxisExample.stHomePlc.tStepTimeout := T#60S;
+            PRG_AxisExample.stHomePlc.bMarkNcHomed := FALSE;
             fbLog(sText := 'bHomed', nFmt := cBool, bVal := PRG_AxisExample.bHomed);
             fbLog(sText := 'Axis1.Status.Homed', nFmt := cBool,
                   bVal := PRG_AxisExample.Axis1.Status.Homed);
+            IF PRG_AxisExample.Axis1.Status.Homed OR PRG_AxisExample.bHomed THEN
+                fbLog(sText := 'still homed: the gate is not tested below');
+            END_IF
             nStep := 2513;
         END_IF
     2513:
@@ -1203,13 +1243,16 @@ ELSIF nStep >= 2000 AND nStep < 3000 THEN
         PRG_AxisExample.bResetCmd := FALSE;
         IF tonStep.ET >= T#500MS THEN
             fbLog(sText := 'raw MoveAbsolute on an unhomed axis');
-            PRG_AxisExample.fTarget := PRG_AxisExample.Axis1.NcToPlc.ActPos + 100.0;
+            fStart := PRG_AxisExample.Axis1.NcToPlc.ActPos;
+            PRG_AxisExample.fTarget := fStart + 100.0;
             PRG_AxisExample.bMoveRawCmd := TRUE;
             nStep := 2515;
         END_IF
     2516:
         IF tonStep.ET >= T#1S THEN
-            fbLog(sText := 'NotMoving', nFmt := cBool, bVal := PRG_AxisExample.Axis1.Status.NotMoving);
+            fbLog(sText := 'raw move: ActPos change (0 = refused)', nFmt := cReal,
+                  fVal := PRG_AxisExample.Axis1.NcToPlc.ActPos - fStart);
+            fbLog(sText := 'fbAxis.bError', nFmt := cBool, bVal := PRG_AxisExample.fbAxis.bError);
             fbLog(sText := 'MoveVelocity on an unhomed axis');
             PRG_AxisExample.bVeloCmd := TRUE;
             nStep := 2517;
@@ -1371,8 +1414,14 @@ ELSIF nStep >= 3000 AND nStep < 4000 THEN
             nStep := 3108;
         END_IF
     3108:
-        PRG_FieldTest.bGearIn := TRUE;
-        nStep := 3109;
+        IF PRG_FieldTest.Axis2.Status.Coupled THEN     // E7: the refused move left it coupled
+            fbLog(sText := 'still coupled: GearIn skipped');
+            PRG_FieldTest.bMoveVelo := TRUE;
+            nStep := 3110;
+        ELSE
+            PRG_FieldTest.bGearIn := TRUE;
+            nStep := 3109;
+        END_IF
     3109:
         IF PRG_FieldTest.fbGearIn.InGear OR PRG_FieldTest.fbGearIn.Error THEN
             PRG_FieldTest.bGearIn := FALSE;
@@ -1453,12 +1502,15 @@ ELSIF nStep >= 3000 AND nStep < 4000 THEN
         END_IF
 
     // -- E3: MC_Halt 0 on a decoupled slave, master fDec 500 then 200
+    // At 1200 mm/s the jerk cap sqrt(v * jerk) is about 1640 with the new-axis jerk 2250,
+    // above the default deceleration 1500, so the slave's own value can show. At 500 mm/s
+    // (the first run) the cap was about 1060 and hid it.
     3300:
         nIdx := 1;
         fbLog(sText := 'record Axis 2 default deceleration and jerk from XAE');
         nStep := 3301;
     3301:
-        PRG_FieldTest.fVelo := 500.0;                  // as C3: keeps jerk from hiding the result
+        PRG_FieldTest.fVelo := 1200.0;                 // see above: keeps jerk from hiding it
         PRG_FieldTest.fDec := aE3Dec[nIdx];
         PRG_FieldTest.bGearIn := TRUE;
         nStep := 3302;
@@ -1504,48 +1556,77 @@ ELSIF nStep >= 3000 AND nStep < 4000 THEN
         END_IF
 
     // -- E4: MC_GearInDyn with Enable FALSE, then MC_GearOut while Enable is TRUE
+    // Couple at standstill, then start the master: onto a moving master MC_GearInDyn is
+    // refused with 0x425A like MC_GearIn (first run).
     3400:
-        PRG_FieldTest.bMoveVelo := TRUE;
+        PRG_FieldTest.bGearInDyn := TRUE;
         nStep := 3401;
     3401:
-        IF PRG_FieldTest.fbMoveVelo.InVelocity OR PRG_FieldTest.fbMoveVelo.Error THEN
-            PRG_FieldTest.bMoveVelo := FALSE;
-            PRG_FieldTest.bGearInDyn := TRUE;
+        IF PRG_FieldTest.fbGearInDyn.InGear OR PRG_FieldTest.fbGearInDyn.Error
+           OR tonStep.ET >= T#2S THEN
+            fbLog(sText := 'GearInDyn at standstill: InGear', nFmt := cBool,
+                  bVal := PRG_FieldTest.fbGearInDyn.InGear);
+            fbLog(sText := 'nErrGearInDyn', nFmt := cHex, nVal := PRG_FieldTest.nErrGearInDyn);
+            PRG_FieldTest.bMoveVelo := TRUE;
             nStep := 3402;
         END_IF
     3402:
-        IF PRG_FieldTest.fbGearInDyn.InGear OR PRG_FieldTest.fbGearInDyn.Error THEN
-            fbLog(sText := 'GearInDyn: InGear', nFmt := cBool, bVal := PRG_FieldTest.fbGearInDyn.InGear);
-            fbLog(sText := 'nErrGearInDyn', nFmt := cHex, nVal := PRG_FieldTest.nErrGearInDyn);
-            PRG_FieldTest.bGearInDyn := FALSE;
+        IF PRG_FieldTest.fbMoveVelo.InVelocity OR PRG_FieldTest.fbMoveVelo.Error THEN
+            PRG_FieldTest.bMoveVelo := FALSE;
             nStep := 3403;
         END_IF
     3403:
         IF tonStep.ET >= T#1S THEN
-            fbLog(sText := 'Enable FALSE: Coupled', nFmt := cBool,
+            fbLog(sText := 'master moving: Coupled', nFmt := cBool,
                   bVal := PRG_FieldTest.Axis2.Status.Coupled);
             fbLog(sText := 'slave SetVelo', nFmt := cReal, fVal := PRG_FieldTest.Axis2.NcToPlc.SetVelo);
-            fbLog(sText := 'master SetVelo', nFmt := cReal, fVal := PRG_FieldTest.Axis1.NcToPlc.SetVelo);
-            PRG_FieldTest.bGearInDyn := TRUE;
+            PRG_FieldTest.bGearInDyn := FALSE;
             nStep := 3404;
         END_IF
     3404:
-        IF PRG_FieldTest.fbGearInDyn.InGear OR PRG_FieldTest.fbGearInDyn.Error THEN
-            PRG_FieldTest.bGearOut := TRUE;            // Enable stays TRUE
+        IF tonStep.ET >= T#1S THEN
+            fbLog(sText := 'Enable FALSE: Coupled', nFmt := cBool,
+                  bVal := PRG_FieldTest.Axis2.Status.Coupled);
+            fbLog(sText := 'fbGearInDyn.Error', nFmt := cBool, bVal := PRG_FieldTest.fbGearInDyn.Error);
+            fbLog(sText := 'slave SetVelo', nFmt := cReal, fVal := PRG_FieldTest.Axis2.NcToPlc.SetVelo);
+            fbLog(sText := 'master SetVelo', nFmt := cReal, fVal := PRG_FieldTest.Axis1.NcToPlc.SetVelo);
+            PRG_FieldTest.bGearInDyn := TRUE;          // onto the coupling that still runs
             nStep := 3405;
         END_IF
     3405:
-        IF PRG_FieldTest.fbGearOut.Done OR PRG_FieldTest.fbGearOut.Error OR tonStep.ET >= T#1S THEN
-            PRG_FieldTest.bGearOut := FALSE;
+        IF PRG_FieldTest.fbGearInDyn.InGear OR PRG_FieldTest.fbGearInDyn.Error
+           OR tonStep.ET >= T#1S THEN
+            fbLog(sText := 'Enable TRUE again, still coupled: InGear', nFmt := cBool,
+                  bVal := PRG_FieldTest.fbGearInDyn.InGear);
+            fbLog(sText := 'fbGearInDyn.ErrorID', nFmt := cHex,
+                  nVal := PRG_FieldTest.fbGearInDyn.ErrorID);
+            PRG_FieldTest.bGearOut := TRUE;            // Enable stays TRUE
             nStep := 3406;
         END_IF
     3406:
-        IF tonStep.ET >= T#1S THEN                     // the mask lines show the second
+        IF PRG_FieldTest.fbGearOut.Done OR PRG_FieldTest.fbGearOut.Error OR tonStep.ET >= T#1S THEN
+            PRG_FieldTest.bGearOut := FALSE;
+            nCnt := 0;
+            nCntErr := 0;
+            nErrSeen := 0;
+            nStep := 3407;
+        END_IF
+    3407:                                              // sample Error for 1 s: it may pulse
+        nCnt := nCnt + 1;
+        IF PRG_FieldTest.fbGearInDyn.Error THEN
+            nCntErr := nCntErr + 1;
+        END_IF
+        IF PRG_FieldTest.fbGearInDyn.ErrorID <> 0 THEN
+            nErrSeen := PRG_FieldTest.fbGearInDyn.ErrorID;
+        END_IF
+        IF tonStep.ET >= T#1S THEN
             fbLog(sText := 'GearOut, Enable TRUE: Coupled', nFmt := cBool,
                   bVal := PRG_FieldTest.Axis2.Status.Coupled);
             fbLog(sText := 'fbGearInDyn.InGear', nFmt := cBool,
                   bVal := PRG_FieldTest.fbGearInDyn.InGear);
-            fbLog(sText := 'nErrGearInDyn', nFmt := cHex, nVal := PRG_FieldTest.nErrGearInDyn);
+            fbLog(sText := 'samples in 1 s', nFmt := cDec, nVal := INT_TO_UDINT(nCnt));
+            fbLog(sText := 'of them with Error TRUE', nFmt := cDec, nVal := INT_TO_UDINT(nCntErr));
+            fbLog(sText := 'ErrorID seen', nFmt := cHex, nVal := nErrSeen);
             fbLog(sText := 'nErrGearOut', nFmt := cHex, nVal := PRG_FieldTest.nErrGearOut);
             fbLog(sText := 'slave SetVelo', nFmt := cReal, fVal := PRG_FieldTest.Axis2.NcToPlc.SetVelo);
             PRG_FieldTest.bGearInDyn := FALSE;
