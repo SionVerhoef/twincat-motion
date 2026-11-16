@@ -41,10 +41,12 @@ There are three time-compensation places, all checked on 4024.55 with a simulate
 | Axis > *Drive* > *Time Compensation* tab (position mode only): mode, *IO Time is absolute*, *Task Delay in Cycles*, *Drive Delay in Cycles*, *Additional Drive Delay* | `Drive/DrvPara/TimeComp@TimeCompMode`, `@IoTimeAbsolute`, `@TaskDelayCycles`, `@DriveDelayCycles`, `@AdditionalTimeShift` |
 | Axis > *Parameter* > *Other Settings* > *Dead Time Compensation (Delay Velo and Position)*, in seconds | `AxisPara/Dynamic@DelayTime` |
 
-The encoder one is the setting meant above. XAE added `Drive/DrvPara/TimeComp@TaskDelayCycles="1"`
-to an axis file on its first save after (probably) the first activation, although nobody had
-touched a drive setting, and shows *Task Delay in Cycles* = 1. Whether 1 is the built-in
-default is not settled; don't read that attribute in a diff as a user's change.
+The encoder one is the setting meant above. XAE 4024.55 writes
+`Drive/DrvPara/TimeComp@TaskDelayCycles="1"` into an axis file whenever it rewrites it,
+although nobody touched a drive setting, and shows *Task Delay in Cycles* = 1. 1 is the
+built-in default: the Automation Interface reads `TaskDelayCycles` = 1 from an axis whose file
+has no such attribute (observed, two field-test runs). XAE writes out its own default; don't
+read that attribute in a diff as a user's change.
 
 **A simpler alternative: take the following error from the drive.** The drive closes the
 loop, so it knows the real following error with no bus delay in it. Map it into the process

@@ -118,7 +118,7 @@ if ($tc.Count -ne 1) { throw "Found $($tc.Count) matching TwinCAT projects; name
 $sysMan = $tc[0].Object
 $item = $sysMan.LookupTreeItem("TINC^NC-Task 1 SAF^Axes^$Axis")
 [xml] $xml = $item.ProduceXml()
-$stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$stamp = Get-Date -Format "yyyyMMdd-HHmmss-fff"   # ms: two runs in one second must not collide
 $xml.Save("$PWD\$Axis-before-$stamp.xml")
 if ($Produce) { Write-Host "Wrote $Axis-before-$stamp.xml. Review it, then write changes.csv."; return }
 
@@ -186,8 +186,9 @@ conversation is not enough. Then:
 Observed on TwinCAT 4024.55 (one changed value, simulated axis): XAE loaded the hand-edited
 value unchanged, without a warning, and a *Save All* with no change left the file alone.
 When XAE did rewrite the file later, it kept the layout and the CRLF line endings, but it
-added or removed bookkeeping: `ParameterChanged` elements, and once a
-`Drive/DrvPara/TimeComp@TaskDelayCycles="1"` nobody had set (see
+added or removed bookkeeping: `ParameterChanged` elements, and on every rewrite a
+`Drive/DrvPara/TimeComp@TaskDelayCycles="1"` nobody had set. That one is not bookkeeping but
+XAE writing out its own default, so the value does not change (see
 [axis-parameters.md](axis-parameters.md)). Expect those in the second diff. Other values and
 other XAE builds are untested; say so when you make the edit.
 

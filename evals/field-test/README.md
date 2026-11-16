@@ -7,11 +7,11 @@ with TwinCAT XAE. Everything you need is in this folder and in the files it poin
 
 `twincat-motion` is an agent skill for classic TwinCAT NC axes (`Tc2_MC2`). Its references
 (`references/`), templates (`templates/`) and scripts (`scripts/`) were written from the
-Beckhoff documentation and public sample projects. A first run on 4024.55 with simulated
-axes (November 2026) has been folded into the references, which mark what it "observed";
-the steps below include what that run taught about the protocol. A repeat is most useful on
-another TwinCAT build or library version, and for sections F and G on real hardware, which
-the first run did not have.
+Beckhoff documentation and public sample projects. Two runs on 4024.55 with simulated axes
+(November 2026, the second with the sequencer) have been folded into the references, which
+mark what they "observed"; the steps below include what those runs taught about the
+protocol. A repeat is most useful on another TwinCAT build or library version, and for
+sections F and G on real hardware, which neither run had.
 
 Read `SKILL.md` first. Before each check, skim the reference section it names under
 **Claim**: that is what the check confirms or refutes.
@@ -162,14 +162,17 @@ Record: the menu path and the exact names of the options.
 ## B. Compile, link and start
 
 **B1. The templates compile.**
-Claim: `templates/README.md`: they build with no errors or warnings.
-Do: add all nine files from `templates/` to the PLC project (*Add > Existing Item*). In a
+Claim: `templates/README.md`: they build with no errors or warnings (the second run had one
+warning in `FB_Axis.MoveAbsolute`, since fixed by reading a copy of `Axis.Status.Homed`).
+Do: add every PLC object in `templates/` (all files but `README.md`) to the PLC project
+(*Add > Existing Item*). In a
 throwaway project the templates' GUIDs don't matter; in a real project use twincat-st's
 `tcpou.py` as `templates/README.md` says. TwinCAT generates code only for POUs that something
 calls, so a build of uncalled templates proves nothing: call `PRG_AxisExample()` from `MAIN`
 (it instantiates every template; B3 step 4) or run *Check all objects*, then build.
 Record: every error and warning, verbatim, with object and line. Known risk points: reading
-a block's `Execute` from inside a method of `FB_Axis`, the `16#0001_0001` literals, and
+a block's `Execute` or the `VAR_IN_OUT` `Axis` from inside a method of `FB_Axis` (the latter
+gives "Access to VAR_IN_OUT ... from external context"), the `16#0001_0001` literals, and
 `DEFAULT_HOME_POSITION` as a default value in `ST_HomeNcParams`. For each fix you needed,
 record a unified diff against the template.
 
@@ -179,7 +182,7 @@ Do: create `PRG_FieldTest` from `PRG_FieldTest.st`, and `FB_FieldTestLog` and
 sequencer writes the patched `PRG_AxisExample`). `PRG_FieldTest` was written against
 `Tc2_MC2_Camming` 3.4.0, whose `MC_CamTableSelect` takes `Master` and `Slave` as
 `VAR_IN_OUT`; on a library version without them, remove those two inputs from the call. The
-sequencer has not been built yet: expect to fix a few compile errors.
+sequencer built unchanged on 4024.55; C7, C8, D5, E3, E4 and E7 changed after that run.
 Record: errors and the fixes, as in B1.
 
 **B3. A test copy of the example program.**
@@ -239,7 +242,12 @@ then `bClearLog := TRUE`. Lines are `<ms> <check> <text> [value]`. Codes are in 
 lines hold the section's FB flags as a 32-bit mask and the bits that changed; the legend is
 in the file's header. The log replaces watching the online view; it does not replace Scope
 where a check asks for it (C5, C7). Moves in C1, C7 and C8 are relative to where the axis
-stands, not the absolute targets below. E3 runs the master at 500 mm/s, like C3.
+stands, not the absolute targets below. C7 and E3 run at 1200 mm/s (see C7).
+
+Copying the log by hand is slow. A read-only ADS client is faster: the second run used a
+short Windows PowerShell script with `TwinCAT.Ads.dll` (from the TwinCAT ADS API) that takes
+symbol handles on `PRG_FieldTestSeq.fbLog.nLines` and `fbLog.aLog[i]` and only reads. If you
+use one, it must not write: the operator keeps every write.
 
 By hand instead: the steps below, with the online view.
 
@@ -325,23 +333,30 @@ the override change never reaches the outputs: `axis-lifecycle.md`). Wait for
 `fbMoveVelo.InVelocity`, set `fOverride1 := 50`, then 0, then 100. Then, with override 0,
 pulse `bMoveA`.
 Record at each step: `InVelocity`, `Busy`, `bAbortedVelo`, whether the axis moves, and
-`fbMoveA.Busy` / `Done` with override 0.
+`fbMoveA.Busy` / `Done` with override 0. Judge "moves" from `SetVelo` or `ActPos`, not
+`Axis1.Status.NotMoving`: that reads FALSE while a move is active at override 0.
 
 **C7. Zero velocity, zero acceleration.**
 Claim: `references/axis-lifecycle.md`: a velocity of 0 is an error (0x4359 from
 `MC_MoveAbsolute` on 4024.55); an acceleration of 0 means the axis default.
-Do: `fVelo := 0`, pulse `bMoveA`. Then `fVelo := 100`, `fAcc := 0`, pulse `bMoveA`.
-Record: `nErrMoveA` and `nAxisErr1` (did the axis itself go to error?); whether the second
-move runs, and its acceleration ramp (`Axis1.NcToPlc.SetAcc` in Scope) against the axis
-default.
+Do: `fVelo := 0`, pulse `bMoveA`. Then two moves of 3000 mm at `fVelo := 1200`: one with
+`fAcc := 500` (checks the measurement: expect about 500), one with `fAcc := 0`. A jerk-limited
+ramp peaks at no more than sqrt(velocity × jerk): with the new-axis jerk 2250 mm/s³ that is
+about 474 mm/s² at 100 mm/s and 1060 at 500, both below the default acceleration 1500, so
+those runs can't show it. Reaching 1500 needs at least 1500² / 2250 = 1000 mm/s.
+Record: `nErrMoveA` and `nAxisErr1` (did the axis itself go to error?); whether the moves run,
+and the peak of `Axis1.NcToPlc.SetAcc` (Scope) for each, against the axis's default
+acceleration and jerk.
 
 **C8. Retargeting a running move.**
 Claim: `references/axis-lifecycle.md`, "Inputs latch on the rising edge": a new rising edge
 on a busy block is ignored without an error; a second instance takes over and the first
 reports `CommandAborted`.
 Do: pulse `bMoveA` (to 1000). While it runs, set `fPosA := 300` and pulse `bMoveA` again.
-Then pulse `bMoveB` (to 400) while A still runs.
-Record: what the second edge on A did, and any error; where the axis ends; `bAbortedA`.
+Wait until the axis has passed 330 (the edge was ignored) or A reports `Done` near 300 (it was
+taken). Only then pulse `bMoveB` (to 400): before that, A's profile is the same either way.
+Record: what the second edge on A did, and any error; where A was when B started; where the
+axis ends; `bAbortedA`.
 
 ## D. The templates on a simulated axis (Axis 3, `PRG_AxisExample`)
 
@@ -404,12 +419,17 @@ Do (after D2, axis homed):
 2. Reset any error, limit still open: a positive velocity move again.
 3. A `MoveAbsolute` 100 below the current position (negative), limit still open. Then close
    the limit (`TRUE`).
-4. Unhome: a homing run that fails (`fSwitchPos := -100000`, `tStepTimeout := T#2S`). Then
-   `bMoveRawCmd` (B3) to 100 above, and `bVeloCmd`. Halt, restore, home again.
+4. Unhome: a homing run that fails (`fSwitchPos := -100000`, `tStepTimeout := T#2S`) with
+   `stHomePlc.bMarkNcHomed := TRUE`, so it clears the NC's mark too: with FALSE, the mark D4
+   left keeps the gate open. Check that `Axis1.Status.Homed` and `bHomed` are both FALSE. Then
+   `bMoveRawCmd` (B3) to 100 above, and `bVeloCmd`. Halt, restore (`bMarkNcHomed := FALSE`),
+   home again. If the axis ended far above the switch, raise `stHomePlc.fSearchVelocity`
+   for that run, or the search at 5 mm/s hits its 60 s step timeout.
 Record: per step whether the axis moved or stopped, `bAccepted`, `fbAxis.bError` and
 `nErrorID`, and in step 1 `Axis1.Status.ErrorId` (look each up with `nc_error.py`). In step
-4: `bHomed`, `Axis1.Status.Homed`, and `bAccepted` for the raw move (expect FALSE) and the
-velocity move (expect TRUE).
+4: `bHomed`, `Axis1.Status.Homed`, `bAccepted` and the change of `ActPos` for the raw move
+(expect FALSE and none, without an error), and `bAccepted` for the velocity move (expect
+TRUE).
 
 ## E. Coupling (Axis 1 master, Axis 2 slave, `PRG_FieldTest`)
 
@@ -437,8 +457,9 @@ Record: `Axis2.NcToPlc.SetVelo` after the decouple and after the master stopped;
 `Axis2.Status.ContinuousMotion`.
 
 **E3. `MC_Halt` with `Deceleration` 0 on a decoupled slave.**
-Do: continue from E2 with `fHaltDec2 := 0`, pulse `bHalt2`, read `fPeakDecel2`. Repeat with
-the master's `fDec` at 500 and at 200 before coupling.
+Do: as E2 with the master at `fVelo := 1200` (at 500 the jerk caps the peak near 1060, below
+the default 1500; see C7), then `fHaltDec2 := 0`, pulse `bHalt2`, read `fPeakDecel2`. Repeat
+with the master's `fDec` at 500 and at 200 before coupling.
 Record: both values, and Axis 2's default deceleration and jerk (Axis 2 > *Parameter* >
 *Dynamics*). Whose dynamics did the halt use?
 
@@ -446,10 +467,14 @@ Record: both values, and Axis 2's default deceleration and jerk (Axis 2 > *Param
 Claim: `references/coupling.md`: `Enable` FALSE ends the command but keeps the coupling;
 `MC_GearOut` while `Enable` is TRUE leaves the slave decoupled, with `InGear` FALSE and no
 error.
-Do: `bGearInDyn := TRUE`, wait for `InGear`, master moving. `bGearInDyn := FALSE`. Then
-`bGearInDyn := TRUE` again and pulse `bGearOut` while it stays TRUE.
-Record: `Axis2.Status.Coupled` and whether the slave follows after Enable FALSE; what the
-`bGearOut` pulse did over the next second.
+Do: both axes at standstill, `bGearInDyn := TRUE`, wait for `InGear`; then start the master
+(`MC_GearInDyn` onto a moving master is refused with 0x425A, as `MC_GearIn`). With the master
+moving, `bGearInDyn := FALSE`. Then `bGearInDyn := TRUE` again and pulse `bGearOut` while it
+stays TRUE.
+Record: `Axis2.Status.Coupled` and whether the slave follows after Enable FALSE; `InGear` and
+any error when Enable rises again on the still-coupled slave; what the `bGearOut` pulse did
+over the next second, with `Error` / `ErrorID` sampled over that second (it pulsed with
+0x425A in the second run: one read can show either).
 
 **E5. `MC_CamIn` with the slave away from its table position.** (Needs TF5050.)
 Claim: `references/coupling.md`, "The slave must already be where the table says", and its
@@ -479,7 +504,9 @@ master set position).
 activation.)
 Claim: as E1: with the setting FALSE, the move is refused with 0x4B08, a halt with 0x4267,
 and the slave stays coupled.
-Do: set the setting FALSE on Axis 2, activate or download, and repeat E1.
+Do: set the setting FALSE on Axis 2, activate or download, and repeat E1. The refused move
+leaves the slave coupled: don't couple it again (`MC_GearIn` on a coupled slave gives 0x0707),
+just restart the master for the halt.
 Record: as E1.
 
 ## F. Retain and the first start (best effort)

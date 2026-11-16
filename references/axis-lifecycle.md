@@ -65,7 +65,8 @@ inside it shows whether the NC is updating at all.
 ### Inputs latch on the rising edge
 
 A block reads its inputs when `Execute` rises. Changing `Position` or `Velocity` while it is
-busy does nothing, and a second rising edge while busy is ignored without an error. To change
+busy does nothing, and a second rising edge while busy is ignored (no error, observed; that
+it changes nothing is documented, not yet shown). To change
 the target of a running move, trigger **a second instance** with the new values; with the
 default `Aborting` mode it takes over and the first reports `CommandAborted`.
 
@@ -80,7 +81,9 @@ override change ended it. `Done` and `Error` after a falling `Execute` were not 
 ### Zero means different things
 
 - On a move or `MC_Jog`, a dynamics input (`Acceleration`, `Deceleration`, `Jerk`) of 0
-  means "use the default from the axis parameters".
+  means "use the default from the axis parameters". Observed: an `Acceleration` of 0 is
+  accepted without an error; the measured ramp was jerk-limited, so which acceleration it
+  used is still documented, not observed.
 - On `MC_Halt` and `MC_Stop`, a deceleration or jerk of 0 (or less) takes the values of the
   last move instead, so a stop with 0 never ramps more gently than the move it ends
   (observed for `MC_Halt` after moves with deceleration 500 and 200). An **explicit** value
@@ -135,7 +138,9 @@ and `MC_JOGMODE_INCHING_MODULO` move a set distance per button press.
 
 - `Override` is a percentage (0–100, default 100) applied to every move on the axis. At 0
   the axis stands still with its command still running; a move started at override 0 is
-  `Busy` and `Active` and does not move, and finishes once the override returns. A change of
+  `Busy` and `Active` and does not move, and finishes once the override returns. Meanwhile
+  `Axis.Status.NotMoving` is FALSE (observed): it is no standstill check while a command is
+  active at override 0; the set velocity is. A change of
   override ends a running `MC_MoveVelocity` with `CommandAborted` while the axis keeps moving
   at the new velocity (observed, 4024.55 / Tc2_MC2 3.3.59, `Execute` held TRUE).
 - `Status` is the readiness of the axis, including the drive's on digital drives. On an

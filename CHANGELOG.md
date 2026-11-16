@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Second field-test run (4024.55, sequencer): `FB_Axis.MoveAbsolute` no longer reads the
+  `VAR_IN_OUT` `Axis` from a method (compiler warning); the body copies `Axis.Status.Homed`
+  for it. Limit inputs, homed gate, `FB_HomeNc` timeout and the `FB_HomePlc` switch re-check
+  now observed. References: a direction enable dropping mid-move stops the axis with no
+  code; `NotMoving` reads FALSE during a move at override 0; `MC_GearInDyn` onto a moving
+  master is refused with 0x425A, and held enabled after `MC_GearOut` its `Error` pulses
+  with 0x425A; `TaskDelayCycles="1"` is XAE writing its own default. Protocol and
+  sequencer: C7 and E3 at 1200 mm/s so jerk no longer hides the value, C8 waits for A's
+  second target to be decided, D5 clears the NC homed mark, E4 couples at standstill and
+  samples `Error`, E7 skips the re-couple. `axis-change.ps1` stamps in milliseconds.
 - Field test: new check D5 for `FB_Axis`'s limit switches and homed gate, also recording
   which code a direction enable dropping mid-move gives. B3 keeps `stMachine` in the test
   copy and adds an ungated move; the sequencer runs D5.

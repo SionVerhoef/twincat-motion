@@ -23,7 +23,9 @@
     - bBusy is about the command, not the axis. MC_MoveVelocity stays busy
       until something replaces it, and Tc2_MC2 ends it with CommandAborted
       when the override changes while the axis keeps moving. To know
-      whether the axis moves, read Axis.Status.Moving / NotMoving.
+      whether the axis moves, read Axis.Status.Moving / NotMoving, but
+      not at override 0: with a move active there, NotMoving stays FALSE
+      although the axis stands. Read the set velocity then.
     - MoveAbsolute is refused until the axis is homed: Axis.Status.Homed,
       or stMachine.bHomedOwn when the homed record is the caller's own
       (FB_HomePlc with bMarkNcHomed FALSE). One record per axis, not both.
@@ -93,6 +95,7 @@ VAR
     fDec        : LREAL;
     fJerk       : LREAL;
 
+    bHomedNc    : BOOL;            // Axis.Status.Homed, copied in the body for the methods
     eCmd        : E_AxisCmd := E_AxisCmd.None;  // last issued command
     bCmdError   : BOOL;            // its error, latched to the next one
     nCmdErrorID : UDINT;
@@ -106,6 +109,9 @@ END_VAR
     <Implementation>
       <ST><![CDATA[// 1. Sensors first. Tc2_MC2 refreshes Axis.Status only when asked.
 Axis.ReadStatus();
+// A method called from outside may not read the VAR_IN_OUT Axis (compiler
+// warning), so it reads this copy, one scan old at most, like bReady.
+bHomedNc := Axis.Status.Homed;
 
 // 2. Issue a recorded request once its block can see a real rising edge.
 //    The timer runs after the attempt, so it only counts a request that
@@ -232,7 +238,7 @@ END_VAR
 // An absolute target needs a homed axis: refused until it is.
 MoveAbsolute := bReady AND (ePending <> E_AxisCmd.Halt)
                 AND (fVelocity > 0.0)
-                AND (Axis.Status.Homed OR stMachine.bHomedOwn);
+                AND (bHomedNc OR stMachine.bHomedOwn);
 IF MoveAbsolute THEN
     fReqValue := fPosition;
     fReqVelo  := fVelocity;

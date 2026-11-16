@@ -6,18 +6,21 @@ options most shops start from. UTF-8 with BOM, CRLF, valid GUIDs.
 **Compiled and run on simulated axes, not on a real one.** These templates pass twincat-st's
 `tcpou.py check` and `st_review.py --pedantic` (twincat-st v0.6.0, no findings), and every
 `Tc2_MC2` identifier was checked against the library documentation. In a field test on
-TwinCAT 4024.55 with `Tc2_MC2` 3.3.59 they built with 0 errors and 0 warnings (called from a
-program, so code was generated for them), and on a simulated drive and encoder:
+TwinCAT 4024.55 with `Tc2_MC2` 3.3.59 they built with 0 errors (called from a program, so code
+was generated for them). The second run left one warning: `FB_Axis.MoveAbsolute` read the
+`VAR_IN_OUT` `Axis` from a method. It now reads a copy the body takes; that fix has not been
+built in XAE yet. On a simulated drive and encoder, over two runs:
 
 - `FB_Axis`: power, reset, moves, retargeting a running move (no `bCommandAborted`), halt,
   a velocity change, and an override change (`bBusy` and `bDone` FALSE, `bCommandAborted`
-  TRUE while the axis runs on, as the header says) all behaved as documented.
+  TRUE while the axis runs on, as the header says) all behaved as documented. So did the
+  limit inputs (an open one stops that direction only) and the homed gate (`MoveAbsolute`
+  refused without an error on an unhomed axis, `MoveVelocity` not gated).
 - `FB_HomePlc`: off the switch, on the switch, with and without the NC homed mark, and the
-  search timeout (`nErrorID` 16#0001_0103, axis halted) all behaved as documented. One
-  change since that run, not yet re-run: after moving off the switch it checks the switch
-  again before searching, so a bouncing switch can't send the search through the cam.
-- `FB_HomeNc`: default homing completed with and without the faked cam. Its timeout path was
-  **not** reached, because a simulated encoder always finds the sync pulse.
+  search timeout (`nErrorID` 16#0001_0103, axis halted) all behaved as documented, including
+  the re-check of the switch after moving off it, before searching.
+- `FB_HomeNc`: default homing completed with and without the faked cam, and the timeout
+  (cam held FALSE) gave `nErrorID` 16#0001_0202 with the axis standing still.
 
 They have not moved a real axis. Run them on yours at reduced velocity, acceleration and
 torque first. Nothing here is a safety function.
@@ -57,19 +60,19 @@ torque first. Nothing here is a safety function.
   axis), which for a homing search is not a value anyone chose. `FB_Axis.Halt` never refuses a
   stop, so pass it a value > 0. `FB_Axis` feeds `MC_Power`'s feed enables from
   `stMachine.bLimitPosOk` / `bLimitNegOk` (`ST_AxisMachineIn`, default TRUE), where hardware
-  limit switches are wired; an open one gives only 0x4223 on a move that way, see
-  `references/triage.md`. `MoveAbsolute` is refused until the axis is homed:
+  limit switches are wired; an open one gives only 0x4223 on a move that way, and one that
+  opens during a move stops it with no code at all, see `references/triage.md`. `MoveAbsolute` is refused until the axis is homed:
   `Axis.Status.Homed`, or `stMachine.bHomedOwn`
   when the record is the caller's own (`FB_HomePlc` with `bMarkNcHomed` FALSE). Keep one homed
   record per axis: a stale NC `Homed` would let a move through after a failed PLC homing run.
   A limit switch used as the homing reference must not also sit on the feed enable of the
-  search direction, or the search stops on it. The limit inputs and the homed gate were added
-  after the field test and have not been run. The homing blocks clear and set
+  search direction, or the search stops on it. The homing blocks clear and set
   the NC's homed state with explicit `MC_Home` calls, because `MC_SetPosition` neither sets nor
   clears it.
 - **`FB_HomeNc`'s timeout.** It relies on `MC_Halt` stopping a running `MC_Home`, which the
-  field test confirmed (`MC_Home` then reports 0x4B0A). To exercise the timeout on a simulated
-  axis, hold `bCalibrationCam` FALSE with `stParams.bNoCam` FALSE, so the cam never arrives.
+  field test confirmed (`MC_Home` then reports 0x4B0A), and the timeout itself ran there. To
+  exercise it on a simulated axis, hold `bCalibrationCam` FALSE with `stParams.bNoCam` FALSE,
+  so the cam never arrives.
 - **Don't simulate the reference switch from `ActPos` for NC homing.** A test switch such as
   `bRefSwitch := Axis.NcToPlc.ActPos <= fSwitchPos` works for `FB_HomePlc`, but during
   `MC_DefaultHoming` the NC sets the position to −1.0E10 while searching (`references/homing.md`),
