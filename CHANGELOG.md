@@ -1,6 +1,10 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-11-17
+
+Second release: three field-test runs on simulated axes folded in, `FB_Axis` limit and
+homed-gate inputs, and a step-chain sequencer for the field test. Still never run against a
+real drive.
 
 - Third field-test run (4024.55, sequencer): the templates build with 0 warnings. Now
   observed: an `Acceleration` of 0 uses the axis default; a second rising edge on a busy

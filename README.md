@@ -16,7 +16,7 @@ finding out why an axis won't enable or move.
 > limits, and verify on the real machine before anyone stands near it. Responsibility for the
 > machine stays with whoever commissions it.
 
-**Status: v0.1.0.** Covers classic NC with `Tc2_MC2` on TwinCAT 3.1.4024. Field-tested on
+**Status: v0.2.0.** Covers classic NC with `Tc2_MC2` on TwinCAT 3.1.4024. Field-tested on
 4024.55 with **simulated axes only**; never run against a real drive. What is verified and
 what is not: [Status](#status).
 
@@ -51,7 +51,7 @@ git submodule add https://github.com/SionVerhoef/twincat-motion .claude/skills/t
 Pin a release rather than following `main`, and commit the pin:
 
 ```bash
-git -C .claude/skills/twincat-motion checkout v0.1.0
+git -C .claude/skills/twincat-motion checkout v0.2.0
 git add .claude/skills/twincat-motion
 ```
 
@@ -100,10 +100,10 @@ The line between verified and not verified is the most important fact on this pa
 
 **Verified**
 
-- **Field test on TwinCAT 4024.55, `Tc2_MC2` 3.3.59, simulated axes.** The templates built
-  with no errors or warnings and behaved as documented; the references state what that run
-  observed and say so. One later change to `FB_HomePlc` (it re-checks the switch after
-  moving off it) has not been re-run. Protocol: [`evals/field-test/README.md`](evals/field-test/README.md).
+- **Field test on TwinCAT 4024.55, `Tc2_MC2` 3.3.59, simulated axes, three runs.** The
+  templates built with no errors or warnings and behaved as documented, including
+  `FB_Axis`'s limit inputs and homed gate; the references state what the runs observed and
+  say so. Protocol: [`evals/field-test/README.md`](evals/field-test/README.md).
 - **The templates pass twincat-st v0.6.0's** `tcpou.py check` and `st_review.py --pedantic`
   with no findings. CI runs both at that pinned tag.
 - **`axis_xti.py` is tested on four public sample axes**, shipped with their licences in
@@ -117,9 +117,8 @@ The line between verified and not verified is the most important fact on this pa
 **Not verified**
 
 - **No real drive.** Nothing here has moved a real axis. Untested on hardware: NC retain with
-  real retain storage and an absolute encoder, `FB_HomeNc`'s timeout path (a simulated
-  encoder always finds the sync pulse), which code a direction enable dropping during a move
-  gives, and the Automation Interface apply script against a real project. The protocol for
+  real retain storage and an absolute encoder, `FB_HomeNc` against a real cam and sync
+  pulse, and the Automation Interface apply script against a real project. The protocol for
   that run is ready (sections F and G of the field test).
 - **Other TwinCAT builds.** Only 4024.55 was run. 4026 differences are named only where known.
 - **The A/B was run on Opus only.** A Haiku round would show more of the skill's effect.
