@@ -79,8 +79,11 @@ drive's PDO assignment. It cannot see the bus or the NC cycle; those stay online
   coupled slave. A direction enable that drops **during** a move stops the axis with **no
   code at all**: no block error, no axis error, `MC_Power.Status` still TRUE (observed, same
   setup). So an axis that stopped short with nothing in the logger may have run onto a limit
-  switch. 0x4357 (minus feed enable missing) and 0x4358 (plus) appeared in neither case;
-  where they come from is not settled. The two are easy to swap; check with the tool.
+  switch. 0x4357 (minus feed enable missing) and 0x4358 (plus) never reach the PLC: a
+  positive move started without `Enable_Positive` put 0x4358 in the **XAE error list**
+  (the event logger), at the same moment as the 0x4223 on the block (observed, same setup).
+  The enable dropping mid-move logged nothing there either. So for a refused move, read
+  the error list for the direction. The two are easy to swap; check with the tool.
 - **`Override` is 100.** It is a percentage applied to every move and defaults to 100.0;
   linked to a variable that sits at 0, every move starts and nothing moves. While it does,
   `Axis.Status.NotMoving` reads FALSE although the axis stands (observed, 4024.55): check

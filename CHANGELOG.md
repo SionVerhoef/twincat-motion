@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Third field-test run (4024.55, sequencer): the templates build with 0 warnings. Now
+  observed: an `Acceleration` of 0 uses the axis default; a second rising edge on a busy
+  move changes nothing; `MC_Halt` with `Deceleration` 0 on a decoupled slave uses the
+  slave's own default. `triage.md` / `nc_error.py`: 0x4357 / 0x4358 never reach the PLC,
+  they appear in the XAE error list next to the block's 0x4223. Protocol and sequencer: D5
+  tells the operator to read the error list, E3 reads Axis 2's dynamics with
+  `MC_ReadParameter` and logs the master's velocity, E1/E7 no longer log `InGear`. New
+  `evals/field-test/read-log.ps1`, a read-only ADS reader for the sequencer log.
 - Second field-test run (4024.55, sequencer): `FB_Axis.MoveAbsolute` no longer reads the
   `VAR_IN_OUT` `Axis` from a method (compiler warning); the body copies `Axis.Status.Homed`
   for it. Limit inputs, homed gate, `FB_HomeNc` timeout and the `FB_HomePlc` switch re-check

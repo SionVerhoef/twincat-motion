@@ -65,8 +65,8 @@ inside it shows whether the NC is updating at all.
 ### Inputs latch on the rising edge
 
 A block reads its inputs when `Execute` rises. Changing `Position` or `Velocity` while it is
-busy does nothing, and a second rising edge while busy is ignored (no error, observed; that
-it changes nothing is documented, not yet shown). To change
+busy does nothing, and a second rising edge while busy is ignored: no error, and the move
+went on to its first target (observed). To change
 the target of a running move, trigger **a second instance** with the new values; with the
 default `Aborting` mode it takes over and the first reports `CommandAborted`.
 
@@ -81,9 +81,9 @@ override change ended it. `Done` and `Error` after a falling `Execute` were not 
 ### Zero means different things
 
 - On a move or `MC_Jog`, a dynamics input (`Acceleration`, `Deceleration`, `Jerk`) of 0
-  means "use the default from the axis parameters". Observed: an `Acceleration` of 0 is
-  accepted without an error; the measured ramp was jerk-limited, so which acceleration it
-  used is still documented, not observed.
+  means "use the default from the axis parameters". Observed: an `Acceleration` of 0 on a
+  move at 1200 mm/s ramped at the axis default (1500 mm/s², where the jerk alone would
+  have allowed about 1640), without an error.
 - On `MC_Halt` and `MC_Stop`, a deceleration or jerk of 0 (or less) takes the values of the
   last move instead, so a stop with 0 never ramps more gently than the move it ends
   (observed for `MC_Halt` after moves with deceleration 500 and 200). An **explicit** value
