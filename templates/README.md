@@ -7,9 +7,8 @@ options most shops start from. UTF-8 with BOM, CRLF, valid GUIDs.
 `tcpou.py check` and `st_review.py --pedantic` (twincat-st v0.6.0, no findings), and every
 `Tc2_MC2` identifier was checked against the library documentation. In a field test on
 TwinCAT 4024.55 with `Tc2_MC2` 3.3.59 they built with 0 errors (called from a program, so code
-was generated for them). The second run left one warning: `FB_Axis.MoveAbsolute` read the
-`VAR_IN_OUT` `Axis` from a method. It now reads a copy the body takes; that fix has not been
-built in XAE yet. On a simulated drive and encoder, over two runs:
+was generated for them), and since the third run with 0 warnings as well. On a simulated
+drive and encoder, over three runs:
 
 - `FB_Axis`: power, reset, moves, retargeting a running move (no `bCommandAborted`), halt,
   a velocity change, and an override change (`bBusy` and `bDone` FALSE, `bCommandAborted`

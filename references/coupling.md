@@ -80,7 +80,8 @@ Decouple a slave before homing it.
 - `MC_GearOut` while `Enable` is still TRUE: observed twice, the slave **stayed decoupled**
   and ran on at its last velocity, with `InGear` FALSE. The block keeps trying to couple
   again onto the now moving master and is refused each time, so `Error` pulses on and off
-  with 0x425A (about a quarter of the samples in one run): one read can show it either way.
+  with 0x425A (for one PLC cycle about every 50 ms in one run): one read can show it either
+  way.
   So an `Enable`-held `MC_GearInDyn` can sit uncoupled. Drop `Enable` first, and check
   `Coupled` after a decouple.
 - Not supported by the phasing blocks (refused with 0x4251, observed).
@@ -102,9 +103,9 @@ velocity it had, like after `MC_MoveVelocity`, indefinitely. Follow every decoup
 slave with `MC_Halt` (or `MC_Stop`), or decouple only at standstill. Code that decouples and
 then waits for the slave to stand still waits for ever. (Observed: after `MC_GearOut` the
 slave kept its velocity, also after the master stopped, with `ContinuousMotion` TRUE.) An
-`MC_Halt` with `Deceleration` 0 on such a slave did not use the master's deceleration (observed
-twice, master at 500 and at 200); the peak fitted the slave's own default deceleration and
-jerk, but was jerk-limited, so the value itself is not confirmed.
+`MC_Halt` with `Deceleration` 0 on such a slave uses the **slave's own default
+deceleration**, not the master's: with the master at 500 and at 200, the slave decoupled at
+1200 mm/s stopped at its default 1500 both times (observed).
 
 **Flying saw** (`Tc2_MC2_FlyingSaw`, TF5055, a separate licence): `MC_GearInPos` synchronises
 the slave so that a given slave position meets a given master position, then holds the

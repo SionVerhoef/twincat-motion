@@ -26,8 +26,9 @@
 // Moves start from where the axis stands: C1, C7 and C8 put their targets relative to it.
 //
 // Written for TwinCAT 4024.55 with Tc2_MC2 3.3.59. It built there unchanged and ran C, D
-// and E (November 2026); C7, C8, D5 step 4, E3, E4 and E7 were changed after that run and
-// have not run since. Fix compile errors on site and record them as a diff (README B2).
+// and E (November 2026; C7, C8, D, E3, E4 and E7 again at the third run). Since then D5
+// and E7 log different lines and E3 reads Axis 2's dynamics with MC_ReadParameter; not
+// built yet. Fix compile errors on site and record them as a diff (README B2).
 //
 // Mask bits. C (PRG_FieldTest, Axis1):
 //   0 fbPower1.Status  1 Axis1 Error  2 Axis1 ErrorStop  3 Axis1 Homed
@@ -202,6 +203,8 @@ VAR
     nCnt         : INT;          // E4: samples taken
     nCntErr      : INT;          // E4: samples with Error TRUE
     nErrSeen     : UDINT;        // E4: last non-zero ErrorID seen
+    fbReadDec2   : MC_ReadParameter;  // E3: Axis 2's default deceleration
+    fbReadJerk2  : MC_ReadParameter;  // E3: and jerk
 
     aSecName     : ARRAY[1..3] OF STRING(1) := ['C', 'D', 'E'];
     aLastCheck   : ARRAY[1..3] OF INT := [8, 5, 7];
@@ -1163,10 +1166,10 @@ ELSIF nStep >= 2000 AND nStep < 3000 THEN
         IF tonStep.ET >= T#2S THEN
             fbLog(sText := 'NotMoving', nFmt := cBool, bVal := PRG_AxisExample.Axis1.Status.NotMoving);
             fbLog(sText := 'fbAxis.bError', nFmt := cBool, bVal := PRG_AxisExample.fbAxis.bError);
-            fbLog(sText := 'nErrorID (0x4357 or 0x4358?)', nFmt := cHex,
-                  nVal := PRG_AxisExample.fbAxis.nErrorID);
+            fbLog(sText := 'nErrorID', nFmt := cHex, nVal := PRG_AxisExample.fbAxis.nErrorID);
             fbLog(sText := 'Axis1 ErrorId', nFmt := cHex, nVal := PRG_AxisExample.Axis1.Status.ErrorId);
             fbLog(sText := 'fbAxis.bReady', nFmt := cBool, bVal := PRG_AxisExample.fbAxis.bReady);
+            fbLog(sText := 'operator: read the XAE error list (0x4357 / 0x4358 only there)');
             nStep := 2504;
         END_IF
     2504:
@@ -1191,6 +1194,7 @@ ELSIF nStep >= 2000 AND nStep < 3000 THEN
             fbLog(sText := 'SetVelo', nFmt := cReal, fVal := PRG_AxisExample.Axis1.NcToPlc.SetVelo);
             fbLog(sText := 'fbAxis.bError', nFmt := cBool, bVal := PRG_AxisExample.fbAxis.bError);
             fbLog(sText := 'nErrorID', nFmt := cHex, nVal := PRG_AxisExample.fbAxis.nErrorID);
+            fbLog(sText := 'operator: read the XAE error list (0x4358 expected)');
             IF PRG_AxisExample.fbAxis.bError THEN
                 PRG_AxisExample.bResetCmd := TRUE;
             END_IF
@@ -1398,7 +1402,6 @@ ELSIF nStep >= 3000 AND nStep < 4000 THEN
             fbLog(sText := 'Coupled', nFmt := cBool, bVal := PRG_FieldTest.Axis2.Status.Coupled);
             fbLog(sText := 'ProtectedMode', nFmt := cBool,
                   bVal := PRG_FieldTest.Axis2.Status.ProtectedMode);
-            fbLog(sText := 'fbGearIn.InGear', nFmt := cBool, bVal := PRG_FieldTest.fbGearIn.InGear);
             fbLog(sText := 'fbGearIn.ErrorID', nFmt := cHex, nVal := PRG_FieldTest.fbGearIn.ErrorID);
             fbLog(sText := 'bAbortedGearIn', nFmt := cBool, bVal := PRG_FieldTest.bAbortedGearIn);
             fbLog(sText := 'slave SetPos', nFmt := cReal, fVal := PRG_FieldTest.Axis2.NcToPlc.SetPos);
@@ -1442,7 +1445,6 @@ ELSIF nStep >= 3000 AND nStep < 4000 THEN
             fbLog(sText := 'Coupled', nFmt := cBool, bVal := PRG_FieldTest.Axis2.Status.Coupled);
             fbLog(sText := 'ProtectedMode', nFmt := cBool,
                   bVal := PRG_FieldTest.Axis2.Status.ProtectedMode);
-            fbLog(sText := 'fbGearIn.InGear', nFmt := cBool, bVal := PRG_FieldTest.fbGearIn.InGear);
             fbLog(sText := 'fbGearIn.ErrorID', nFmt := cHex, nVal := PRG_FieldTest.fbGearIn.ErrorID);
             fbLog(sText := 'bAbortedGearIn', nFmt := cBool, bVal := PRG_FieldTest.bAbortedGearIn);
             fbLog(sText := 'slave SetVelo', nFmt := cReal, fVal := PRG_FieldTest.Axis2.NcToPlc.SetVelo);
@@ -1507,8 +1509,21 @@ ELSIF nStep >= 3000 AND nStep < 4000 THEN
     // (the first run) the cap was about 1060 and hid it.
     3300:
         nIdx := 1;
-        fbLog(sText := 'record Axis 2 default deceleration and jerk from XAE');
-        nStep := 3301;
+        fbReadDec2(Axis := PRG_FieldTest.Axis2, Enable := TRUE, ReadMode := E_ReadMode.READMODE_ONCE,
+                   ParameterNumber := MC_AxisParameter.AxisDec);
+        fbReadJerk2(Axis := PRG_FieldTest.Axis2, Enable := TRUE, ReadMode := E_ReadMode.READMODE_ONCE,
+                    ParameterNumber := MC_AxisParameter.AxisJerk);
+        IF (fbReadDec2.Valid OR fbReadDec2.Error) AND (fbReadJerk2.Valid OR fbReadJerk2.Error) THEN
+            fbLog(sText := 'Axis 2 default deceleration', nFmt := cReal, fVal := fbReadDec2.Value);
+            fbLog(sText := 'Axis 2 default jerk', nFmt := cReal, fVal := fbReadJerk2.Value);
+            IF fbReadDec2.Error OR fbReadJerk2.Error THEN
+                fbLog(sText := 'parameter read failed: record them from XAE', nFmt := cHex,
+                      nVal := fbReadDec2.ErrorID OR fbReadJerk2.ErrorID);
+            END_IF
+            fbReadDec2(Axis := PRG_FieldTest.Axis2, Enable := FALSE);
+            fbReadJerk2(Axis := PRG_FieldTest.Axis2, Enable := FALSE);
+            nStep := 3301;
+        END_IF
     3301:
         PRG_FieldTest.fVelo := 1200.0;                 // see above: keeps jerk from hiding it
         PRG_FieldTest.fDec := aE3Dec[nIdx];
@@ -1523,6 +1538,7 @@ ELSIF nStep >= 3000 AND nStep < 4000 THEN
     3303:
         IF PRG_FieldTest.fbMoveVelo.InVelocity OR PRG_FieldTest.fbMoveVelo.Error THEN
             PRG_FieldTest.bMoveVelo := FALSE;
+            fbLog(sText := 'master SetVelo', nFmt := cReal, fVal := PRG_FieldTest.Axis1.NcToPlc.SetVelo);
             PRG_FieldTest.bGearOut := TRUE;
             nStep := 3304;
         END_IF

@@ -162,8 +162,7 @@ Record: the menu path and the exact names of the options.
 ## B. Compile, link and start
 
 **B1. The templates compile.**
-Claim: `templates/README.md`: they build with no errors or warnings (the second run had one
-warning in `FB_Axis.MoveAbsolute`, since fixed by reading a copy of `Axis.Status.Homed`).
+Claim: `templates/README.md`: they build with no errors or warnings.
 Do: add every PLC object in `templates/` (all files but `README.md`) to the PLC project
 (*Add > Existing Item*). In a
 throwaway project the templates' GUIDs don't matter; in a real project use twincat-st's
@@ -244,10 +243,12 @@ in the file's header. The log replaces watching the online view; it does not rep
 where a check asks for it (C5, C7). Moves in C1, C7 and C8 are relative to where the axis
 stands, not the absolute targets below. C7 and E3 run at 1200 mm/s (see C7).
 
-Copying the log by hand is slow. A read-only ADS client is faster: the second run used a
-short Windows PowerShell script with `TwinCAT.Ads.dll` (from the TwinCAT ADS API) that takes
-symbol handles on `PRG_FieldTestSeq.fbLog.nLines` and `fbLog.aLog[i]` and only reads. If you
-use one, it must not write: the operator keeps every write.
+Copying the log by hand is slow. `read-log.ps1` (next to this file) reads it over ADS from
+the first PLC runtime on the local router (port 851) and only reads: the operator keeps every
+write. It needs Windows PowerShell 5.1 (`powershell.exe`; under PowerShell 7 the .NET
+Framework `TwinCAT.Ads.dll` does not load) and the TwinCAT ADS API at its default path:
+`powershell.exe -NoProfile -ExecutionPolicy Bypass -File read-log.ps1 -Out log.txt`. Run it
+again until the last line reads `IDLE` or `TIMEOUT`.
 
 By hand instead: the steps below, with the online view.
 
@@ -411,9 +412,9 @@ reference position from the encoder parameters).
 Claim: `templates/FB_Axis.TcPOU`, contract: `stMachine.bLimitPosOk` / `bLimitNegOk` feed
 MC_Power's `Enable_Positive` / `Enable_Negative`, so an open limit stops that direction
 only; `MoveAbsolute` is refused (`bAccepted` FALSE) until the axis is homed (NC `Homed` or
-`stMachine.bHomedOwn`); `MoveVelocity` is not gated. Also answers an open question in
-`references/triage.md` step 2: which code a direction enable dropping **during** a move gives
-(0x4357 or 0x4358, or none).
+`stMachine.bHomedOwn`); `MoveVelocity` is not gated. And `references/triage.md` step 2: a
+direction enable dropping **during** a move stops the axis with no code; a move started
+without it gives 0x4223 on the block, and 0x4357 / 0x4358 appear only in the XAE error list.
 Do (after D2, axis homed):
 1. Velocity move positive, then `stMachine.bLimitPosOk := FALSE` while it runs.
 2. Reset any error, limit still open: a positive velocity move again.
@@ -426,7 +427,8 @@ Do (after D2, axis homed):
    home again. If the axis ended far above the switch, raise `stHomePlc.fSearchVelocity`
    for that run, or the search at 5 mm/s hits its 60 s step timeout.
 Record: per step whether the axis moved or stopped, `bAccepted`, `fbAxis.bError` and
-`nErrorID`, and in step 1 `Axis1.Status.ErrorId` (look each up with `nc_error.py`). In step
+`nErrorID`, and in step 1 `Axis1.Status.ErrorId` (look each up with `nc_error.py`). After
+steps 1 and 2, what the **XAE error list** shows (the PLC never sees 0x4357 / 0x4358). In step
 4: `bHomed`, `Axis1.Status.Homed`, `bAccepted` and the change of `ActPos` for the raw move
 (expect FALSE and none, without an error), and `bAccepted` for the velocity move (expect
 TRUE).
@@ -447,8 +449,8 @@ with **Save now** (OK keeps it only until the next restart; `config-changes.md`)
 standstill, start the master again, and pulse `bHalt2` (`fHaltDec2 := 500`) on the coupled
 slave.
 Record: `nErrMoveSlave`, `Axis2.Status.Coupled` and `ProtectedMode` before and after,
-`fbGearIn.InGear` and `fbGearIn.ErrorID` after each decouple, `bAbortedGearIn`, where the
-slave ends; the same for the halt.
+`fbGearIn.ErrorID` after each decouple, `bAbortedGearIn`, where the slave ends; the same for
+the halt. Judge "coupled" from `Coupled`, not `fbGearIn.InGear`: that falls with `Execute`.
 
 **E2. Decoupling a moving slave.**
 Claim: `references/coupling.md`, `MC_GearOut`: the slave keeps its velocity indefinitely.
@@ -460,8 +462,9 @@ Record: `Axis2.NcToPlc.SetVelo` after the decouple and after the master stopped;
 Do: as E2 with the master at `fVelo := 1200` (at 500 the jerk caps the peak near 1060, below
 the default 1500; see C7), then `fHaltDec2 := 0`, pulse `bHalt2`, read `fPeakDecel2`. Repeat
 with the master's `fDec` at 500 and at 200 before coupling.
-Record: both values, and Axis 2's default deceleration and jerk (Axis 2 > *Parameter* >
-*Dynamics*). Whose dynamics did the halt use?
+Record: both values, the master's set velocity before the decouple, and Axis 2's default
+deceleration and jerk (the sequencer reads them with `MC_ReadParameter`; by hand: Axis 2 >
+*Parameter* > *Dynamics*). Whose dynamics did the halt use?
 
 **E4. `MC_GearInDyn` with `Enable` FALSE.**
 Claim: `references/coupling.md`: `Enable` FALSE ends the command but keeps the coupling;
@@ -474,7 +477,9 @@ stays TRUE.
 Record: `Axis2.Status.Coupled` and whether the slave follows after Enable FALSE; `InGear` and
 any error when Enable rises again on the still-coupled slave; what the `bGearOut` pulse did
 over the next second, with `Error` / `ErrorID` sampled over that second (it pulsed with
-0x425A in the second run: one read can show either).
+0x425A in the second and third runs: one read can show either). Any sample with `Error` is
+the result; the share depends on the PLC cycle (one cycle about every 50 ms: 20 of 102
+samples at 10 ms).
 
 **E5. `MC_CamIn` with the slave away from its table position.** (Needs TF5050.)
 Claim: `references/coupling.md`, "The slave must already be where the table says", and its

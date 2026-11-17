@@ -162,7 +162,9 @@ CODES = {
                   'Start moves only after MC_Power.Status is TRUE.',
                   'Observed (4024.55, Tc2_MC2 3.3.59, simulated axis): a missing direction '
                   'enable gave this code on the move block for either direction, with no '
-                  'axis error and no MC_Reset needed; 0x4357 / 0x4358 did not appear.'],
+                  'axis error and no MC_Reset needed. The direction is not in this code: '
+                  'for a positive move the NC wrote 0x4358 to the event logger (XAE error '
+                  'list) at the same moment.'],
     },
     0x422A: {
         'label': 'Controller or feed enable missing at start (slave)',
@@ -328,14 +330,18 @@ CODES = {
         'meaning': 'The axis may not move in the negative direction: '
                    'MC_Power.Enable_Negative is FALSE. (0x4358 is the positive direction.)',
         'check': ['MC_Power.Enable_Negative TRUE.',
-                  'If a limit switch drives it: is the axis on the negative limit?'],
+                  'If a limit switch drives it: is the axis on the negative limit?',
+                  'Expect it in the event logger (XAE error list), not on the PLC: the '
+                  'move block shows 0x4223 (observed for 0x4358, the positive side).'],
     },
     0x4358: {
         'label': 'Feed enable plus missing',
         'meaning': 'The axis may not move in the positive direction: '
                    'MC_Power.Enable_Positive is FALSE. (0x4357 is the negative direction.)',
         'check': ['MC_Power.Enable_Positive TRUE.',
-                  'If a limit switch drives it: is the axis on the positive limit?'],
+                  'If a limit switch drives it: is the axis on the positive limit?',
+                  'Observed (4024.55, Tc2_MC2 3.3.59, simulated axis) only in the event '
+                  'logger (XAE error list): the move block and the axis showed 0x4223.'],
     },
     0x4359: {
         'label': 'Positioning velocity rejected',
