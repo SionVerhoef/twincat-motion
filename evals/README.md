@@ -197,3 +197,23 @@ not measured. The co-install round's lower Haiku score has the same cause. For t
 CommandAborted query (1/3), in a three-run probe with the siblings installed, Haiku listed
 the project's files first twice and loaded twincat-motion once; no sibling took it. Opus
 loads the skill first on every query.
+
+## Trigger results, 2026-11-18: "what it is. Use when …" form, rejected
+
+A skills library asked for descriptions in the form "what the skill is. Use when …". Two
+drafts were scored against the current description on the same day, three runs per query;
+"siblings" means cia402-motion and twincat-st co-installed.
+
+| Description | Opus 5.5 | Opus 5.5 + siblings | Haiku 5.5 | Haiku 5.5 + siblings |
+|---|---|---|---|---|
+| current ("Load before answering, or opening any file, …") | 42/42 · 0/30 | 41/42 · 2/30 | 39/42 · 0/30 | – |
+| A: "Checked facts, an NC error table and an .xti lint and diff tool for … Use when anything concerns a TwinCAT NC axis, before answering or opening any file: …" | 7/42 · 0/30 | – | 32/42 · 0/30 | – |
+| B: "Checked facts and tools for TwinCAT 3 NC axes and Tc2_MC2 code. Use when a TwinCAT NC axis is involved, and load it before answering, or opening any file: [reason] …" | 42/42 · 0/30 | 36/42 · 4/30 | 35/42 · 0/30 | 36/42 · 0/30 |
+
+A descriptive opening sentence lets Opus answer from memory: draft A lost almost every query.
+Draft B, with the imperative and the reason straight after a short opening, recovers Opus
+alone but loses five queries with siblings installed, including the must-win
+`MC_Power.Status` query (0/3; cia402-motion took it), and four on Haiku. The description
+stays as it is. The near-miss that fires with siblings, Codesys SoftMotion `MC_Home`, fires
+with the current description too (2/3), so it comes from the co-installed set, not the
+wording.

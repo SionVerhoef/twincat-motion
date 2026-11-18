@@ -102,6 +102,14 @@ Load a reference when the task reaches it, not all of them up front.
 | STO, safe stop, E-stop, SIL/PL; which sibling skill owns what | `references/boundaries.md` |
 | MC3, NCI/CNC, XTS, XPlanar, kinematics, TF54xx, hydraulics, `Tc3_DriveMotionControl` | `references/out-of-scope.md` |
 
+**If the project has its own written coding standard, load it before adapting a template or
+writing axis code**: a conventions skill in your list of available skills, or a standards
+document the user or the project's agent instructions point to. Don't search the repository
+for one. Its naming, layout and structure rules outrank the templates' choices. They don't
+outrank the `Tc2_MC2` behaviour the templates are built around (rising edges on `Execute`,
+a second instance to retarget a busy move, `MC_Halt` rather than `MC_Stop`, one homed record per axis)
+unless the standard addresses that behaviour explicitly, and never the rules above.
+
 ## Hand-offs
 
 | When | Hand to |

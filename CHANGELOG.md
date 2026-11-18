@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- `agents/openai.yaml` gives OpenAI Codex a display name and blurb; `check_skill.py` guards
+  their lengths (blurb 25-64 characters).
+- `evals/README.md`: two descriptions in the form "what the skill is. Use when …" scored
+  worse than the current one (Opus 7/42 and, with sibling skills installed, 36/42 against
+  41/42), so the description is unchanged.
+- `SKILL.md` and `templates/README.md`: load the project's own written coding standard, if
+  it has one, before adapting a template. It outranks the templates on naming, layout and
+  structure, not on the `Tc2_MC2` behaviour they are built around or the safety rules.
+
 ## 0.2.0 — 2026-11-17
 
 Second release: three field-test runs on simulated axes folded in, `FB_Axis` limit and
