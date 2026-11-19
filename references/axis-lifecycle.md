@@ -45,9 +45,8 @@ A master stays in its own state while slaves couple to it. Read-only blocks (`MC
 
 `MC_Stop` sets `Done` when the axis stands still, but `Busy` and `Active` stay TRUE and the
 axis refuses every other motion command (error 0x42EF) until `Execute` goes FALSE. Release is
-not instant: `Busy` stays TRUE for some cycles after the falling edge (one PLC cycle on
-4024.55 / Tc2_MC2 3.3.59 with a simulated axis), and the block must keep being called until
-it drops. `MC_Reset` also releases it, even while `MC_Stop.Execute` stays TRUE. `ST_AxisStatus.MotionCommandsLocked` shows the lock.
+not instant: `Busy` stays TRUE for some cycles after the falling edge (one PLC cycle;
+sim, 4024.55), and the block must keep being called until it drops. `MC_Reset` also releases it, even while `MC_Stop.Execute` stays TRUE. `ST_AxisStatus.MotionCommandsLocked` shows the lock.
 
 Using `MC_Stop` for a normal stop and holding its `Execute` is the classic "the axis won't
 move again" bug. Use `MC_Halt`, which stops without locking.
@@ -66,32 +65,27 @@ inside it shows whether the NC is updating at all.
 
 A block reads its inputs when `Execute` rises. Changing `Position` or `Velocity` while it is
 busy does nothing, and a second rising edge while busy is ignored: no error, and the move
-went on to its first target (observed). To change
-the target of a running move, trigger **a second instance** with the new values; with the
+went on to its first target (sim, 4024.55). To change the target of a running move, trigger **a second instance** with the new values; with the
 default `Aborting` mode it takes over and the first reports `CommandAborted`.
 
 A falling `Execute` resets the outputs but does **not** cancel the command. If `Execute`
 falls before the command ends, the block is documented to still show `Done`, `Error` or
 `CommandAborted` for one cycle at the end. Not always: an `MC_MoveVelocity` ended by an
 override change (see `MC_Power` details below) never showed `CommandAborted` with `Execute` already
-FALSE, not even for one cycle; with `Execute` held it did (observed, 4024.55 / Tc2_MC2
-3.3.59, simulated axis). Code that pulses `Execute` on `MC_MoveVelocity` cannot tell that an
+FALSE, not even for one cycle; with `Execute` held it did (sim, 4024.55). Code that pulses `Execute` on `MC_MoveVelocity` cannot tell that an
 override change ended it. `Done` and `Error` after a falling `Execute` were not tested.
 
 ### Zero means different things
 
 - On a move or `MC_Jog`, a dynamics input (`Acceleration`, `Deceleration`, `Jerk`) of 0
-  means "use the default from the axis parameters". Observed: an `Acceleration` of 0 on a
-  move at 1200 mm/s ramped at the axis default (1500 mm/s², where the jerk alone would
-  have allowed about 1640), without an error.
+  means "use the default from the axis parameters", without an error (sim, 4024.55: at
+  1200 mm/s it ramped at the default 1500 mm/s², below the jerk limit of about 1640).
 - On `MC_Halt` and `MC_Stop`, a deceleration or jerk of 0 (or less) takes the values of the
   last move instead, so a stop with 0 never ramps more gently than the move it ends
-  (observed for `MC_Halt` after moves with deceleration 500 and 200). An **explicit** value
-  is used as given: an `MC_Halt.Deceleration` of 100 ending a move that ran with 500
-  stopped at 100, more gently than the move.
+  (sim, 4024.55, `MC_Halt` after moves at 500 and 200). An **explicit** value is used as
+  given, even below the move's (sim, 4024.55: 100 after a move at 500 stopped at 100).
 - A `Velocity` of 0 on a move is an error, not a default. The code depends on the block:
-  `MC_MoveAbsolute` with `Velocity` 0 returned 0x4359 (observed, 4024.55 / Tc2_MC2 3.3.59);
-  0x4231 is the group-level code for the same mistake. Look up whichever the block reports.
+  `MC_MoveAbsolute` with `Velocity` 0 returned 0x4359 (sim, 4024.55); 0x4231 is the group-level code for the same mistake. Look up whichever the block reports.
 
 ### Buffer modes
 
@@ -139,10 +133,10 @@ and `MC_JOGMODE_INCHING_MODULO` move a set distance per button press.
 - `Override` is a percentage (0–100, default 100) applied to every move on the axis. At 0
   the axis stands still with its command still running; a move started at override 0 is
   `Busy` and `Active` and does not move, and finishes once the override returns. Meanwhile
-  `Axis.Status.NotMoving` is FALSE (observed): it is no standstill check while a command is
-  active at override 0; the set velocity is. A change of
-  override ends a running `MC_MoveVelocity` with `CommandAborted` while the axis keeps moving
-  at the new velocity (observed, 4024.55 / Tc2_MC2 3.3.59, `Execute` held TRUE).
+  `Axis.Status.NotMoving` is FALSE (sim, 4024.55): it is no standstill check while a command
+  is active at override 0; the set velocity is. A change of override ends a running
+  `MC_MoveVelocity` with `CommandAborted` while the axis keeps moving at the new velocity
+  (sim, 4024.55, `Execute` held TRUE).
 - `Status` is the readiness of the axis, including the drive's on digital drives. On an
   analog drive it can only report the control side.
 - The hardware enable of a drive is not driven by `MC_Power`: `triage.md`, step 3.
