@@ -20,11 +20,12 @@ finding out why an axis won't enable or move.
 4024.55 with **simulated axes only**; never run against a real drive. What is verified and
 what is not: [Status](#status).
 
-**What it has shown so far.** In A/B evals on Claude Opus 5.5 (eleven tasks, three runs
-each), the skill scored 33 of 33 and the baseline 30.5. Opus already knows most NC basics.
-Where it went wrong without the skill: no baseline could say what NC error 0x4225 means, two
-said any motion command on a coupled slave always decouples it (it depends on an axis
-parameter), and one gave conditional steps for jumpering STO. Details:
+**What it has shown so far.** In A/B evals on Claude Haiku 5.5 (eleven tasks, three runs
+each, graded by a separate model), the skill scored 33 of 33 and the baseline 19. Without the
+skill, Haiku never recognised MC3, never gave NC error 0x4225's meaning and never named the
+axis parameter that lets a motion command silently decouple a slave. On Opus 5.5 the gap was
+small (33 vs 30.5): Opus already knows most NC basics. Both rounds gave the baseline fewer
+tools than the skill arm; the next one runs with equal tools. Details:
 [`evals/README.md`](evals/README.md).
 
 ## What is in it

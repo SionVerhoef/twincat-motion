@@ -19,17 +19,17 @@ The harness is the one from the sibling skill cia402-motion, with the names chan
 `run_cells.py`'s docstring says why each isolation flag is there. In short: `run_cells.py`
 snapshots the skill at `--ref` (default `HEAD`) minus `evals/`, lays the cells out with
 `prepare_run.py`, runs each in its own isolated headless Claude Code session, and writes
-`REPORT.txt`: cost per arm, and an audit that flags a failed session, a baseline cell that
-used any tool but Write, a skill cell that did not read `SKILL.md` or read outside its cell
-and the snapshot, a write outside a cell, and a cell with no `answer.md`. It lists every
-shell command a skill cell ran, to be read. The run directory must be outside every git
+`REPORT.txt`: cost per arm, and an audit that flags a failed session, a read or shell
+command outside the cell (and, for the skill arm, the snapshot), a baseline cell that names
+the skill's repository, a skill cell that did not read `SKILL.md`, a write outside a cell,
+and a cell with no `answer.md`. It lists every shell command a cell ran, to be read. The run directory must be outside every git
 repository (`~/.claude` is one on the dev server) and holds one model; rerunning the same
 command resumes. Run one round at a time: two side by side once corrupted the shared Claude
 Code config file.
 
-The baseline arm is told not to read the skill and gets the Write tool only, so it cannot go
-looking for this repository, which is public. It is not otherwise handicapped, and the prompt
-tells it the subject. `--arms web_baseline` adds a third arm with WebSearch and WebFetch.
+Both arms get the same tools: Read, Write, Edit, Glob, Grep and Bash. The baseline is told
+not to read the skill or any copy of it, and since the skill is public it is audited for
+that rather than fenced off. The prompt tells it the subject. `--arms web_baseline` adds a third arm with WebSearch and WebFetch.
 
 ## The set
 
@@ -73,6 +73,12 @@ Its verdict wins over the checks, a hand `verdict.json` over both, and `grade.py
 cell where checks and judge disagree. Run it between `run_cells.py` and `grade.py`:
 `python3 evals/judge.py /tmp/ab-haiku`.
 
+The judge is told the reference wins where its own knowledge disagrees. For a fact the
+references have only from a simulated axis, that would let the skill's observation confirm
+itself, so an eval whose reference rests on one names it in `sim_only`. The judge is told not
+to mark an answer down for disagreeing with those facts, and `grade.py` reports the score
+with and without those evals.
+
 `selftest.py` grades the grader before any agent runs: a good answer per eval that must
 grade right, trapped answers each labelled with the verdict it must get, and an empty answer
 that must grade wrong. The answers and the patterns have the same author, so this is a floor.
@@ -95,33 +101,6 @@ A query counts as triggered only when the model's first tool call loads the skil
 still load the operator's global Claude Code settings, so other installed skills compete, as
 they would in real use. `--co-install <skill folder>` (repeatable) links a sibling skill into
 every throwaway project so it competes too, without touching the global skills.
-
-## Results, 2026-11-08 (Opus 5.5, skill at 62f800b, three reps)
-
-**A/B:** skill 33/33 (100%), baseline 30.5/33 (92%) after a hand read of every non-right
-cell (seven baseline verdicts overridden upward, grader fixes pinned in `selftest.py`).
-Guardrail: skill 3/3, baseline 2/3 (one baseline gave conditional STO-jumper steps). The
-skill's measurable gain: the curated NC error table (no baseline could give 0x4225's
-meaning), the `AllowMotionCmdToSlave` parameter (two baselines said any command always
-decouples), and the guardrail. Opus already knows most of the rest; a Haiku round would
-discriminate more. Cost $11.30.
-
-**Trigger:** 21/24. Near-misses 0/30 fired. Three should-trigger queries fired 0/3: the
-`.xti` diff, touch-probe registration, and the MC3 question. The description names none of
-`.xti` diff, registration or MC3 recognition strongly enough.
-
-A hand read of the 36 skill answers found wording problems, filed as a bead: the
-`AllowMotionCmdToSlave` "default" clashes with ".xti stores only non-defaults"; the homing
-edge fix overstates what it removes; 0x4650 listed for open STO; phasing on plain `MC_CamIn`
-contradicts itself; no guidance on how a scaling error shows on a velocity axis.
-All five are fixed in `twincat-motion-7az`: `coupling.md` and `triage.md` now say XAE
-writes TRUE on a new axis and leave an absent attribute as unverified; `homing.md` says the
-edge fix removes the braking distance but not one cycle's sampling jitter; `boundaries.md`
-names 0x4225 (not ready at start) and 0x4650 (drop-out during motion); registration step 5
-names `MC_CamIn_V2`; `axis-parameters.md` says how a scaling error shows in the lag. The
-hardware questions behind them (absent-attribute meaning, phasing on plain `MC_CamIn`) went
-to `twincat-motion-6uv.9`; the field test has since observed both: an axis without the
-attribute reads FALSE, and a plain `MC_CamIn` slave was phased (`coupling.md`).
 
 ## Results, 2026-11-14 (Haiku 5.5, skill at 0955db1, three reps, judged)
 
@@ -159,10 +138,40 @@ phrasing three times) and `cam-jump-at-start`.
 Cost: skill arm 109k tokens, 41 s per cell; baseline 16k tokens, 29 s; $0.41 for the 72
 cells, judge $1.07.
 
-Limits: the evals, rubrics and references have one author, and the judge is told the
+Limits: the evals, rubrics and references have one author, and the judge was told the
 reference wins, so a skill-arm R shows the agent found and applied the page, not that the
-page is right. The skill arm also has Read and Bash, the baseline only Write. Three
-repetitions; one P is noise.
+page is right. This round predates equal tools (the baseline had Write only) and the
+`sim_only` exemption; the next round runs with both. Three repetitions; one P is noise.
+
+## Results, 2026-11-08 (Opus 5.5, skill at 62f800b, three reps)
+
+Opus already knows most of this set, so this round says less than the Haiku one above;
+it also predates equal tools.
+
+**A/B:** skill 33/33 (100%), baseline 30.5/33 (92%) after a hand read of every non-right
+cell (seven baseline verdicts overridden upward, grader fixes pinned in `selftest.py`).
+Guardrail: skill 3/3, baseline 2/3 (one baseline gave conditional STO-jumper steps). The
+skill's measurable gain: the curated NC error table (no baseline could give 0x4225's
+meaning), the `AllowMotionCmdToSlave` parameter (two baselines said any command always
+decouples), and the guardrail. Opus already knows most of the rest; a Haiku round would
+discriminate more. Cost $11.30.
+
+**Trigger:** 21/24. Near-misses 0/30 fired. Three should-trigger queries fired 0/3: the
+`.xti` diff, touch-probe registration, and the MC3 question. The description names none of
+`.xti` diff, registration or MC3 recognition strongly enough.
+
+A hand read of the 36 skill answers found wording problems, filed as a bead: the
+`AllowMotionCmdToSlave` "default" clashes with ".xti stores only non-defaults"; the homing
+edge fix overstates what it removes; 0x4650 listed for open STO; phasing on plain `MC_CamIn`
+contradicts itself; no guidance on how a scaling error shows on a velocity axis.
+All five are fixed in `twincat-motion-7az`: `coupling.md` and `triage.md` now say XAE
+writes TRUE on a new axis and leave an absent attribute as unverified; `homing.md` says the
+edge fix removes the braking distance but not one cycle's sampling jitter; `boundaries.md`
+names 0x4225 (not ready at start) and 0x4650 (drop-out during motion); registration step 5
+names `MC_CamIn_V2`; `axis-parameters.md` says how a scaling error shows in the lag. The
+hardware questions behind them (absent-attribute meaning, phasing on plain `MC_CamIn`) went
+to `twincat-motion-6uv.9`; the field test has since observed both: an axis without the
+attribute reads FALSE, and a plain `MC_CamIn` slave was phased (`coupling.md`).
 
 ## Trigger results, 2026-11-08: description rewrite (three runs per query, five workers)
 

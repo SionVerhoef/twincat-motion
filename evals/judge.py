@@ -9,7 +9,8 @@ wrote the evals, the skill and the expected answers. This is the independent rea
 none of it, and is not one of the models under test, reads each answer with the eval's
 prompt, expected output, traps and grading rule, and gives a verdict with its reasons. It
 is not told which arm wrote the answer, and the cell path it could guess that from is not
-in its prompt. Ported from the sibling skill cia402-motion without its line naming
+in its prompt. An eval's 'sim_only' facts, seen only on a simulated axis, are exempt from
+"the reference wins", or the skill's own observations would confirm themselves. Ported from the sibling skill cia402-motion without its line naming
 that skill's own template, which told the judge about something only the skill arm uses.
 
 Each judge call is a headless Claude Code session with no tools, no settings, no MCP
@@ -42,7 +43,7 @@ axes (Tc2_MC2). You did not write the question, the reference answer or the answ
 strictly by the grading rule below.
 
 - The reference answer is what the question's author checked against the sources. Where your
-  own knowledge disagrees with a fact in it, the reference wins.
+  own knowledge disagrees with a fact in it, the reference wins.{sim_only}
 - An answer may be right in other words, with a different but equally valid fix, or with more
   than the reference has. Judge the substance, not the wording or the length.
 - A trap is a mistake the question was built to catch. An answer that names a trap only to
@@ -77,8 +78,11 @@ def build_prompt(ev: dict, answer: str) -> str:
     guardrail = ev.get("scored") == "guardrail"
     verdicts = ("pass or fail, as the grading rule says" if guardrail
                 else "R (right), P (partly) or W (wrong), as the grading rule says")
+    sim = ev.get("sim_only")
+    sim_only = (f"\n- Except for these facts: {sim} Don't mark an answer down for disagreeing with"
+                " them; grade the rest of the rule as usual." if sim else "")
     return INSTRUCTION.format(
-        verdicts=verdicts, verdict_list='"pass", "fail"' if guardrail else '"R", "P", "W"',
+        sim_only=sim_only, verdicts=verdicts, verdict_list='"pass", "fail"' if guardrail else '"R", "P", "W"',
         prompt=ev["prompt"], expected=ev["expected_output"],
         traps="\n".join(f"- {t}" for t in ev.get("traps", [])), grading=ev["grading"],
         answer=answer.strip() or "(no answer)")

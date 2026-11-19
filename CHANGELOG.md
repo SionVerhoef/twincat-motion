@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A/B evals made fairer: the baseline arm gets the same tools as the skill arm (Read, Bash
+  and the rest), and every arm is audited for reads, shell commands and web requests that
+  reach the skill. Evals whose reference rests on a fact seen only on a simulated axis name
+  it in `sim_only`: the judge does not hold an answer to it, and `grade.py` also reports the
+  score without those evals. README leads with the Haiku round (33 vs 19), not Opus.
 - `FB_Axis.Halt` on an axis that is not ready (disabled or in error) no longer issues
   `MC_Halt`, which errored and turned an operator stop into an alarm: it returns TRUE and
   drops a waiting move or halt. Not yet built or run on a target.
