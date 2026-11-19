@@ -18,6 +18,9 @@
 - `templates/README.md`: plain *Add > Existing Item* is the default way to bring the
   templates in; twincat-st's `tcpou.py` is optional, for fresh GUIDs when a template goes
   into one project twice. The field test (B1) gains a duplicate-GUID check.
+- References trimmed, no rule dropped: field-test provenance is a `(sim, 4024.55)` marker
+  (defined in `SKILL.md`, Status), repeated facts have one home with pointers, the triage
+  step 4 table is scannable, and the `MC_Stop` release wording agrees. 15097 → 14865 words.
 
 ## 0.2.0 — 2026-11-17
 

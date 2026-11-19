@@ -59,7 +59,7 @@ installed. For an NC axis the calls that matter are:
 - `ConsumeXml(xml)` applies XML to the axis.
 
 The XML from `ProduceXml` is the authority on names, and it does **not** match the `.xti`
-layout. Observed on TwinCAT 4024.55 with a simulated axis:
+layout (sim, 4024.55):
 
 - The root is `<TreeItem>`, and the axis data sits under `<NcAxisDef>`.
 - **Every value is element text**; the XML has no attributes at all. Where the `.xti` has
@@ -136,7 +136,7 @@ $item.ConsumeXml($xml.OuterXml)
 Write-Host "Applied to $Axis in XAE. Not saved, not activated: review it there."
 ```
 
-What has been run, on TwinCAT 4024.55 with a simulated axis: the produce pass of this script
+What has been run (sim, 4024.55): the produce pass of this script
 (attach, solution check, tree path, `ProduceXml`); and, from a separate test script, the
 apply method it uses: set the element text of one value in the full produced XML,
 `ConsumeXml` that XML, and the new value appears offline in XAE, with the axis marked
@@ -183,20 +183,19 @@ conversation is not enough. Then:
 5. The person opens the project in XAE, checks the values on the axis's parameter pages,
    saves (diff again), and activates when it suits the machine, then tests at reduced limits.
 
-Observed on TwinCAT 4024.55 (one changed value, simulated axis): XAE loaded the hand-edited
-value unchanged, without a warning, and a *Save All* with no change left the file alone.
-When XAE did rewrite the file later, it kept the layout and the CRLF line endings, but it
-added or removed bookkeeping: `ParameterChanged` elements, and on every rewrite a
-`Drive/DrvPara/TimeComp@TaskDelayCycles="1"` nobody had set. That one is not bookkeeping but
-XAE writing out its own default, so the value does not change (see
-[axis-parameters.md](axis-parameters.md)). Expect those in the second diff. Other values and
+With one changed value (sim, 4024.55), XAE loaded the hand-edited value unchanged, without a
+warning, and a *Save All* with no change left the file alone. When XAE did rewrite the file
+later, it kept the layout and the CRLF line endings, but it added or removed
+`ParameterChanged` bookkeeping, and on every rewrite wrote `TaskDelayCycles="1"`, its own
+default (`axis-parameters.md` → *First question: who closes the position loop?*). Expect
+those in the second diff. Other values and
 other XAE builds are untested; say so when you make the edit.
 
 ## Online parameter download
 
 On an NC axis's *Parameter* tab, **Download** writes the offline values to the running NC
 without an activation. XAE then asks in a *Persistent Changes* dialog how long they should
-last. Observed on 4024.55:
+last (sim, 4024.55):
 
 - **OK**: the change holds until the next TwinCAT restart.
 - **Save now**: the change is also stored in that runtime's boot configuration (the dialog

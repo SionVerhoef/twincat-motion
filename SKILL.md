@@ -130,6 +130,7 @@ Written for TwinCAT 3.1.4024 with `Tc2_MC2`; differences in 4026 are named only 
 The references are built from the Tc2_MC2 documentation and public sample projects, restated
 in our own words. `nc_error.py` and `axis_xti.py` are tested on public sample axes. Three field-test
 runs on 4024.55 / `Tc2_MC2` 3.3.59 with simulated axes checked the templates and the main
-claims on the axis lifecycle, homing, coupling and configuration; the references mark what it
-observed. Nothing here has been run against a real drive, an absolute encoder or real retain
+claims on the axis lifecycle, homing, coupling and configuration. In the references,
+**(sim, 4024.55)** marks what they observed: seen in a field test on TwinCAT 4024.55 /
+`Tc2_MC2` 3.3.59 with a simulated axis, not on a real drive. Nothing here has been run against a real drive, an absolute encoder or real retain
 storage: report at that precision.

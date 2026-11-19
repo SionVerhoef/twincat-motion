@@ -73,21 +73,18 @@ drive's PDO assignment. It cannot see the bus or the NC cycle; those stay online
   where hardware limit switches are wired (NC contacts): an axis that moves one way only
   may be standing on a limit switch.
   `MC_Power.Status` can be TRUE without them, so Status alone does not show it. With only
-  `Enable`, the move is refused. Observed on 4024.55 / Tc2_MC2 3.3.59 with a simulated axis:
-  **0x4223 on the move block** for either direction, the axis itself taking no error and
-  needing no `MC_Reset`; 0x4223 says nothing about the direction. 0x422A is the same for a
-  coupled slave. A direction enable that drops **during** a move stops the axis with **no
-  code at all**: no block error, no axis error, `MC_Power.Status` still TRUE (observed, same
-  setup). So an axis that stopped short with nothing in the logger may have run onto a limit
-  switch. 0x4357 (minus feed enable missing) and 0x4358 (plus) never reach the PLC: a
-  positive move started without `Enable_Positive` put 0x4358 in the **XAE error list**
-  (the event logger), at the same moment as the 0x4223 on the block (observed, same setup).
-  The enable dropping mid-move logged nothing there either. So for a refused move, read
-  the error list for the direction. The two are easy to swap; check with the tool.
-- **`Override` is 100.** It is a percentage applied to every move and defaults to 100.0;
-  linked to a variable that sits at 0, every move starts and nothing moves. While it does,
-  `Axis.Status.NotMoving` reads FALSE although the axis stands (observed, 4024.55): check
-  the set velocity, not `NotMoving`.
+  `Enable`, the move is refused with **0x4223 on the move block** for either direction
+  (sim, 4024.55); the axis takes no error and needs no `MC_Reset`, and 0x4223 says nothing
+  about the direction. 0x422A is the same for a coupled slave. A direction enable that drops
+  **during** a move stops the axis with **no code at all**: no block error, no axis error,
+  `MC_Power.Status` still TRUE (sim, 4024.55). So an axis that stopped short with nothing in
+  the logger may have run onto a limit switch. 0x4357 (minus feed enable missing) and 0x4358
+  (plus) never reach the PLC: a positive move started without `Enable_Positive` put 0x4358 in
+  the **XAE error list** (the event logger), with the 0x4223 on the block (sim, 4024.55); the
+  enable dropping mid-move logged nothing there. So for a refused move, read the error list
+  for the direction. The two are easy to swap; check with the tool.
+- **`Override` is 100.** Linked to a variable that sits at 0, every move starts and nothing
+  moves; check the set velocity, not `NotMoving`: `axis-lifecycle.md` → *`MC_Power` details*.
 
 ## 3. `Status` stays FALSE with all enables set
 
@@ -110,16 +107,28 @@ readiness; on an analog drive it can only report the control side.
 
 | Check | How to see it |
 |---|---|
-| **`MC_Stop` still holds the axis.** It keeps the axis locked until its `Execute` goes FALSE after `Done`, and needs a few more cycles to release. | `ST_AxisStatus.MotionCommandsLocked`; error 0x42EF on the next command. Use `MC_Halt` for ordinary stops. |
-| **The axis is a coupled slave** (gear or cam), so it is in protected mode. What a move does depends on the axis parameter *Allow motion commands to slave axis*: FALSE refuses a move with 0x4B08 and an `MC_Halt` with 0x4267, and the slave stays coupled. FALSE is the default and is stored as absence, so an axis without the attribute in its `.xti` refuses too. TRUE, which XAE 4024.55 writes explicitly into every axis it creates, lets a move or a halt decouple the slave without an error and run. | `ST_AxisStatus.ProtectedMode` or `Coupled`. Decouple first. If a slave drops out of sync instead, look for a motion block on it: `coupling.md`. |
-| **The move never triggered.** `Execute` needs a rising edge; held TRUE it fires once. Re-triggering while the block is busy is ignored without an error. | twincat-st reviewer rule X11 catches level-driven `Execute`. |
-| **The block is not called every cycle while busy.** | 0x4B66, or the block hangs with `Busy` TRUE. |
-| **An input is invalid.** A velocity of 0 is not "use the default": `MC_MoveAbsolute` returned 0x4359 for it on 4024.55 (0x4231 is the group-level code for the same mistake). Acceleration 0 is accepted (documented as the axis parameter). | The block's `ErrorID`. |
-| **Outside a software limit**, or a target beyond one. | `SoftLimitMinExceeded` / `SoftLimitMaxExceeded`; 0x4460–0x4463. |
-| **Another command owns the axis.** A newer command with the default `Aborting` mode replaces the running one, which then reports `CommandAborted`. | `CommandAborted` on the first block. Expected behaviour, not a fault: `axis-lifecycle.md`. |
-| **Your application waits for `Homed`** and the axis came up not referenced (absolute encoder without retain data, or a fresh start). | `ST_AxisStatus.Homed`; 0x4002 at start-up. `homing.md`. |
-| **A mapped output is unlinked and sent as 0**: a torque or current limit, so the motor has no torque. | Step 0, last item. Status TRUE, no motion, the lag grows. |
-| **`MC_Jog` in a standard mode** uses the manual velocity from the axis parameters and ignores its `Velocity` input. If that parameter is tiny, the jog looks dead. | `MC_Jog.Mode`; the manual velocity parameters. |
+| **`MC_Stop` still holds the axis** (below) | `ST_AxisStatus.MotionCommandsLocked`; 0x42EF on the next command |
+| **The axis is a coupled slave** (gear or cam), in protected mode (below) | `ST_AxisStatus.ProtectedMode` or `Coupled`; 0x4B08 on a move, 0x4267 on a halt |
+| **The move never triggered**: `Execute` needs a rising edge; held TRUE it fires once, and re-triggering a busy block is ignored without an error | twincat-st reviewer rule X11 catches level-driven `Execute` |
+| **The block is not called every cycle while busy** | 0x4B66, or the block hangs with `Busy` TRUE |
+| **An input is invalid**, such as a velocity of 0 (below) | the block's `ErrorID` |
+| **Outside a software limit**, or a target beyond one | `SoftLimitMinExceeded` / `SoftLimitMaxExceeded`; 0x4460–0x4463 |
+| **Another command owns the axis**: a newer command in the default `Aborting` mode replaces it | `CommandAborted` on the first block; expected, not a fault: `axis-lifecycle.md` |
+| **Your application waits for `Homed`** and the axis came up not referenced (absolute encoder without retain data, or a fresh start) | `ST_AxisStatus.Homed`; 0x4002 at start-up. `homing.md` |
+| **A mapped output is unlinked and sent as 0**: a torque or current limit, so the motor has no torque | step 0, last item. Status TRUE, no motion, the lag grows |
+| **`MC_Jog` in a standard mode** uses the manual velocity parameter and ignores its `Velocity` input; a tiny parameter makes the jog look dead | `MC_Jog.Mode`; the manual velocity parameters |
+
+- **`MC_Stop`** keeps the axis locked until its `Execute` goes FALSE after `Done`, and the
+  release is not instant: `axis-lifecycle.md` → *`MC_Stop` locks the axis*. Use `MC_Halt`
+  for ordinary stops.
+- **A coupled slave** refuses a move (0x4B08) or a halt (0x4267) and stays coupled when
+  *Allow motion commands to slave axis* is FALSE, the default and what an absent attribute
+  means. TRUE, which XAE 4024.55 writes into every new axis, lets the move or halt decouple
+  it without an error: `coupling.md` → *The slave is protected*. Decouple first. If a slave
+  drops out of sync instead, look for a motion block on it.
+- **A velocity of 0** is an error, not "use the default" (0x4359 from `MC_MoveAbsolute`
+  (sim, 4024.55), 0x4231 at group level); acceleration 0 means the axis parameter:
+  `axis-lifecycle.md` → *Zero means different things*.
 
 ## 5. It moves, then faults
 
@@ -132,8 +141,7 @@ readiness; on an analog drive it can only report the control side.
 | 0x4650 drive dropped out of ready | Drive fault or lost enable during motion. | cia402-motion for CoE drives |
 
 **Never fix a lag error by switching lag monitoring off or widening the window until it
-goes away.** The monitoring is what stops an axis that cannot follow. Find out why the lag
-is large; widen the window only to a value you can justify from the dynamics, and say so.
+goes away**; find the cause: `axis-parameters.md` → *Position lag*.
 
 If a recording would settle it, say which channels to record (set and actual position,
 position lag, set and actual velocity, torque or current) and hand the recording to

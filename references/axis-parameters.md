@@ -8,9 +8,8 @@ too.
 
 **Read the explicit values with the tool, not by eye**: `axis_xti.py show` lists what an axis
 sets, `lint` checks it, `diff` shows what changed. An `.xti` stores only non-default values,
-so anything not listed is at its TwinCAT default. (One value XAE 4024.55 writes into every new
-axis although it is not the default: `AxisPara/OtherSettings@AllowMotionCmdToSlave="true"`;
-see `coupling.md`.) XAE also writes `<ParameterChanged>` elements into `AxisPara` and
+so anything not listed is at its TwinCAT default (exception: `AllowMotionCmdToSlave`,
+`coupling.md` → *The slave is protected*; `TaskDelayCycles`, below). XAE also writes `<ParameterChanged>` elements into `AxisPara` and
 `EncPara` whenever a parameter is edited in its UI, and drops some or all of them on later
 saves; they are bookkeeping, not settings, and `axis_xti.py` keeps them apart. Changes go out as a parameter-change table
 or an Automation Interface script; a direct `.xti` edit only after the user explicitly agrees:
@@ -33,7 +32,7 @@ was sent, so without dead-time compensation the NC sees a lag that grows with sp
 when the drive follows perfectly. The compensation is an **encoder** setting: in XAE, open
 the axis, expand it, select its encoder (*Enc*) and use the *Time Compensation* tab. Set it
 from the drive's documentation; Beckhoff's own example for an EL72x1 uses a few cycles.
-There are three time-compensation places, all checked on 4024.55 with a simulated axis:
+There are three time-compensation places (sim, 4024.55):
 
 | XAE | `.xti` path |
 |---|---|
@@ -45,7 +44,7 @@ The encoder one is the setting meant above. XAE 4024.55 writes
 `Drive/DrvPara/TimeComp@TaskDelayCycles="1"` into an axis file whenever it rewrites it,
 although nobody touched a drive setting, and shows *Task Delay in Cycles* = 1. 1 is the
 built-in default: the Automation Interface reads `TaskDelayCycles` = 1 from an axis whose file
-has no such attribute (observed, two field-test runs). XAE writes out its own default; don't
+has no such attribute (sim, 4024.55). XAE writes out its own default; don't
 read that attribute in a diff as a user's change.
 
 **A simpler alternative: take the following error from the drive.** The drive closes the
@@ -213,7 +212,7 @@ scaled or not following. So:
   tuning problem.
 - **Do size it from the dynamics.** Record the lag during the worst move (fastest, hardest
   acceleration) with Scope (hand the recording to **twincat-scope**), then set the window
-  with a margin you can justify and a short filter time.
+  with a margin you can justify, and say so, and a short filter time.
 - On a CSP axis check the dead-time compensation first, or read the drive's own following
   error (both above).
 
