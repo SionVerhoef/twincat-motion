@@ -170,7 +170,7 @@ area and how it shows up in TwinCAT, and leave the physical checks to the people
 | Area | How it can show up |
 |---|---|
 | Supply: mains or DC link, the 24 V control supply, a separate brake supply | drive not ready (`Status` FALSE), undervoltage 0x4631, drops out of ready under load 0x4650 |
-| Holding brake not releasing | enables, then lag error or a stall at the first move; torque high, no motion |
+| Holding brake not releasing | enables, then lag error or a stall at the first move; torque high, no motion (brake order: `axis-lifecycle.md`) |
 | Motor or feedback cable, connectors, shielding | encoder errors 0x4464–0x4467, wire break or overcurrent 0x4632–0x4635, faults that come and go with movement or vibration |
 | Mechanics: binding, a blocked axis, a slipping coupling or belt, a different gearbox after a repair | lag errors, overload 0x4636, the distance is wrong (scaling no longer matches the mechanics) |
 | Limit switches and reference switches: wiring, normally open vs closed, a damaged sensor | homing errors 0x429C–0x429E, an axis that stops in one direction only |

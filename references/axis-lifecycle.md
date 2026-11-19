@@ -17,8 +17,12 @@ differs from the generic PLCopen picture. The coding rules for any `MC_` block (
    `MC_Jog`, couplings.
 6. **Stop** with `MC_Halt` for ordinary stops. `MC_Stop` only where the axis must stay locked
    against other commands (see below).
-7. **Disable** by dropping `MC_Power.Enable`. Its `BufferMode` decides when: `Aborting`
-   (default) drops the enable at once, `Buffered` waits until the running command is done.
+7. **Disable** by dropping `MC_Power.Enable`, **after** the axis stands still: stop it with
+   `MC_Halt` first. `MC_Power`'s `BufferMode` decides when the drop takes effect: `Aborting`
+   (default) drops the enable at once, even mid-move; `Buffered` waits until the running
+   command is done. Dropping it on a moving or gravity-loaded axis is not a harmless
+   "off": what the motor does then is the drive's disable reaction, and a hanging axis can
+   fall. See "Disabling, holding brakes and vertical axes" below.
 
 ## The states
 
@@ -140,6 +144,64 @@ and `MC_JOGMODE_INCHING_MODULO` move a set distance per button press.
 - `Status` is the readiness of the axis, including the drive's on digital drives. On an
   analog drive it can only report the control side.
 - The hardware enable of a drive is not driven by `MC_Power`: `triage.md`, step 3.
+
+## Disabling, holding brakes and vertical axes
+
+### What dropping the enable does
+
+Once the enable is gone the NC no longer controls the axis. Whether the motor then ramps to
+a stop, coasts or is held is decided **in the drive**, not by `Tc2_MC2`:
+
+- On a CiA 402 drive, dropping the enable is a state-machine transition out of Operation
+  enabled. The standard option codes set the reaction: 0x605C (disable operation) and 0x605B
+  (shutdown) choose between switching the power stage off (motor free to turn) and ramping
+  down first; 0x605A is quick stop and 0x605E the reaction to a fault. Which of them a
+  drive implements, their defaults and any extra vendor values are in the drive's object
+  dictionary: **cia402-motion** and **ethercat-esi** own those details.
+- Beckhoff AX5000 (SoE) and AX8000 (CoE) have their own error-reaction settings next to
+  or instead of these; look them up in the drive's documentation rather than assuming the
+  CiA 402 default.
+- A torque-off reaction on a moving axis means it coasts; on a hanging axis it means the
+  load falls until a brake closes. A ramp reaction only works while the drive itself is
+  healthy and powered.
+
+So: stop with `MC_Halt` (or `MC_Stop` where the axis must stay locked), wait for `Done` and
+standstill, then drop the enable. Dropping the enable to stop an axis hands the stop to
+whatever the drive's disable reaction happens to be.
+
+### Holding-brake order
+
+A holding brake holds a stationary axis; it is not designed to stop a moving load, and
+closing it at speed wears or damages it. The sequence, whoever runs it:
+
+1. **Enable:** the drive builds torque, then the brake releases, then motion is allowed.
+   Opening the brake before torque is there lets a hanging load drop.
+2. **Disable:** stop, then close the brake, wait for it to grip, then remove torque.
+   Removing torque before the brake has closed lets the load drop by the brake's engage
+   time.
+
+On drives that control the brake themselves this order is built in, with configurable
+delays. Beckhoff-specific: the AX5000 calls them drive on and drive off delay time
+(S-0-0206, S-0-0207); the AX8000 has the same pair under 0x3000:03 / 0x3000:04 (channel A),
+with the brake type and usage beside them in 0x3000. When the PLC switches the brake
+itself (a digital output), the PLC code must keep this order; never tie the brake output
+straight to `MC_Power.Enable` or `Status`. A drive's manual brake override (release or
+engage regardless of the enable) exists for commissioning and is exactly how a vertical axis
+sags.
+
+### Gravity-loaded axes
+
+A vertical or inclined axis needs constant torque just to stand still. The position loop
+supplies it through its integral part or through a lag, or the drive is given a static
+torque offset (CiA 402 has 0x60B2 for this in the cyclic modes). Without one, the axis sags
+on enable and shows a standing lag. The offset is tuning, set and checked on the machine.
+
+### Not safety
+
+Everything above is functional control. On a vertical axis, STO removes torque and the load
+falls unless a brake catches it; holding a load in an emergency (SS1, SBC, brake test, a
+second brake) is a safety function, designed and validated on the safety side:
+`boundaries.md`. This skill names the hazard; it does not design that function.
 
 ## Timing
 
