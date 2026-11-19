@@ -169,8 +169,9 @@ writes TRUE on a new axis and leave an absent attribute as unverified; `homing.m
 edge fix removes the braking distance but not one cycle's sampling jitter; `boundaries.md`
 names 0x4225 (not ready at start) and 0x4650 (drop-out during motion); registration step 5
 names `MC_CamIn_V2`; `axis-parameters.md` says how a scaling error shows in the lag. The
-hardware questions behind them (absent-attribute meaning, phasing on plain `MC_CamIn`) are
-in `twincat-motion-6uv.9`.
+hardware questions behind them (absent-attribute meaning, phasing on plain `MC_CamIn`) went
+to `twincat-motion-6uv.9`; the field test has since observed both: an axis without the
+attribute reads FALSE, and a plain `MC_CamIn` slave was phased (`coupling.md`).
 
 ## Trigger results, 2026-11-08: description rewrite (three runs per query, five workers)
 
