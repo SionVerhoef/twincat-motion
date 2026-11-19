@@ -198,22 +198,30 @@ CommandAborted query (1/3), in a three-run probe with the siblings installed, Ha
 the project's files first twice and loaded twincat-motion once; no sibling took it. Opus
 loads the skill first on every query.
 
-## Trigger results, 2026-11-18: "what it is. Use when …" form, rejected
+## Trigger results, 2026-11-18/19: "what it is. Use when …" form
 
 A skills library asked for descriptions in the form "what the skill is. Use when …". Two
-drafts were scored against the current description on the same day, three runs per query;
-"siblings" means cia402-motion and twincat-st co-installed.
+drafts were scored against the previous description ("Load before answering, or opening any
+file, about …"), three runs per query.
 
-| Description | Opus 5.5 | Opus 5.5 + siblings | Haiku 5.5 | Haiku 5.5 + siblings |
-|---|---|---|---|---|
-| current ("Load before answering, or opening any file, …") | 42/42 · 0/30 | 41/42 · 2/30 | 39/42 · 0/30 | – |
-| A: "Checked facts, an NC error table and an .xti lint and diff tool for … Use when anything concerns a TwinCAT NC axis, before answering or opening any file: …" | 7/42 · 0/30 | – | 32/42 · 0/30 | – |
-| B: "Checked facts and tools for TwinCAT 3 NC axes and Tc2_MC2 code. Use when a TwinCAT NC axis is involved, and load it before answering, or opening any file: [reason] …" | 42/42 · 0/30 | 36/42 · 4/30 | 35/42 · 0/30 | 36/42 · 0/30 |
+- **A** opened with a descriptive sentence ("Checked facts, an NC error table and an .xti lint
+  and diff tool for …") and put the trigger after "Use when". Opus 7/42 (previous: 42/42 the
+  same day), Haiku 32/42 (39/42). A descriptive opening lets Opus answer from memory; rejected.
+- **B**, now in `SKILL.md`, keeps the opening short and puts "load it before answering, or
+  opening any file" and the reason straight after "Use when". With twincat-st, twincat-scope
+  and cia402-motion co-installed at their 2026-11-19 `main`:
 
-A descriptive opening sentence lets Opus answer from memory: draft A lost almost every query.
-Draft B, with the imperative and the reason straight after a short opening, recovers Opus
-alone but loses five queries with siblings installed, including the must-win
-`MC_Power.Status` query (0/3; cia402-motion took it), and four on Haiku. The description
-stays as it is. The near-miss that fires with siblings, Codesys SoftMotion `MC_Home`, fires
-with the current description too (2/3), so it comes from the co-installed set, not the
-wording.
+| Description | Opus 5.5 should · near-miss | Haiku 5.5 should · near-miss |
+|---|---|---|
+| previous | 42/42 · 1/30 | 35/42 · 0/30 |
+| B | 40/42 · 1/30 | 36/42 · 0/30 |
+
+The must-win `MC_Power.Status` query: B 3/3 on Opus, 2/3 on Haiku. The difference is within
+three-run noise. Haiku's misses are the same queries with both (the `.xti` diff, see above).
+
+**Never run two trigger evals in parallel.** A first scoring of B ran beside a Haiku run and
+showed Opus 36/42 with the must-win query at 0/3; a run of the previous description beside
+another showed 27/42. Both times the losses were the first five queries in the file, one
+worker batch, at 0/3, while every later query scored 3/3: with ten sessions starting at once,
+the first batch never reached its first tool call. Run alone, the same descriptions scored
+40/42 and 42/42. A miss pattern that follows file order is the harness, not the description.
