@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `templates/README.md`: plain *Add > Existing Item* is the default way to bring the
+  templates in; twincat-st's `tcpou.py` is optional, for fresh GUIDs when a template goes
+  into one project twice. The field test (B1) gains a duplicate-GUID check.
+
 ## 0.2.0 — 2026-11-17
 
 Second release: three field-test runs on simulated axes folded in, `FB_Axis` limit and

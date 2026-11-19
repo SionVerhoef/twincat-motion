@@ -164,9 +164,7 @@ Record: the menu path and the exact names of the options.
 **B1. The templates compile.**
 Claim: `templates/README.md`: they build with no errors or warnings.
 Do: add every PLC object in `templates/` (all files but `README.md`) to the PLC project
-(*Add > Existing Item*). In a
-throwaway project the templates' GUIDs don't matter; in a real project use twincat-st's
-`tcpou.py` as `templates/README.md` says. TwinCAT generates code only for POUs that something
+(*Add > Existing Item*), as `templates/README.md` tells a user to. TwinCAT generates code only for POUs that something
 calls, so a build of uncalled templates proves nothing: call `PRG_AxisExample()` from `MAIN`
 (it instantiates every template; B3 step 4) or run *Check all objects*, then build.
 Record: every error and warning, verbatim, with object and line. Known risk points: reading
@@ -174,6 +172,11 @@ a block's `Execute` or the `VAR_IN_OUT` `Axis` from inside a method of `FB_Axis`
 gives "Access to VAR_IN_OUT ... from external context"), the `16#0001_0001` literals, and
 `DEFAULT_HOME_POSITION` as a default value in `ST_HomeNcParams`. For each fix you needed,
 record a unified diff against the template.
+Then the duplicate-GUID case `templates/README.md` leaves open: copy `FB_Axis.TcPOU` to
+`FB_Axis2.TcPOU`, rename the POU inside to `FB_Axis2` but keep every GUID, and add it with
+*Add > Existing Item*. Record what XAE does (refuses, warns, regenerates the GUIDs, or takes
+it silently), whether the project still builds, and whether both objects stay visible and
+editable. Remove `FB_Axis2` afterwards.
 
 **B2. The test programs compile.**
 Do: create `PRG_FieldTest` from `PRG_FieldTest.st`, and `FB_FieldTestLog` and
