@@ -14,9 +14,8 @@ plates. MC3 couplings use the same block names and behave differently: `out-of-s
 | Correct to a printed mark or product edge | `MC_TouchProbe` + one of the corrections above |
 | The PLC computes the profile itself every cycle | `MC_ExtSetPointGenEnable` + `MC_ExtSetPointGenFeed` |
 
-"Observed" on this page means seen in a field test on TwinCAT 4024.55 with `Tc2_MC2` 3.3.59
-and `Tc2_MC2_Camming` 3.4.0, simulated drive and encoder, one VM. It shows what that setup
-did, not what every drive does.
+"(sim, 4024.55)" (defined in `SKILL.md`, Status) here also covers `Tc2_MC2_Camming` 3.4.0.
+It shows what that setup did, not what every drive does.
 
 Coupling a slave never changes the master's state. The slave goes to
 `SynchronizedMotion`. Both axes still need their own `MC_Power`: a slave without controller or
@@ -31,18 +30,17 @@ parameter, *Allow motion commands to slave axis* (XAE's spelling; `.xti`:
 `AxisPara/OtherSettings@AllowMotionCmdToSlave`):
 
 - **FALSE**: the command is refused and the slave stays coupled and keeps following. A move
-  (`MC_MoveAbsolute`) is refused with 0x4B08; an `MC_Halt` was refused with **0x4267**
-  (observed), so look for both codes.
-- **TRUE**: the command **decouples the slave first** and then runs, without an error.
-  Observed for a move and for a halt: `Coupled` went FALSE one PLC cycle after the command.
+  (`MC_MoveAbsolute`) is refused with 0x4B08; an `MC_Halt` with **0x4267** (sim, 4024.55),
+  so look for both codes.
+- **TRUE**: the command **decouples the slave first** and then runs, without an error;
+  `Coupled` went FALSE one PLC cycle after a move or a halt (sim, 4024.55).
   Only `BufferMode := MC_Aborting` is possible, and the move is limited to the axis's maximum
   dynamics.
 
 XAE 4024.55 **writes it TRUE** when it creates an axis: every untouched axis carries
 `AllowMotionCmdToSlave="true"` explicitly. The default is FALSE, and FALSE is stored as
 absence: an axis **without** the attribute (an older project, an axis made by a script, or
-one where someone unticked it) reads FALSE in XAE and in the running NC (observed, read back
-with `MC_ReadBoolParameter`), so a move on its coupled slave fails with 0x4B08. So on a new
+one where someone unticked it) reads FALSE in XAE and in the running NC (sim, 4024.55), so a move on its coupled slave fails with 0x4B08. So on a new
 project a stray `MC_MoveAbsolute` or `MC_Halt` on a slave does not fail: it silently drops
 the coupling. If a slave "falls out of sync" for no reason, look for a motion block that also
 points at the slave. Whether to allow it is a design choice: TRUE suits code that decouples
@@ -50,7 +48,7 @@ by moving, FALSE turns a wiring mistake in the PLC into a visible error.
 
 **The coupling block does not notice.** After a move, a halt or an `MC_GearOut` had decoupled
 the slave, the `MC_GearIn` instance kept `InGear` TRUE until its own `Execute` fell, and never
-showed `CommandAborted` (observed). To know whether a slave is coupled, read
+showed `CommandAborted` (sim, 4024.55). To know whether a slave is coupled, read
 `ST_AxisStatus.Coupled` (`MC_ReadStatus` or `Axis.Status.Coupled`), not `MC_GearIn.InGear`.
 
 Decouple a slave before homing it.
@@ -65,26 +63,24 @@ Decouple a slave before homing it.
 - Couple **at standstill**, master included. The block has no synchronisation phase;
   `Acceleration`, `Deceleration`, `Jerk`, `BufferMode` and `Options` are documented as not
   implemented. With the slave standing still and the master at constant velocity it was
-  refused with 0x425A (observed, twice); coupling with both axes at standstill always
-  worked. To catch a moving master use `MC_GearInMultiMaster` with `AdvancedSlaveDynamics`
+  refused with 0x425A (sim, 4024.55); coupling with both axes at standstill worked. To catch a moving master use `MC_GearInMultiMaster` with `AdvancedSlaveDynamics`
   or the flying-saw blocks.
 
 **`MC_GearInDyn`**: ratio as one `LREAL`, changeable every cycle while `Enable` is TRUE.
 `Acceleration` limits the slave when the ratio jumps (0 = the axis parameter).
 
 - Couple **at standstill**, as `MC_GearIn`: onto a master already moving it was refused with
-  0x425A (observed). `Enable` TRUE again on a slave that is still coupled by an earlier
-  `MC_GearInDyn` is not refused: the block takes the running coupling over (observed).
+  0x425A (sim, 4024.55). `Enable` TRUE again on a slave that is still coupled by an earlier
+  `MC_GearInDyn` is not refused: the block takes the running coupling over (sim, 4024.55).
 - `Enable` FALSE **ends the command but does not decouple**: the ratio freezes at its last
   value and the slave keeps following. Decouple with `MC_GearOut`.
-- `MC_GearOut` while `Enable` is still TRUE: observed twice, the slave **stayed decoupled**
-  and ran on at its last velocity, with `InGear` FALSE. The block keeps trying to couple
-  again onto the now moving master and is refused each time, so `Error` pulses on and off
-  with 0x425A (for one PLC cycle about every 50 ms in one run): one read can show it either
-  way.
+- `MC_GearOut` while `Enable` is still TRUE: the slave **stays decoupled** and runs on at its
+  last velocity, with `InGear` FALSE (sim, 4024.55). The block keeps trying to couple again
+  onto the now moving master and is refused each time, so `Error` pulses on and off with
+  0x425A: one read can show it either way.
   So an `Enable`-held `MC_GearInDyn` can sit uncoupled. Drop `Enable` first, and check
   `Coupled` after a decouple.
-- Not supported by the phasing blocks (refused with 0x4251, observed).
+- Not supported by the phasing blocks (refused with 0x4251; sim, 4024.55).
 
 **`MC_GearInMultiMaster`**: up to four masters, each with its own ratio; the slave moves by
 the sum. Unused master inputs get an empty `AXIS_REF` (axis ID 0). With
@@ -101,11 +97,11 @@ the sum. Unused master inputs get an empty `AXIS_REF` (axis ID 0). With
 **`MC_GearOut`**, and decoupling in general: **the slave does not stop.** It continues at the
 velocity it had, like after `MC_MoveVelocity`, indefinitely. Follow every decouple of a moving
 slave with `MC_Halt` (or `MC_Stop`), or decouple only at standstill. Code that decouples and
-then waits for the slave to stand still waits for ever. (Observed: after `MC_GearOut` the
-slave kept its velocity, also after the master stopped, with `ContinuousMotion` TRUE.) An
-`MC_Halt` with `Deceleration` 0 on such a slave uses the **slave's own default
-deceleration**, not the master's: with the master at 500 and at 200, the slave decoupled at
-1200 mm/s stopped at its default 1500 both times (observed).
+then waits for the slave to stand still waits for ever. (sim, 4024.55: after `MC_GearOut`
+the slave kept its velocity, also after the master stopped, with `ContinuousMotion` TRUE.)
+An `MC_Halt` with `Deceleration` 0 on such a slave uses the **slave's own default
+deceleration**, not the master's (sim, 4024.55: with the master at 500 and at 200, the
+slave stopped at its default 1500 both times).
 
 **Flying saw** (`Tc2_MC2_FlyingSaw`, TF5055, a separate licence): `MC_GearInPos` synchronises
 the slave so that a given slave position meets a given master position, then holds the
@@ -117,13 +113,13 @@ read the TF5055 documentation.
 `MC_PhasingRelative` and `MC_PhasingAbsolute` shift a coupled slave against its master by
 `PhaseShift`, as a jerk-limited superimposed move with its own velocity, acceleration and
 deceleration. They work on an `MC_GearIn` coupling, on `MC_GearInMultiMaster` with
-`AdvancedSlaveDynamics`, and on `MC_CamIn_V2`; not on `MC_GearInDyn` (refused with 0x4251,
-observed). A plain `MC_CamIn` slave was phased too (observed: +10 on a straight-line table,
-`Done`, shift 10.000). `MC_HaltPhasing` stops a running phase shift.
+`AdvancedSlaveDynamics`, and on `MC_CamIn_V2`; not on `MC_GearInDyn` (0x4251, above). A
+plain `MC_CamIn` slave phases too (sim, 4024.55). `MC_HaltPhasing` stops a running phase
+shift.
 
 **The shift happens over master travel.** With the master at standstill, `MC_PhasingRelative`
 on `MC_GearIn` and on `MC_CamIn` reported `Done` within a few cycles, without an error, and
-the slave did not move (observed). A commissioning step that phases with the master stopped
+the slave did not move (sim, 4024.55). A commissioning step that phases with the master stopped
 sees `Done` and nothing happens; test phasing with the master moving. For a slave, these are the usual choice; `MC_MoveSuperImposed`
 (below) also works on a slave and on single axes.
 
@@ -157,12 +153,11 @@ switch is queued (`ST_AxisStatus.CamTableQueued`).
 
 **The slave must already be where the table says.** With an absolute start mode, the slave
 position is computed straight from the table the moment the master moves: if it is somewhere
-else, it **jumps**, which on a real axis means a lag error or a violent move. Observed on a
-simulated axis: `MC_CamIn` with the slave off its table position was accepted without an
-error, `InSync` came TRUE at once, and the slave set position did not change at coupling.
-On the master's **first movement** it jumped to the table value within one 10 ms PLC cycle
-(+100 mm in one run, −85 mm in another), with no error and, being simulated, no lag error.
-Nothing at coupling time warns you. Before coupling, move the slave to its table position:
+else, it **jumps**, which on a real axis means a lag error or a violent move. `MC_CamIn` with
+the slave off its table position is accepted without an error, `InSync` comes TRUE at once,
+and the slave set position does not change at coupling; on the master's **first movement**
+it jumps to the table value within one PLC cycle, with no error (sim, 4024.55; simulated, so
+no lag error either). Nothing at coupling time warns you. Before coupling, move the slave to its table position:
 
 ```
 MasterInTable := (MasterSetPos + MasterOffset) / MasterScaling;
@@ -172,7 +167,7 @@ SlaveTarget   := SlavePosition * SlaveScaling + SlaveOffset;
 
 Use **set** positions, not actual positions. `MC_ReadCamTableSlaveDynamics` reads the raw
 table: offsets and scaling are yours to apply, and a non-equidistant table returns position
-only (velocity and acceleration 0). The formula held in the field test: master offset 20,
+only (velocity and acceleration 0). The formula held (sim, 4024.55): master offset 20,
 master scaling 2, slave offset 5 on a straight-line table put the slave at 65 with the
 master at 100, and at 75 with the master at 120. A relative start mode avoids the jump at coupling instead,
 at the price of the table no longer sitting at fixed axis positions.
@@ -297,5 +292,5 @@ Points that trip people up:
 | Registration correction never completes | `Warning` 0x4243 on `MC_MoveSuperImposed`: not enough `Length` or `VelocityDiff` |
 
 Nothing on this page has been run on a real axis. The behaviour is from the Tc2_MC2 and TF5050
-documentation, the owner's 4024.55 axis export, and where it says "observed", the field test
-on simulated axes described at the top. Report at that precision.
+documentation, the owner's 4024.55 axis export, and where marked (sim, 4024.55), the field
+test. Report at that precision.

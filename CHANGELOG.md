@@ -5,6 +5,10 @@
 - `FB_Axis.Halt` on an axis that is not ready (disabled or in error) no longer issues
   `MC_Halt`, which errored and turned an operator stop into an alarm: it returns TRUE and
   drops a waiting move or halt. Not yet built or run on a target.
+- `evals/grade.py` no longer passes three wrong answers as right: denying a missing feed
+  enable (`triage-feed-enable`), keeping `Execute` TRUE and calling `MC_Reset`
+  (`mcstop-lock`), and guessing 0x4B11's meaning after saying it is unverified
+  (`nc-error-neighbour-unknown`). Each is now a trapped answer in `selftest.py`.
 - `agents/openai.yaml` gives OpenAI Codex a display name and blurb; `check_skill.py` guards
   their lengths (blurb 25-64 characters).
 - The `description` opens with what the skill is, then "Use when …", keeping "load it before
@@ -17,6 +21,9 @@
 - `templates/README.md`: plain *Add > Existing Item* is the default way to bring the
   templates in; twincat-st's `tcpou.py` is optional, for fresh GUIDs when a template goes
   into one project twice. The field test (B1) gains a duplicate-GUID check.
+- References trimmed, no rule dropped: field-test provenance is a `(sim, 4024.55)` marker
+  (defined in `SKILL.md`, Status), repeated facts have one home with pointers, the triage
+  step 4 table is scannable, and the `MC_Stop` release wording agrees. 15097 → 14865 words.
 
 ## 0.2.0 — 2026-11-17
 

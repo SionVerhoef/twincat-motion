@@ -56,7 +56,7 @@ is the switch edge plus the braking distance. That varies with speed and load. B
 
 `MC_SetPosition` alone does not set the NC's homed state, and it does not clear it either:
 on an axis that is already homed, `ST_AxisStatus.Homed` stays TRUE after `MC_SetPosition`
-(observed on 4024.55 / Tc2_MC2 3.3.59, simulated axis). The axis then reports "homed" at a
+(sim, 4024.55). The axis then reports "homed" at a
 shifted reference. If your code shifts the position, clear the homed state itself
 (`MC_ResetCalibration`) or re-mark it deliberately.
 
@@ -98,8 +98,7 @@ library before trusting an enum value (`out-of-scope.md`).
    the reference is exact even though the axis stopped a little further on.
 
 `Axis.NcToPlc.HomingState` shows the phase. Its numbers do not match the steps above one to
-one. Observed on 4024.55 / Tc2_MC2 3.3.59 with a **simulated encoder**, recorded with Scope
-at 10 ms:
+one (sim, 4024.55; note the **simulated encoder**):
 
 | `HomingState` | Phase |
 |---|---|
@@ -116,13 +115,13 @@ encoder may spend visible time in state 5; check on your axis.
 
 **The NC replaces the position while it homes.** During the default sequence the actual and
 set position read **−1.0E10** while searching for the cam and **+1.0E10** while moving off it
-(observed, simulated encoder). Anything computed from `ActPos` during homing sees these
+(sim, 4024.55). Anything computed from `ActPos` during homing sees these
 values: software limits in the PLC, zone and range checks, an HMI, or a test switch simulated
 from `ActPos` (which goes TRUE in the first cycle of the search). Gate such logic on
 `ST_AxisStatus.HomingBusy`.
 
-**Aborting.** `MC_Halt` stops a running `MC_Home`. Observed: `MC_Home` then reports `Error`
-with 0x4B0A, not `CommandAborted`, and the axis has no error of its own (axis error 0), so
+**Aborting.** `MC_Halt` stops a running `MC_Home`. `MC_Home` then reports `Error`
+with 0x4B0A (sim, 4024.55), not `CommandAborted`, and the axis has no error of its own (axis error 0), so
 there is no 0x429C/D/E behind it. The axis is left **not homed**, at its placeholder position
 (about −1.0E10 if halted during the search). A new `MC_Home` starts normally without
 `MC_Reset`.
@@ -229,7 +228,7 @@ controller.
   otherwise the NC starts, reports 0x4002, and absolute axes come up **not homed**. 0x4002
   once on the first start is expected; it should not repeat. This has not been tested with
   absolute axes and real retain storage.
-- On a Windows VM with a simulated axis, *Load / Store* plus *Data Persistence* TRUE was
+- On a Windows VM (sim, 4024.55), *Load / Store* plus *Data Persistence* TRUE was
   accepted silently: the NC started, reported no 0x4002, and restored nothing after a
   *Restart TwinCAT System* (a homed axis came back not homed, at 0). So a retain setup that
   "works" on a test PC proves nothing; test it on the target controller.

@@ -36,6 +36,8 @@ ANSWERS = {
                                           "Enable_Positive and Enable_Negative TRUE.",
             "W: blames the drive": "16931 means the drive is not ready. Check the AX8000 state and the "
                                    "STO input, and make sure Override is 100.",
+            "W: denies the enable": "16931 is 0x4223. It is NOT a missing feed enable: Enable_Positive "
+                                    "and Enable_Negative are fine. Check the drive state instead.",
         },
     },
     "nc-error-neighbour-unknown": {
@@ -51,6 +53,9 @@ ANSWERS = {
                 "its meaning, check InfoSys.",
             "W: both wrong": "0x4225 means the feed enable is missing. 19217 = 0x4B11 means the master "
                              "axis is not enabled.",
+            "P: hedge then guess": "16#4225: the drive was not ready when the move started. 19217 is "
+                                   "0x4B11, in the NC-PLC range; I could not verify it, but it means "
+                                   "the master axis is not enabled.",
         },
     },
     "mcstop-lock": {
@@ -62,6 +67,8 @@ ANSWERS = {
             "P: reset only": "0x42EF: MC_Stop has locked the axis. Add an MC_Reset after every stop.",
             "W: blames the edge": "The move block never sees a rising edge on Execute, so it ignores "
                                   "the second start. Pulse Execute.",
+            "P: Execute kept, reset": "17135 is 0x42EF: MC_Stop has locked the axis. Keep Execute "
+                                      "TRUE and call MC_Reset to clear the lock.",
         },
     },
     "csp-kv-trap": {
