@@ -17,7 +17,9 @@ drive and encoder, over three runs:
   refused without an error on an unhomed axis, `MoveVelocity` not gated).
 - `FB_HomePlc`: off the switch, on the switch, with and without the NC homed mark, and the
   search timeout (`nErrorID` 16#0001_0103, axis halted) all behaved as documented, including
-  the re-check of the switch after moving off it, before searching.
+  the re-check of the switch after moving off it, before searching. Added since and not yet
+  run: the whole-run timeout, the two-speed search, the reversal at a limit and
+  `bUnhomeOnAxisError`.
 - `FB_HomeNc`: default homing completed with and without the faked cam, and the timeout
   (cam held FALSE) gave `nErrorID` 16#0001_0202 with the axis standing still.
 
@@ -29,7 +31,7 @@ torque first. Nothing here is a safety function.
 | `FB_Axis.TcPOU` | Axis wrapper: `MC_Power`, `MC_Reset`, `MC_MoveAbsolute`, `MC_MoveRelative`, `MC_MoveVelocity`, `MC_Halt` behind methods (`MoveAbsolute`, `MoveRelative`, `MoveVelocity`, `Halt`, `Reset`, `SetDynamics`). Refreshes `Axis.Status` once per cycle; one error path (axis error before command error before power error). |
 | `E_AxisCmd.TcDUT` | The commands `FB_Axis` issues. |
 | `ST_AxisMachineIn.TcDUT` | Its limit-switch inputs and the caller's own homed record. |
-| `FB_HomePlc.TcPOU` | Homing option 1, PLC-based: move off the switch if on it, search, halt, `MC_SetPosition` relative so the switch edge becomes the reference, then mark homed by **your own flag** or the **NC's homed state** (`MC_ForceCalibration`), chosen by a parameter. |
+| `FB_HomePlc.TcPOU` | Homing option 1, PLC-based: move off the switch if on it, search, halt, `MC_SetPosition` relative so the switch edge becomes the reference, then mark homed by **your own flag** or the **NC's homed state** (`MC_ForceCalibration`), chosen by a parameter. Opt-in: two-speed search (`fSlowVelocity`), reversal at the search-side limit (`bSearchLimitOk`), own flag dropped on an axis error (`bUnhomeOnAxisError`). A step timeout and a whole-run timeout. |
 | `ST_HomePlcParams.TcDUT`, `E_HomePlcState.TcDUT` | Its parameters and steps. |
 | `FB_HomeNc.TcPOU` | Homing option 2, `MC_Home` with `MC_DefaultHoming`: cam input every cycle, a faked cam for a sync-pulse-only axis, a run timeout that halts the axis. |
 | `ST_HomeNcParams.TcDUT`, `E_HomeNcState.TcDUT` | Its parameters and steps. |

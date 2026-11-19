@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `FB_HomePlc` options, all off by default so existing calls run as before: a two-speed
+  search (`stParams.fSlowVelocity` > 0: fast approach, move off, slow approach), reversal
+  when the search reaches its limit switch (`bSearchLimitOk` input; once per run, then
+  16#0001_0107), and `stParams.bUnhomeOnAxisError` to drop its own homed flag on any axis
+  error. `PRG_AxisExample` passes the negative limit. `tests/test_templates.py` checks the
+  homing step machines as text: every step handled, every `Execute` a fresh rising edge.
+  Not yet built or run on a target.
 - `FB_HomePlc` has a whole-run timeout, `stParams.tRunTimeout` (default 5 min, error
   16#0001_0106): the step timer re-armed on every step, so a chattering switch could cycle
   move-off, halt and check forever. With `bMarkNcHomed` TRUE, `bHomed` no longer reads TRUE
