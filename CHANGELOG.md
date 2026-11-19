@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `axis_xti.py` on an axis with more than one encoder: the scaling and soft-limit rules
+  (E1, E2), the simulation note (S1) and the encoder link check (L2) now run on every
+  encoder and name the one a finding is about; they used to skip such an axis and report it
+  clean. Each encoder is keyed by its Name (`Encoder[Enc_2]/...`), so `diff` pairs encoders
+  by name, not by their order in the file.
 - A/B evals made fairer: the baseline arm gets the same tools as the skill arm (Read, Bash
   and the rest), and every arm is audited for reads, shell commands and web requests that
   reach the skill. Evals whose reference rests on a fact seen only on a simulated axis name

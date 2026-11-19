@@ -26,7 +26,9 @@ The output says so every time, so nobody reads a clean result as a full audit.
 
 What is compared: the attributes of the Axis element and its AxisPara, Encoder, Drive and
 Controller sub-trees. The DataTypes block (most of the file) and the Vars blocks (I/O
-process-image structure) are skipped: they describe types, not settings.
+process-image structure) are skipped: they describe types, not settings. An axis with
+more than one encoder keys each by its Name (Encoder[Enc_2]/EncPara@...): lint checks
+every encoder and diff pairs them by name, not by their order in the file.
 
 Project lint reads the .tsproj with NC.xti, the axis files, the I/O tree and every
 Mappings block, in whichever mix of inline and separate files the project uses. It reports
@@ -60,6 +62,7 @@ import argparse
 import csv
 import json
 import os
+import re
 import sys
 import xml.etree.ElementTree as ET
 
@@ -164,9 +167,25 @@ def _flatten(elem, prefix, out, book):
     count = {}
     for child in children:
         count[child.tag] = count.get(child.tag, 0) + 1
-        tag = child.tag if tags.count(child.tag) == 1 else '%s[%d]' % (child.tag,
-                                                                        count[child.tag])
+        # Repeated siblings (an axis with two encoders) are keyed by their Name when each
+        # has its own, so diff pairs them by name and not by position; else by position.
+        names = [c.get('Name') for c in children if c.tag == child.tag]
+        if tags.count(child.tag) == 1:
+            tag = child.tag
+        elif all(names) and len(set(names)) == len(names):
+            tag = '%s[%s]' % (child.tag, child.get('Name'))
+        else:
+            tag = '%s[%d]' % (child.tag, count[child.tag])
         _flatten(child, (prefix + '/' if prefix else '') + tag, out, book)
+
+
+def encoders(p):
+    """(path prefix, name) of each encoder of a flattened axis: 'Encoder', or one
+    'Encoder[...]' per encoder when the axis has more than one."""
+    prefixes = sorted({k.split('@')[0].split('/')[0] for k in p
+                       if k.startswith('Encoder@') or k.startswith('Encoder/')
+                       or k.startswith('Encoder[')})
+    return [(e, p.get(e + '@Name', 'Enc')) for e in prefixes]
 
 
 def number(value):
@@ -186,7 +205,8 @@ def same(a, b):
 
 
 def label(path):
-    return path + (' (%s)' % LABELS[path] if path in LABELS else '')
+    key = re.sub(r'\[[^]]*\]', '', path)
+    return path + (' (%s)' % LABELS[key] if key in LABELS else '')
 
 
 # --- Lint ---------------------------------------------------------------------------
@@ -238,23 +258,27 @@ def lint(axis):
             'Does not apply to a position-interface (CSP) drive.'
             % (p[VELO + 'Maximum'], p[vref_path]))
 
-    num_path = 'Encoder/EncPara@ScaleFactorNumerator'
-    den_path = 'Encoder/EncPara@ScaleFactorDenominator'
-    if num(num_path) == 0:
-        add('E1', 'error', [num_path], 'Encoder scaling numerator is 0: every position '
-            'reads as 0.')
-    den = num(den_path)
-    if den is not None and den <= 0:
-        add('E1', 'error', [den_path], 'Encoder scaling denominator is %s. It must be '
-            'positive.' % p[den_path])
+    encs = encoders(p)
+    for enc, enc_name in encs:
+        # On an axis with more than one encoder, say which one.
+        which = '%s: ' % enc_name if len(encs) > 1 else ''
+        num_path = enc + '/EncPara@ScaleFactorNumerator'
+        den_path = enc + '/EncPara@ScaleFactorDenominator'
+        if num(num_path) == 0:
+            add('E1', 'error', [num_path], which + 'Encoder scaling numerator is 0: every '
+                'position reads as 0.')
+        den = num(den_path)
+        if den is not None and den <= 0:
+            add('E1', 'error', [den_path], which + 'Encoder scaling denominator is %s. It '
+                'must be positive.' % p[den_path])
 
-    smin, smax = 'Encoder/EncPara/SoftEndMinControl@', 'Encoder/EncPara/SoftEndMaxControl@'
-    lo, hi = num(smin + 'Range'), num(smax + 'Range')
-    if (is_true(p.get(smin + 'Enable')) and is_true(p.get(smax + 'Enable'))
-            and lo is not None and hi is not None and lo >= hi):
-        add('E2', 'error', [smin + 'Range', smax + 'Range'],
-            'Soft limit minimum %s is not below the maximum %s: no position is allowed.'
-            % (p[smin + 'Range'], p[smax + 'Range']))
+        smin, smax = enc + '/EncPara/SoftEndMinControl@', enc + '/EncPara/SoftEndMaxControl@'
+        lo, hi = num(smin + 'Range'), num(smax + 'Range')
+        if (is_true(p.get(smin + 'Enable')) and is_true(p.get(smax + 'Enable'))
+                and lo is not None and hi is not None and lo >= hi):
+            add('E2', 'error', [smin + 'Range', smax + 'Range'],
+                which + 'Soft limit minimum %s is not below the maximum %s: no position is '
+                'allowed.' % (p[smin + 'Range'], p[smax + 'Range']))
 
     lag = 'Controller/CtrPara/PosDiffControl@'
     if is_false(p.get(lag + 'Enable')):
@@ -271,11 +295,12 @@ def lint(axis):
 
     # Type ids 5 (drive) and 1 (encoder) are what every simulated axis in the public
     # sample projects uses; real drives use other ids.
-    if p.get('Drive@DrvType') == '5' or p.get('Encoder@EncType') == '1':
-        add('S1', 'info', ['Drive@DrvType', 'Encoder@EncType'],
+    enc_types = [enc + '@EncType' for enc, _ in encs] or ['Encoder@EncType']
+    if p.get('Drive@DrvType') == '5' or any(p.get(t) == '1' for t in enc_types):
+        add('S1', 'info', ['Drive@DrvType'] + enc_types,
             'Simulation drive or encoder (DrvType %s, EncType %s). Fine for testing; a '
             'machine axis linked to real hardware uses other types.'
-            % (p.get('Drive@DrvType', '-'), p.get('Encoder@EncType', '-')))
+            % (p.get('Drive@DrvType', '-'), '/'.join(p.get(t, '-') for t in enc_types)))
     return found
 
 
@@ -595,22 +620,26 @@ def check_links(axes, links, lost, boxes, tasks, add):
         # Link names start with the Drive and Encoder sub-items' own names ('Drive^...',
         # 'Enc^...' unless renamed). A LinkedTo element connects one to a TcCOM object
         # instead (XTS and XPlanar movers), with no links at all.
-        drive, enc = p.get('Drive@Name', 'Drive'), p.get('Encoder@Name', 'Enc')
-        drv_type, enc_type = p.get('Drive@DrvType'), p.get('Encoder@EncType')
+        drive, drv_type = p.get('Drive@Name', 'Drive'), p.get('Drive@DrvType')
+        encs = encoders(p)
         if (drv_type not in (None, SIM_DRIVE) and 'Drive/LinkedTo@ObjectId' not in p
                 and not any(v.startswith(drive + '^') for v, _ in mine)):
             add('L1', 'warning', 'Drive (DrvType %s) is linked to nothing: the set point and '
                 'control word reach no drive, so the axis cannot enable or move. Link the '
                 'axis drive to its drive or terminal in XAE.' % drv_type, a['name'])
-        if (enc_type not in (None, SIM_ENCODER) and 'Encoder/LinkedTo@ObjectId' not in p
-                and not any(v.startswith(enc + '^') for v, _ in mine)):
-            add('L2', 'warning', 'Encoder (EncType %s) is linked to nothing: the actual '
-                'position never changes. Link the axis encoder in XAE.' % enc_type, a['name'])
+        for e, enc in encs:
+            enc_type = p.get(e + '@EncType')
+            which = ' %s' % enc if len(encs) > 1 else ''
+            if (enc_type not in (None, SIM_ENCODER) and e + '/LinkedTo@ObjectId' not in p
+                    and not any(v.startswith(enc + '^') for v, _ in mine)):
+                add('L2', 'warning', 'Encoder%s (EncType %s) is linked to nothing: the actual '
+                    'position never changes. Link the axis encoder in XAE.'
+                    % (which, enc_type), a['name'])
         if not any(v in PLC_LINK_VARS for v, _ in mine):
             add('L3', 'info', 'Not linked to a PLC AXIS_REF (Inputs^FromPlc, '
                 'Outputs^ToPlc): MC_ blocks cannot command this axis.', a['name'])
         for box in sorted({o for v, o in mine if o.startswith('TIID^')
-                           and v.split('^', 1)[0] in (drive, enc)}):
+                           and v.split('^', 1)[0] in [drive] + [n for _, n in encs]}):
             if box in checked:
                 continue
             checked.add(box)
