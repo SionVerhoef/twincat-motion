@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `FB_Axis` gains a hold-to-run jog (`MC_Jog`, standard slow/fast modes, buttons in
+  `ST_AxisMachineIn`), a locking stop (`Stop` / `ReleaseStop` on `MC_Stop`, refusing moves,
+  jog and `Reset` while held) and status properties `fActPosition`, `fActVelocity`, `bHomed`,
+  `bLocked` and `eCommand`. A request replaced before it was issued (by `Reset`, `Halt`, `Stop`
+  or a jog) now ends with `bCommandAborted` instead of vanishing, and `eCommand` names the
+  command the results belong to. Properties, not outputs, keep the block at ten parameters.
+  `Halt` on a not-ready axis stays a no-op. Not yet built or run on a target.
 - A/B evals made fairer: the baseline arm gets the same tools as the skill arm (Read, Bash
   and the rest), and every arm is audited for reads, shell commands and web requests that
   reach the skill. Evals whose reference rests on a fact seen only on a simulated axis name

@@ -11,7 +11,9 @@ TYPE E_AxisCmd :
     Halt         := 20,
     MoveAbsolute := 30,
     MoveRelative := 40,
-    MoveVelocity := 50
+    MoveVelocity := 50,
+    Stop         := 60,
+    Jog          := 70
 ) DINT;
 END_TYPE
 ]]></Declaration>
