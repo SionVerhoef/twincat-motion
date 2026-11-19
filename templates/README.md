@@ -54,6 +54,8 @@ torque first. Nothing here is a safety function.
 - **A stop wins.** `Halt` is always accepted and replaces a move that is still waiting; while a
   Halt waits, moves and `Reset` are refused. Moves with a velocity <= 0 are refused, and `bBusy`
   stays TRUE while any instance runs, so a rejected retarget cannot hide a move that goes on. `MC_Halt`, not `MC_Stop`, which would lock the axis.
+  On an axis that is not ready (disabled or in error) `Halt` only drops a waiting move:
+  `MC_Halt` would be refused with an error there, so an operator stop would become an alarm.
 - **Explicit where the library is easy to misread.** The homing blocks refuse a run without
   an explicit `MC_Halt` deceleration: 0 takes the last move's deceleration (seen on a simulated
   axis), which for a homing search is not a value anyone chose. `FB_Axis.Halt` never refuses a

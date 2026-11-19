@@ -18,6 +18,10 @@
       axis has done it. bBusy / bDone / bError report that.
     - A stop wins: Halt replaces a move still waiting to be issued, and
       while a Halt waits, moves and Reset are refused.
+    - Halt on an axis that is not ready (bReady FALSE: disabled or in
+      error) returns TRUE and only drops a waiting move or halt. MC_Halt
+      would be refused there with an error, turning an operator stop
+      into an alarm, and the NC does not move a disabled axis anyway.
     - Units are the axis's user units (mm, mm/s, mm/s^2 for an axis
       scaled in mm). Dynamics of 0 mean the axis parameters' defaults.
     - bBusy is about the command, not the axis. MC_MoveVelocity stays busy
@@ -291,7 +295,9 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[// Always accepted, also when not ready: a stop request is never refused.
+        <ST><![CDATA[// Always accepted: a stop request is never refused. When the axis is not
+// ready there is nothing to stop, and MC_Halt would only raise an error,
+// so Halt just drops a waiting move or halt (a waiting Reset stays).
 // MC_Halt, not MC_Stop: it does not lock the axis against the next move.
 // Pass an explicit deceleration. For a value <= 0 the Tc2_MC2 manual
 // says the last move's deceleration is used; not verified on a target.
@@ -300,7 +306,11 @@ END_VAR
 // every other case a new Halt is recorded and replaces whatever waits,
 // and M_Issue triggers it as soon as the halt block is free again
 // (an older halt being taken over by a move frees it within cycles).
-IF (eCmd = E_AxisCmd.Halt) AND (bExecHalt OR fbHalt.Busy) THEN
+IF NOT bReady THEN
+    IF ePending <> E_AxisCmd.Reset THEN
+        ePending := E_AxisCmd.None;
+    END_IF
+ELSIF (eCmd = E_AxisCmd.Halt) AND (bExecHalt OR fbHalt.Busy) THEN
     ePending := E_AxisCmd.None;
 ELSE
     fReqHaltDec := fDeceleration;
@@ -359,7 +369,10 @@ CASE ePending OF
         END_IF
 
     E_AxisCmd.Halt:
-        IF NOT (bExecHalt OR fbHalt.Execute OR fbHalt.Busy) THEN
+        // Recorded while ready, but the axis dropped out since: see Halt.
+        IF NOT bReady THEN
+            ePending := E_AxisCmd.None;
+        ELSIF NOT (bExecHalt OR fbHalt.Execute OR fbHalt.Busy) THEN
             bExecHalt := TRUE;
             M_Accept();
         END_IF

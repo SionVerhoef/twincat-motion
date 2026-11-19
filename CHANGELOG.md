@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `FB_Axis.Halt` on an axis that is not ready (disabled or in error) no longer issues
+  `MC_Halt`, which errored and turned an operator stop into an alarm: it returns TRUE and
+  drops a waiting move or halt. Not yet built or run on a target.
 - `evals/grade.py` no longer passes three wrong answers as right: denying a missing feed
   enable (`triage-feed-enable`), keeping `Execute` TRUE and calling `MC_Reset`
   (`mcstop-lock`), and guessing 0x4B11's meaning after saying it is unverified
