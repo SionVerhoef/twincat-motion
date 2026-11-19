@@ -1,6 +1,6 @@
 ---
 name: twincat-motion
-description: "Load before answering, or opening any file, about a Beckhoff TwinCAT 3 NC axis or Tc2_MC2 motion code: NC behaviour hides in axis parameters and look-alike error codes that models get wrong; this skill holds checked facts, an NC error table and an .xti lint and diff tool. Covers an axis that won't enable or move, MC_ blocks (MC_Power, MC_Home, MC_MoveAbsolute, MC_Halt, MC_Stop, MC_Reset) and axis wrappers, NC error codes, homing, scaling and controller parameters, gearing and cam coupling (MC_GearIn, MC_CamIn: a slave that jumps, lags or drops out), touch probe and registration (MC_TouchProbe, MC_PhasingRelative), and reading, linting or diffing any _Config/NC/Axes .xti file, also two versions of one. Not for Structured Text that only mentions an axis (twincat-st), a CiA 402 statusword or 0x6098 on its own (cia402-motion), AL status codes or working counters (ethercat-diagnostics), ESI files (ethercat-esi), TwinCAT CNC, or TwinSAFE design; never writes safety functions such as STO."
+description: "Checked facts and tools for TwinCAT 3 NC axes and Tc2_MC2 code. Use when a TwinCAT NC axis is involved, and load it before answering, or opening any file: NC behaviour hides in axis parameters and look-alike error codes that models get wrong; it holds an NC error table and an .xti lint and diff tool. Covers an axis that won't enable or move, MC_ blocks (MC_Power, MC_Home, MC_MoveAbsolute, MC_Halt, MC_Stop, MC_Reset) and axis wrappers, NC error codes, homing, scaling and controller parameters, gearing and cam coupling (MC_GearIn, MC_CamIn: a slave that jumps, lags or drops out), touch probe and registration (MC_TouchProbe, MC_PhasingRelative), and reading, linting or diffing any _Config/NC/Axes .xti, also two versions of one. Not for Structured Text that only mentions an axis (twincat-st), a CiA 402 statusword or 0x6098 on its own (cia402-motion), AL status codes or working counters (ethercat-diagnostics), ESI files (ethercat-esi), TwinCAT CNC, or TwinSAFE design; never writes safety functions such as STO."
 ---
 
 # twincat-motion
@@ -101,6 +101,14 @@ Load a reference when the task reaches it, not all of them up front.
 | Proposing a configuration change; Automation Interface | `references/config-changes.md` |
 | STO, safe stop, E-stop, SIL/PL; which sibling skill owns what | `references/boundaries.md` |
 | MC3, NCI/CNC, XTS, XPlanar, kinematics, TF54xx, hydraulics, `Tc3_DriveMotionControl` | `references/out-of-scope.md` |
+
+**If the project has its own written coding standard, load it before adapting a template or
+writing axis code**: a conventions skill in your list of available skills, or a standards
+document the user or the project's agent instructions point to. Don't search the repository
+for one. Its naming, layout and structure rules outrank the templates' choices. They don't
+outrank the `Tc2_MC2` behaviour the templates are built around (rising edges on `Execute`,
+a second instance to retarget a busy move, `MC_Halt` rather than `MC_Stop`, one homed record per axis)
+unless the standard addresses that behaviour explicitly, and never the rules above.
 
 ## Hand-offs
 

@@ -197,3 +197,31 @@ not measured. The co-install round's lower Haiku score has the same cause. For t
 CommandAborted query (1/3), in a three-run probe with the siblings installed, Haiku listed
 the project's files first twice and loaded twincat-motion once; no sibling took it. Opus
 loads the skill first on every query.
+
+## Trigger results, 2026-11-18/19: "what it is. Use when …" form
+
+A skills library asked for descriptions in the form "what the skill is. Use when …". Two
+drafts were scored against the previous description ("Load before answering, or opening any
+file, about …"), three runs per query.
+
+- **A** opened with a descriptive sentence ("Checked facts, an NC error table and an .xti lint
+  and diff tool for …") and put the trigger after "Use when". Opus 7/42 (previous: 42/42 the
+  same day), Haiku 32/42 (39/42). A descriptive opening lets Opus answer from memory; rejected.
+- **B**, now in `SKILL.md`, keeps the opening short and puts "load it before answering, or
+  opening any file" and the reason straight after "Use when". With twincat-st, twincat-scope
+  and cia402-motion co-installed at their 2026-11-19 `main`:
+
+| Description | Opus 5.5 should · near-miss | Haiku 5.5 should · near-miss |
+|---|---|---|
+| previous | 42/42 · 1/30 | 35/42 · 0/30 |
+| B | 40/42 · 1/30 | 36/42 · 0/30 |
+
+The must-win `MC_Power.Status` query: B 3/3 on Opus, 2/3 on Haiku. The difference is within
+three-run noise. Haiku's misses are the same queries with both (the `.xti` diff, see above).
+
+**Never run two trigger evals in parallel.** A first scoring of B ran beside a Haiku run and
+showed Opus 36/42 with the must-win query at 0/3; a run of the previous description beside
+another showed 27/42. Both times the losses were the first five queries in the file, one
+worker batch, at 0/3, while every later query scored 3/3: with ten sessions starting at once,
+the first batch never reached its first tool call. Run alone, the same descriptions scored
+40/42 and 42/42. A miss pattern that follows file order is the harness, not the description.

@@ -104,5 +104,13 @@ py -3 st_review.py MyProject/PLC/POUs/
 ```
 
 If a file was copied anyway, `tcpou.py reguid <file>` gives every object in it a fresh GUID. The
-project needs the `Tc2_MC2` library. Match your project's naming where it differs; the structure
-is the part that matters.
+project needs the `Tc2_MC2` library.
+
+**Before adapting a template, load the project's own written coding standard if it has one**: a
+conventions skill in the agent's list of available skills, or a standards document the user or
+the project's agent instructions point to. Don't search the repository for one. Its naming,
+layout and structure rules outrank these templates. The `Tc2_MC2` behaviour under "Design
+choices worth knowing" stays unless the standard addresses it explicitly: a renamed or
+restructured block must still give every trigger a real rising edge, stop with `MC_Halt` and
+keep one homed record per axis. Without a written standard, match the surrounding project's
+naming where it differs.
