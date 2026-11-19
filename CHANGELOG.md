@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `FB_HomePlc` has a whole-run timeout, `stParams.tRunTimeout` (default 5 min, error
+  16#0001_0106): the step timer re-armed on every step, so a chattering switch could cycle
+  move-off, halt and check forever. With `bMarkNcHomed` TRUE, `bHomed` no longer reads TRUE
+  at the start of a run while the NC's old mark is still being cleared. Not yet built or
+  run on a target.
 - A/B evals made fairer: the baseline arm gets the same tools as the skill arm (Read, Bash
   and the rest), and every arm is audited for reads, shell commands and web requests that
   reach the skill. Evals whose reference rests on a fact seen only on a simulated axis name

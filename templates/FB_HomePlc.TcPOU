@@ -30,6 +30,9 @@
       may command it during the run.
     - bRefSwitch is the switch's input, every cycle; TRUE = on the switch.
     - bHomed is not retained: after a restart the axis is not homed.
+    - Two timeouts: tStepTimeout for each step, tRunTimeout for the whole
+      run. The run limit catches a loop of short steps, such as a
+      chattering switch cycling MoveOff -> HaltOff -> CheckSwitch.
 
     ACCURACY
     The PLC sees the edge, so the position is taken in the scan the input
@@ -68,6 +71,7 @@ VAR
     fbExecTrig   : R_TRIG;
     fbSwitchTrig : R_TRIG;
     fbStepTimer  : TON;
+    fbRunTimer   : TON;            // the whole run, never re-armed by a step
     fbMoveOff    : MC_MoveVelocity;
     fbSearch     : MC_MoveVelocity;
     fbHalt       : MC_Halt;
@@ -82,6 +86,7 @@ VAR CONSTANT
     cErrSearchTime   : UDINT := 16#0001_0103;  // switch not found
     cErrStepTime     : UDINT := 16#0001_0104;  // halt / set / mark slow
     cErrAborted      : UDINT := 16#0001_0105;  // another command took over
+    cErrRunTime      : UDINT := 16#0001_0106;  // whole run too long
     cErrInvalidState : UDINT := 16#0001_01FF;
 END_VAR
 ]]></Declaration>
@@ -102,6 +107,8 @@ bTimedStep   := (eState <> E_HomePlcState.Idle)
 // it, so each step gets a full timeout (twincat-st FB_Sequence shape).
 fbStepTimer(IN := bTimedStep AND NOT bStepChanged,
             PT := stRun.tStepTimeout);
+// The run timer only re-arms between runs (Idle, Done, Error).
+fbRunTimer(IN := bTimedStep, PT := stRun.tRunTimeout);
 
 CASE eState OF
 
@@ -132,8 +139,9 @@ CASE eState OF
         END_IF
 
     // Each moving or waiting step: M_StepResult is TRUE when the step's
-    // own condition is met; on an error, an abort by another command or
-    // the step timeout it has already moved to Stopping or Error.
+    // own condition is met; on an error, an abort by another command, the
+    // step timeout or the run timeout it has already moved to Stopping or
+    // Error.
     E_HomePlcState.ClearNcHomed:
         IF M_StepResult(bDone := fbHome.Done,
                         bErr := fbHome.Error, nErr := fbHome.ErrorID,
@@ -256,14 +264,16 @@ fbHome(Axis := Axis,
                   OR (eState = E_HomePlcState.MarkNcHomed),
        HomingMode := eHomeMode);
 
-IF stRun.bMarkNcHomed THEN
-    bHomed := Axis.Status.Homed;
-END_IF
 bBusy  := (eState <> E_HomePlcState.Idle)
           AND (eState <> E_HomePlcState.Done)
           AND (eState <> E_HomePlcState.Error);
 bDone  := (eState = E_HomePlcState.Done);
 bError := (eState = E_HomePlcState.Error);
+IF stRun.bMarkNcHomed THEN
+    // Mirror the NC's mark, but not during a run: until ClearNcHomed is
+    // through, the NC still shows the old one.
+    bHomed := Axis.Status.Homed AND NOT bBusy;
+END_IF
 ]]></ST>
     </Implementation>
     <Method Name="M_ParamsOk" Id="{a72b3be7-0feb-428b-8be3-c7d0f5babcdc}">
@@ -279,7 +289,8 @@ M_ParamsOk :=
     AND (stRun.fSearchVelocity > 0.0)
     AND (stRun.fMoveOffVelocity > 0.0)
     AND (stRun.fDeceleration > 0.0)
-    AND (stRun.tStepTimeout > T#0S);]]></ST>
+    AND (stRun.tStepTimeout > T#0S)
+    AND (stRun.tRunTimeout > T#0S);]]></ST>
       </Implementation>
     </Method>
     <Method Name="M_Fail" Id="{f4d90d8f-966c-47f3-b37a-6a3f58b93687}">
@@ -313,7 +324,8 @@ END_VAR
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[// One step's outcome, checked in priority order: done beats an error
-// seen on the same scan, an error beats an abort, all beat the timeout.
+// seen on the same scan, an error beats an abort, all beat the timeouts,
+// and the step's own timeout beats the run's.
 // An abort means another command owns the axis now, so it never halts.
 M_StepResult := FALSE;
 IF bDone THEN
@@ -324,6 +336,8 @@ ELSIF bAborted THEN
     M_Fail(errorID := cErrAborted, bStop := FALSE);
 ELSIF fbStepTimer.Q THEN
     M_Fail(errorID := nTimeoutErr, bStop := bStop);
+ELSIF fbRunTimer.Q THEN
+    M_Fail(errorID := cErrRunTime, bStop := bStop);
 END_IF]]></ST>
       </Implementation>
     </Method>

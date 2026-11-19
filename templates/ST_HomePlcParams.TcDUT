@@ -14,6 +14,7 @@ STRUCT
     fReferencePosition : LREAL;     // the position the switch edge gets
     bMarkNcHomed       : BOOL;      // TRUE: NC homed state; FALSE: own flag
     tStepTimeout       : TIME := T#30S;  // per step; size from travel
+    tRunTimeout        : TIME := T#5M;   // whole run, all steps together
 END_STRUCT
 END_TYPE
 ]]></Declaration>
