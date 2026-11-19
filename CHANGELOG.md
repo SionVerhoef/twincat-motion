@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `evals/grade.py` no longer passes three wrong answers as right: denying a missing feed
+  enable (`triage-feed-enable`), keeping `Execute` TRUE and calling `MC_Reset`
+  (`mcstop-lock`), and guessing 0x4B11's meaning after saying it is unverified
+  (`nc-error-neighbour-unknown`). Each is now a trapped answer in `selftest.py`.
 - `agents/openai.yaml` gives OpenAI Codex a display name and blurb; `check_skill.py` guards
   their lengths (blurb 25-64 characters).
 - The `description` opens with what the skill is, then "Use when …", keeping "load it before
