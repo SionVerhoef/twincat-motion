@@ -87,8 +87,8 @@ same pattern.
 
 ## Using them
 
-They are a starting point to adapt, not a library. Match your project's naming where it
-differs; the structure is the part that matters. The project needs the `Tc2_MC2` library.
+They are a starting point to adapt, not a library; the structure is the part that matters.
+The project needs the `Tc2_MC2` library.
 
 - **Copy them in.** In XAE, *Add > Existing Item* on the PLC project, or let your agent write
   the code into objects of your own. The field test added and built them this way.
@@ -100,3 +100,12 @@ differs; the structure is the part that matters. The project needs the `Tc2_MC2`
 - **With twincat-st installed**, its `tcpou.py` does the GUIDs and the project file for you:
   `tcpou.py reguid <file>` for fresh GUIDs, `tcpou.py register` to add a file to the
   `.plcproj`, and `tcpou.py check` plus `st_review.py` afterwards.
+
+**Before adapting a template, load the project's own written coding standard if it has one**: a
+conventions skill in the agent's list of available skills, or a standards document the user or
+the project's agent instructions point to. Don't search the repository for one. Its naming,
+layout and structure rules outrank these templates. The `Tc2_MC2` behaviour under "Design
+choices worth knowing" stays unless the standard addresses it explicitly: a renamed or
+restructured block must still give every trigger a real rising edge, stop with `MC_Halt` and
+keep one homed record per axis. Without a written standard, match the surrounding project's
+naming where it differs.

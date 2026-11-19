@@ -18,6 +18,17 @@ if len(desc) > 1024:
     errors.append(f"description is {len(desc)} chars, max 1024")
 if "<" in desc or ">" in desc:
     errors.append("description may not contain < or >")
+
+# Codex picker metadata: both strings quoted, at lengths OpenAI accepts.
+try:
+    openai_yaml = open("agents/openai.yaml", encoding="utf-8").read()
+except FileNotFoundError:
+    openai_yaml = ""
+    errors.append("agents/openai.yaml is missing")
+for key, lo, hi in (("display_name", 1, 64), ("short_description", 25, 64)):
+    v = re.search(rf'^  {key}: "(.*)"$', openai_yaml, re.M)
+    if openai_yaml and not (v and lo <= len(v.group(1)) <= hi):
+        errors.append(f"agents/openai.yaml {key} must be quoted and {lo}-{hi} characters")
 if errors:
     sys.exit("\n".join(errors))
 print(f"ok: name={fields['name']}, description {len(desc)} chars")

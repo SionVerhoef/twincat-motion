@@ -1,0 +1,3 @@
+interface:
+  display_name: "TwinCAT NC Motion"
+  short_description: "Configure, home and diagnose TwinCAT 3 NC axes"

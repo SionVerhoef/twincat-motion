@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- `agents/openai.yaml` gives OpenAI Codex a display name and blurb; `check_skill.py` guards
+  their lengths (blurb 25-64 characters).
+- The `description` opens with what the skill is, then "Use when …", keeping "load it before
+  answering, or opening any file" and every covered topic and exclusion. Scored level with the
+  previous one (Opus 40/42 vs 42/42, Haiku 36/42 vs 35/42, sibling skills installed);
+  `evals/README.md` also records why two trigger evals must not run in parallel.
+- `SKILL.md` and `templates/README.md`: load the project's own written coding standard, if
+  it has one, before adapting a template. It outranks the templates on naming, layout and
+  structure, not on the `Tc2_MC2` behaviour they are built around or the safety rules.
 - `templates/README.md`: plain *Add > Existing Item* is the default way to bring the
   templates in; twincat-st's `tcpou.py` is optional, for fresh GUIDs when a template goes
   into one project twice. The field test (B1) gains a duplicate-GUID check.
