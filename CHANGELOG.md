@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `axis-lifecycle.md`: disabling is no longer presented as harmless. Stop with `MC_Halt`
+  before dropping the enable; the drive's disable or fault reaction (CiA 402 option codes,
+  AX5000/AX8000 settings) decides what a moving or hanging axis does. New section on
+  holding-brake order, Beckhoff drive on/off delay times, gravity torque offset, and STO on
+  vertical axes as a safety-design matter. Routed from `SKILL.md`.
 - A/B evals made fairer: the baseline arm gets the same tools as the skill arm (Read, Bash
   and the rest), and every arm is audited for reads, shell commands and web requests that
   reach the skill. Evals whose reference rests on a fact seen only on a simulated axis name
