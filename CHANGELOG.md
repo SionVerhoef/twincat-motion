@@ -7,6 +7,10 @@
   reach the skill. Evals whose reference rests on a fact seen only on a simulated axis name
   it in `sim_only`: the judge does not hold an answer to it, and `grade.py` also reports the
   score without those evals. README leads with the Haiku round (33 vs 19), not Opus.
+- `evals/grade.py` no longer passes three wrong answers as right: denying a missing feed
+  enable (`triage-feed-enable`), keeping `Execute` TRUE and calling `MC_Reset`
+  (`mcstop-lock`), and guessing 0x4B11's meaning after saying it is unverified
+  (`nc-error-neighbour-unknown`). Each is now a trapped answer in `selftest.py`.
 - `agents/openai.yaml` gives OpenAI Codex a display name and blurb; `check_skill.py` guards
   their lengths (blurb 25-64 characters).
 - The `description` opens with what the skill is, then "Use when …", keeping "load it before

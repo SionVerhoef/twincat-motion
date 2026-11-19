@@ -139,16 +139,17 @@ def code_named(t: str, n: int) -> bool:
 
 
 def triage_feed_enable(t, code):
+    missing = (r"(controller|feed|direction\w*)[^.\n]{0,30}enables?[^.\n]{0,30}(missing|not\s+set|absent|FALSE)",
+               r"(missing|no)\s+(\w+\s+){0,2}(feed|direction\w*|controller)\s+enables?")
     c = {
-        "0x4223, enable missing at start": has(t, hexv(0x4223)) and has(
-            t, r"(controller|feed|direction\w*)[^.\n]{0,30}enables?[^.\n]{0,30}(missing|not\s+set|absent|FALSE)",
-            r"(missing|no)\s+(\w+\s+){0,2}(feed|direction\w*|controller)\s+enables?"),
+        "0x4223, enable missing at start": has(t, hexv(0x4223)) and asserts(t, *missing),
         "Enable_Positive and Enable_Negative named": has(t, r"enable_?positive") and has(t, r"enable_?negative"),
     }
     # 0x4223 read as the drive not being ready is the 0x4225 meaning.
     if asserts(t, hexv(0x4223) + r"[^.\n]{0,60}(drive|amplifier)[^.\n]{0,30}not\s+(\w+\s+)?ready"):
         c["0x4223, enable missing at start"] = False
-    if not c["Enable_Positive and Enable_Negative named"]:
+    # Naming the missing enable only to deny it rejects the diagnosis.
+    if not c["Enable_Positive and Enable_Negative named"] or (has(t, *missing) and not asserts(t, *missing)):
         return "W", c
     return ("R" if all(c.values()) else "P"), c
 
@@ -169,8 +170,15 @@ def nc_error_neighbour_unknown(t, code):
             r"(check|confirm|verify|look\s+(it\s+)?up)\s+(\w+\s+){0,4}(infosys|beckhoff\s+(documentation|information))",
             r"infosys[^.\n]{0,80}(exact|confirm|meaning)"),
     }
+    # A hedge followed by a meaning anyway ('could not verify, but it means X') is a guess.
+    # Only the text from the 0x4B11 mention on counts: the same line may explain 0x4225.
+    after = [re.split(hexv(0x4B11) + r"|\b19217\b", line, maxsplit=1, flags=re.I)[-1]
+             for line in lines_of(t) if has(line, hexv(0x4B11), r"\b19217\b")]
+    c["0x4B11 meaning not guessed"] = not any(
+        asserts(a, r"\b(means|indicates|signals|signifies|stands\s+for)\b") for a in after)
     one = c["0x4225 drive not ready"]
-    two = c["0x4B11 in the NC-PLC / function-block range"] and c["0x4B11 meaning flagged as not looked up"]
+    two = (c["0x4B11 in the NC-PLC / function-block range"] and c["0x4B11 meaning flagged as not looked up"]
+           and c["0x4B11 meaning not guessed"])
     return ("R" if one and two else "P" if one or two else "W"), c
 
 
@@ -180,7 +188,7 @@ def mcstop_lock(t, code):
             t, r"MC_Stop[^\n]{0,200}(lock|block|refus|reject)", r"(lock|locked)[^.\n]{0,60}MC_Stop",
             r"MotionCommandsLocked"),
         "Execute must fall (or MC_Halt)": has(
-            t, r"Execute[^.\n]{0,60}(FALSE|falls|low|drop|released|reset)", r"(drop|release|reset|clear)\w*\s+(\w+\s+){0,3}Execute",
+            t, r"Execute[^.\n]{0,60}\b(FALSE|falls|low|drop|released|reset)\b", r"\b(drop|release|reset|clear)\w*\s+(\w+\s+){0,3}Execute",
             r"falling\s+edge"),
         "MC_Halt for the operator stop": has(t, r"MC_Halt"),
     }
