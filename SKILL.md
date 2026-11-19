@@ -93,7 +93,7 @@ Load a reference when the task reaches it, not all of them up front.
 | Task | Read |
 |---|---|
 | Axis won't enable, `MC_Power.Status` stays FALSE, won't move, faults, moves wrong | `references/triage.md` first |
-| Order of commands, axis states, `MC_Stop` vs `MC_Halt`, `ST_AxisStatus`, buffer modes, `CommandAborted`, error kinds, `MC_Jog` modes | `references/axis-lifecycle.md` |
+| Order of commands, axis states, `MC_Stop` vs `MC_Halt`, `ST_AxisStatus`, buffer modes, `CommandAborted`, error kinds, `MC_Jog` modes; disabling a moving axis, holding brakes, vertical axes | `references/axis-lifecycle.md` |
 | Scaling, reference velocity, CSP vs velocity mode, lag / target / soft-limit monitoring, Kv | `references/axis-parameters.md` |
 | Homing: PLC-based, `MC_Home`, step homing, touch probe, drive-based, absolute encoders and retain data | `references/homing.md` |
 | Gearing, cam plates, flying saw, phasing, `MC_MoveSuperImposed`, touch-probe registration, external set points; a slave in protected mode | `references/coupling.md` |
