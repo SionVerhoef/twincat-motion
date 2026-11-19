@@ -11,6 +11,9 @@
 - `SKILL.md` and `templates/README.md`: load the project's own written coding standard, if
   it has one, before adapting a template. It outranks the templates on naming, layout and
   structure, not on the `Tc2_MC2` behaviour they are built around or the safety rules.
+- `templates/README.md`: plain *Add > Existing Item* is the default way to bring the
+  templates in; twincat-st's `tcpou.py` is optional, for fresh GUIDs when a template goes
+  into one project twice. The field test (B1) gains a duplicate-GUID check.
 
 ## 0.2.0 — 2026-11-17
 

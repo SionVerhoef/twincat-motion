@@ -87,24 +87,19 @@ same pattern.
 
 ## Using them
 
-Use twincat-st's `tcpou.py` to bring them into a project. Don't copy the files: TwinCAT
-identifies objects by GUID, and a copy keeps the template's. Scaffold each object, move the
-parts across, register it, check it:
+They are a starting point to adapt, not a library; the structure is the part that matters.
+The project needs the `Tc2_MC2` library.
 
-```bash
-py -3 tcpou.py new --type fb --name FB_Axis --dir MyProject/PLC/POUs/
-py -3 tcpou.py add-method MyProject/PLC/POUs/FB_Axis.TcPOU --name MoveAbsolute --returns BOOL
-#   ... one add-method per method; --access PRIVATE for the M_ methods
-py -3 tcpou.py get templates/FB_Axis.TcPOU --part decl --out decl.st
-py -3 tcpou.py set MyProject/PLC/POUs/FB_Axis.TcPOU --part decl --from-file decl.st
-#   ... the same for impl and every Method:decl / Method:impl part, and for each DUT
-py -3 tcpou.py register MyProject/PLC/PLC.plcproj MyProject/PLC/POUs/FB_Axis.TcPOU
-py -3 tcpou.py check MyProject/PLC/POUs/FB_Axis.TcPOU
-py -3 st_review.py MyProject/PLC/POUs/
-```
-
-If a file was copied anyway, `tcpou.py reguid <file>` gives every object in it a fresh GUID. The
-project needs the `Tc2_MC2` library.
+- **Copy them in.** In XAE, *Add > Existing Item* on the PLC project, or let your agent write
+  the code into objects of your own. The field test added and built them this way.
+- **Once per project needs nothing more.** TwinCAT identifies objects by GUID, and a copy keeps
+  the template's. That matters only when the same template goes into one project twice (say
+  `FB_Axis` copied again as `FB_Axis2`): give the second copy fresh GUIDs, or create it as a
+  new object in XAE and paste the code in. What XAE does with a duplicate GUID is not yet
+  tested (field test B1).
+- **With twincat-st installed**, its `tcpou.py` does the GUIDs and the project file for you:
+  `tcpou.py reguid <file>` for fresh GUIDs, `tcpou.py register` to add a file to the
+  `.plcproj`, and `tcpou.py check` plus `st_review.py` afterwards.
 
 **Before adapting a template, load the project's own written coding standard if it has one**: a
 conventions skill in the agent's list of available skills, or a standards document the user or
