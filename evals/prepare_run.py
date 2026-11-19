@@ -33,9 +33,10 @@ ARM_INSTRUCTION = {
         "use whatever it ships in scripts/ if they apply. Then answer the request below."
     ),
     "without_skill": (
-        "Answer the request below from your own knowledge. Do NOT read {skill} or anything "
-        "under references/, scripts/ or templates/ - this run is the baseline it is "
-        "measured against."
+        "Answer the request below from your own knowledge; you may use the tools to work "
+        "things out. Do NOT read {skill}, anything under references/, scripts/ or "
+        "templates/, or any copy of the twincat-motion skill, installed or on GitHub - "
+        "this run is the baseline it is measured against."
     ),
     # A user's agent without the skill can still search. Not the skill itself, though: it
     # is public, and finding it would measure the skill again, not the baseline.

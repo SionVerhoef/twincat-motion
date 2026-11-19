@@ -25,14 +25,14 @@ otherwise:
     Claude Code project history.
   * Only with_skill gets --add-dir, and what it gets is a snapshot of the skill at --ref
     with evals/ removed, so neither arm can read the expected answers.
-  * The baseline gets the Write tool only. It answers from its own knowledge, and
-    without Read or a shell it cannot reach this repository, which is public. (The
-    scouting round also allowed Bash; no cell used it.) The web_baseline arm adds
-    WebSearch and WebFetch, as a user's agent could have; it is told to stay off the
-    skill's public repository, and a request or a tool result that names it is flagged
-    (--arms web_baseline). The with_skill arm needs Read
-    and Bash, so it is audited instead: a Read, Glob or Grep outside its cell and the
-    snapshot is flagged, and its shell commands are listed in the report to be read.
+  * Every arm gets the same tools, Read, Write, Edit, Glob, Grep and Bash, so the skill
+    arm is not also the only one that can work things out in a shell. The web_baseline
+    arm adds WebSearch and WebFetch, as a user's agent could have (--arms web_baseline).
+    Since the skill is public, every arm is audited instead of fenced: a Read, Glob or
+    Grep outside its cell (and, for with_skill, the snapshot) is flagged, so is a shell
+    command that reaches outside them, and in a baseline arm a web request, shell command
+    or tool result that names the skill's repository. Every shell command is listed in
+    the report to be read.
   * --parallel defaults to 3. Four concurrent sessions once produced a transiently
     corrupted read of the shared Claude Code config file.
 
@@ -56,8 +56,9 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 CELL_TIMEOUT = 1800
-TOOLS = {"with_skill": "Read Write Edit Glob Grep Bash", "without_skill": "Write",
-         "web_baseline": "Write WebSearch WebFetch"}
+BASE_TOOLS = "Read Write Edit Glob Grep Bash"
+TOOLS = {"with_skill": BASE_TOOLS, "without_skill": BASE_TOOLS,
+         "web_baseline": BASE_TOOLS + " WebSearch WebFetch"}
 DENIED = ("WebFetch WebSearch Agent Task PushNotification Workflow ScheduleWakeup "
           "CronCreate RemoteTrigger SendMessage DesignSync")
 # The skill is public. A web baseline that reaches it is measuring the skill again.
@@ -239,30 +240,28 @@ def report(run: Path, skill: Path) -> str:
                                         "cache_read_input_tokens", "output_tokens"))
         calls = tool_calls(cell / "run.jsonl")
         flags = []
-        if arm == "without_skill" and any(name != "Write" for name, _ in calls):
-            flags.append("BASELINE-USED-TOOLS")
-        if arm == "web_baseline":
-            if any(name not in TOOLS[arm].split() for name, _ in calls):
-                flags.append("BASELINE-USED-TOOLS")
+        roots = (cell, skill) if arm == "with_skill" else (cell,)
+        if any(name not in TOOLS[arm].split() for name, _ in calls):
+            flags.append("UNEXPECTED-TOOL")
+        if arm != "with_skill":
             if any(SKILL_REPO.search(json.dumps(inp))
-                   for name, inp in calls if name in ("WebFetch", "WebSearch")):
+                   for name, inp in calls if name in ("WebFetch", "WebSearch", "Bash")):
                 flags.append("ASKED-FOR-THE-SKILL")
             if SKILL_REPO.search(tool_results_text(cell / "run.jsonl")):
                 flags.append("SKILL-IN-RESULTS")
-        if arm == "with_skill":
-            if not any(name == "Read" and inp.get("file_path", "").endswith("SKILL.md")
-                       or name == "Bash" and "SKILL.md" in inp.get("command", "")
-                       for name, inp in calls):
-                flags.append("SKILL-NOT-READ")
-            if any(not within(cell, p, cell, skill)
-                   for name, inp in calls for p in read_paths(name, inp)):
-                flags.append("READ-OUTSIDE-CELL")
-            # A cia402-motion smoke run had a cell work in a fixed /tmp folder, where two
-            # concurrent cells can delete each other's files.
-            if any(not within(cell, p, cell, skill)
-                   for name, inp in calls if name == "Bash"
-                   for p in shell_paths(inp.get("command", ""), cell)):
-                flags.append("SHELL-OUTSIDE-CELL")
+        if arm == "with_skill" and not any(
+                name == "Read" and inp.get("file_path", "").endswith("SKILL.md")
+                or name == "Bash" and "SKILL.md" in inp.get("command", "")
+                for name, inp in calls):
+            flags.append("SKILL-NOT-READ")
+        if any(not within(cell, p, *roots) for name, inp in calls for p in read_paths(name, inp)):
+            flags.append("READ-OUTSIDE-CELL")
+        # A cia402-motion smoke run had a cell work in a fixed /tmp folder, where two
+        # concurrent cells can delete each other's files.
+        if any(not within(cell, p, *roots)
+               for name, inp in calls if name == "Bash"
+               for p in shell_paths(inp.get("command", ""), cell)):
+            flags.append("SHELL-OUTSIDE-CELL")
         if any(name in ("Write", "Edit") and not within(cell, inp.get("file_path", ""), cell)
                for name, inp in calls):
             flags.append("WROTE-OUTSIDE-CELL")

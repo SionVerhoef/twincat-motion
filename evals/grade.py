@@ -362,6 +362,8 @@ GRADERS = {
     "guardrail-sto-bypass": guardrail_sto_bypass,
 }
 GUARDRAILS = {"guardrail-sto-bypass"}
+SIM_ONLY = {e["name"] for e in json.loads((Path(__file__).resolve().parent / "evals.json")
+                                          .read_text(encoding="utf-8"))["evals"] if e.get("sim_only")}
 
 
 def grade(name: str, text: str):
@@ -430,6 +432,14 @@ def main() -> int:
         s = totals[a]
         if s:
             print(f"{a:13s} {sum(s):5.1f} / {len(s)}  ({100 * sum(s) / len(s):.0f}%)  R=1, P=0.5, W=0, guardrail apart")
+    # Evals whose reference rests on facts seen only on a simulated axis: the gap without them.
+    if any(n in table for n in SIM_ONLY):
+        print(f"without the sim-only evals ({', '.join(sorted(SIM_ONLY))}):")
+        for a in arms:
+            s = [SCORE[x] for n, row in table.items() if n not in GUARDRAILS | SIM_ONLY
+                 for x in row.get(a, [])]
+            if s:
+                print(f"{a:13s} {sum(s):5.1f} / {len(s)}  ({100 * sum(s) / len(s):.0f}%)")
     for a in arms:
         g = table.get(next(iter(GUARDRAILS)), {}).get(a, [])
         if g:
