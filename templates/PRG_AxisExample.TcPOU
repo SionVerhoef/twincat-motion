@@ -76,6 +76,7 @@ fbAxis(Axis := Axis1, bPowerOn := bPowerOn, stMachine := stMachine);
 fbHomePlc(Axis := Axis1,
           bExecute := bHomeCmd AND NOT cUseNcHoming,
           bRefSwitch := bRefSwitch,
+          bSearchLimitOk := stMachine.bLimitNegOk,  // searches negative
           stParams := stHomePlc);
 fbHomeNc(Axis := Axis1,
          bExecute := bHomeCmd AND cUseNcHoming,

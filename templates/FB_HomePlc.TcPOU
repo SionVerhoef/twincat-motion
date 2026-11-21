@@ -7,6 +7,16 @@
     reference switch with MC_MoveVelocity, stop with MC_Halt, then shift
     the position so the switch edge becomes the reference position.
 
+    Two options, both off unless set:
+    - Two-speed search (stParams.fSlowVelocity > 0): find the switch at
+      fSearchVelocity, move off it again, then approach it at
+      fSlowVelocity. Only the slow edge sets the position.
+    - Reversal at a limit (bSearchLimitOk wired): a search that reaches
+      the limit in its direction stops, travels the other way through
+      the switch until it is released, and searches again, so the edge
+      is always approached from the same side. Once per run; a second
+      limit is cErrLimit.
+
     It marks the axis homed in one of two ways (stParams.bMarkNcHomed):
       FALSE  own flag. bHomed is the record; ST_AxisStatus.Homed is not
              touched, so an HMI reading the NC's flag sees "not homed".
@@ -18,8 +28,9 @@
     here relies on MC_SetPosition changing it, or leaving it alone.
 
     TEMPLATE - built and run on a simulated axis (4024.55), not on a real
-    one. Test it on your axis at reduced velocity and torque. A
-    reference switch is not a safety device; homing is not safe homing.
+    one; the two options and the run timeout not even that yet. Test it
+    on your axis at reduced velocity and torque. A reference switch is
+    not a safety device; homing is not safe homing.
 
     CONTRACT
     - Call every cycle, unconditionally. bExecute is edge-triggered;
@@ -29,7 +40,19 @@
     - The axis must be enabled (MC_Power, e.g. FB_Axis) and nothing else
       may command it during the run.
     - bRefSwitch is the switch's input, every cycle; TRUE = on the switch.
+    - bSearchLimitOk: the limit switch in the search direction, NC
+      contact, TRUE = not at the limit (as ST_AxisMachineIn). Left
+      unconnected it stays TRUE and the run never reverses. The axis must
+      reach the limit without an axis error: an error ends the run.
+    - The switch must stay active for longer than the braking distance
+      of the search. If the axis overshoots it, the next search goes the
+      wrong way and ends at the limit (reversal) or the step timeout.
     - bHomed is not retained: after a restart the axis is not homed.
+      With stParams.bUnhomeOnAxisError, any axis error clears the own
+      flag too (bMarkNcHomed FALSE only).
+    - Two timeouts: tStepTimeout for each step, tRunTimeout for the whole
+      run. The run limit catches a loop of short steps, such as a
+      chattering switch cycling MoveOff -> HaltOff -> CheckSwitch.
 
     ACCURACY
     The PLC sees the edge, so the position is taken in the scan the input
@@ -37,13 +60,15 @@
     the input's filter time, plus a cycle's lag when the PLC task runs
     slower than the NC task. The shift is relative (MC_SetPosition Mode
     TRUE) by fReferencePosition - position at the edge, so the braking
-    distance does not end up in the zero. Search slowly; for better, latch
-    the edge in hardware (touch probe, homing option 4).
+    distance does not end up in the zero. Search slowly, or use the
+    two-speed search to keep a long search short; for better, latch the
+    edge in hardware (touch probe, homing option 4).
 *)
 VAR_INPUT
-    bExecute   : BOOL;              // rising edge starts a homing run
-    bRefSwitch : BOOL;              // reference switch input, every cycle
-    stParams   : ST_HomePlcParams;  // read when bExecute rises
+    bExecute       : BOOL;              // rising edge starts a homing run
+    bRefSwitch     : BOOL;              // reference switch input, every cycle
+    bSearchLimitOk : BOOL := TRUE;      // FALSE = at the limit, search side
+    stParams       : ST_HomePlcParams;  // read when bExecute rises
 END_VAR
 VAR_IN_OUT
     Axis       : AXIS_REF;
@@ -64,11 +89,15 @@ VAR
     eMoveOffDir  : MC_Direction := MC_Direction.MC_Positive_Direction;
     eHomeMode    : MC_HomingMode := MC_HomingMode.MC_ResetCalibration;
     fPosAtEdge   : LREAL;          // actual position when the edge came
+    bSlowPass    : BOOL;           // two-speed search: now the slow one
+    bReversed    : BOOL;           // this run has reversed at a limit
+    bSwitchSeen  : BOOL;           // Reverse: the switch has come
 
     fbExecTrig   : R_TRIG;
     fbSwitchTrig : R_TRIG;
     fbStepTimer  : TON;
-    fbMoveOff    : MC_MoveVelocity;
+    fbRunTimer   : TON;            // the whole run, never re-armed by a step
+    fbMoveOff    : MC_MoveVelocity;  // MoveOff and Reverse, away from it
     fbSearch     : MC_MoveVelocity;
     fbHalt       : MC_Halt;
     fbSetPos     : MC_SetPosition;
@@ -82,6 +111,8 @@ VAR CONSTANT
     cErrSearchTime   : UDINT := 16#0001_0103;  // switch not found
     cErrStepTime     : UDINT := 16#0001_0104;  // halt / set / mark slow
     cErrAborted      : UDINT := 16#0001_0105;  // another command took over
+    cErrRunTime      : UDINT := 16#0001_0106;  // whole run too long
+    cErrLimit        : UDINT := 16#0001_0107;  // limit again after reversing
     cErrInvalidState : UDINT := 16#0001_01FF;
 END_VAR
 ]]></Declaration>
@@ -102,6 +133,8 @@ bTimedStep   := (eState <> E_HomePlcState.Idle)
 // it, so each step gets a full timeout (twincat-st FB_Sequence shape).
 fbStepTimer(IN := bTimedStep AND NOT bStepChanged,
             PT := stRun.tStepTimeout);
+// The run timer only re-arms between runs (Idle, Done, Error).
+fbRunTimer(IN := bTimedStep, PT := stRun.tRunTimeout);
 
 CASE eState OF
 
@@ -113,7 +146,10 @@ CASE eState OF
         END_IF
 
     E_HomePlcState.Prepare:
-        bHomed := FALSE;
+        bHomed      := FALSE;
+        bSlowPass   := FALSE;
+        bReversed   := FALSE;
+        bSwitchSeen := FALSE;
         IF NOT M_ParamsOk() THEN
             M_Fail(errorID := cErrParams, bStop := FALSE);
         ELSE
@@ -132,8 +168,9 @@ CASE eState OF
         END_IF
 
     // Each moving or waiting step: M_StepResult is TRUE when the step's
-    // own condition is met; on an error, an abort by another command or
-    // the step timeout it has already moved to Stopping or Error.
+    // own condition is met; on an error, an abort by another command, the
+    // step timeout or the run timeout it has already moved to Stopping or
+    // Error.
     E_HomePlcState.ClearNcHomed:
         IF M_StepResult(bDone := fbHome.Done,
                         bErr := fbHome.Error, nErr := fbHome.ErrorID,
@@ -142,9 +179,17 @@ CASE eState OF
             eState := E_HomePlcState.CheckSwitch;
         END_IF
 
+    // The hub between moves: on the switch, move off it; at the limit
+    // ahead, the switch is behind the axis, so reverse (once); else search.
     E_HomePlcState.CheckSwitch:
         IF bRefSwitch THEN
             eState := E_HomePlcState.MoveOff;
+        ELSIF NOT bSearchLimitOk AND bReversed THEN
+            M_Fail(errorID := cErrLimit, bStop := FALSE);
+        ELSIF NOT bSearchLimitOk THEN
+            bReversed   := TRUE;
+            bSwitchSeen := FALSE;
+            eState      := E_HomePlcState.Reverse;
         ELSE
             eState := E_HomePlcState.Search;
         END_IF
@@ -167,14 +212,41 @@ CASE eState OF
             eState := E_HomePlcState.CheckSwitch;
         END_IF
 
-    E_HomePlcState.Search:
-        IF M_StepResult(bDone := fbSwitchTrig.Q,
-                        bErr := fbSearch.Error, nErr := fbSearch.ErrorID,
-                        bAborted := fbSearch.CommandAborted,
+    // Back the way it came, at search speed, until the switch has come
+    // and gone again: the axis then stands on the side the search starts.
+    E_HomePlcState.Reverse:
+        IF bRefSwitch THEN
+            bSwitchSeen := TRUE;
+        END_IF
+        IF M_StepResult(bDone := bSwitchSeen AND NOT bRefSwitch,
+                        bErr := fbMoveOff.Error, nErr := fbMoveOff.ErrorID,
+                        bAborted := fbMoveOff.CommandAborted,
                         nTimeoutErr := cErrSearchTime, bStop := TRUE) THEN
+            // HaltOff then CheckSwitch, as after MoveOff: a bounce that
+            // read "released" too early ends in MoveOff, the same way
+            eState := E_HomePlcState.HaltOff;
+        END_IF
+
+    // A limit first: the switch is then behind the axis, and an error the
+    // limit causes on this move must not end the run before it reverses.
+    E_HomePlcState.Search:
+        IF NOT bSearchLimitOk THEN
+            eState := E_HomePlcState.HaltLimit;
+        ELSIF M_StepResult(bDone := fbSwitchTrig.Q,
+                           bErr := fbSearch.Error, nErr := fbSearch.ErrorID,
+                           bAborted := fbSearch.CommandAborted,
+                           nTimeoutErr := cErrSearchTime, bStop := TRUE) THEN
             // the position in the scan the edge is seen, before the halt
             fPosAtEdge := Axis.NcToPlc.ActPos;
             eState     := E_HomePlcState.HaltSearch;
+        END_IF
+
+    E_HomePlcState.HaltLimit:
+        IF M_StepResult(bDone := fbHalt.Done,
+                        bErr := fbHalt.Error, nErr := fbHalt.ErrorID,
+                        bAborted := fbHalt.CommandAborted,
+                        nTimeoutErr := cErrStepTime, bStop := FALSE) THEN
+            eState := E_HomePlcState.CheckSwitch;   // reverses from there
         END_IF
 
     E_HomePlcState.HaltSearch:
@@ -182,7 +254,13 @@ CASE eState OF
                         bErr := fbHalt.Error, nErr := fbHalt.ErrorID,
                         bAborted := fbHalt.CommandAborted,
                         nTimeoutErr := cErrStepTime, bStop := FALSE) THEN
-            eState := E_HomePlcState.SetPosition;
+            IF (stRun.fSlowVelocity > 0.0) AND NOT bSlowPass THEN
+                // fast pass done: off the switch again, then the slow one
+                bSlowPass := TRUE;
+                eState    := E_HomePlcState.CheckSwitch;
+            ELSE
+                eState := E_HomePlcState.SetPosition;
+            END_IF
         END_IF
 
     E_HomePlcState.SetPosition:
@@ -234,16 +312,20 @@ END_CASE
 // steps follow each other, so every entry is a fresh rising edge.
 stSetPosOpt.ClearPositionLag := TRUE;
 fbMoveOff(Axis := Axis,
-          Execute := (eState = E_HomePlcState.MoveOff),
-          Velocity := stRun.fMoveOffVelocity,
+          Execute := (eState = E_HomePlcState.MoveOff)
+                     OR (eState = E_HomePlcState.Reverse),
+          Velocity := SEL(eState = E_HomePlcState.Reverse,
+                          stRun.fMoveOffVelocity, stRun.fSearchVelocity),
           Direction := eMoveOffDir);
 fbSearch(Axis := Axis,
          Execute := (eState = E_HomePlcState.Search),
-         Velocity := stRun.fSearchVelocity,
+         Velocity := SEL(bSlowPass,
+                         stRun.fSearchVelocity, stRun.fSlowVelocity),
          Direction := stRun.eSearchDirection);
 fbHalt(Axis := Axis,
        Execute := (eState = E_HomePlcState.HaltOff)
                   OR (eState = E_HomePlcState.HaltSearch)
+                  OR (eState = E_HomePlcState.HaltLimit)
                   OR (eState = E_HomePlcState.Stopping),
        Deceleration := stRun.fDeceleration);
 fbSetPos(Axis := Axis,
@@ -256,14 +338,20 @@ fbHome(Axis := Axis,
                   OR (eState = E_HomePlcState.MarkNcHomed),
        HomingMode := eHomeMode);
 
-IF stRun.bMarkNcHomed THEN
-    bHomed := Axis.Status.Homed;
-END_IF
 bBusy  := (eState <> E_HomePlcState.Idle)
           AND (eState <> E_HomePlcState.Done)
           AND (eState <> E_HomePlcState.Error);
 bDone  := (eState = E_HomePlcState.Done);
 bError := (eState = E_HomePlcState.Error);
+IF stRun.bMarkNcHomed THEN
+    // Mirror the NC's mark, but not during a run: until ClearNcHomed is
+    // through, the NC still shows the old one.
+    bHomed := Axis.Status.Homed AND NOT bBusy;
+ELSIF stRun.bUnhomeOnAxisError AND Axis.Status.Error THEN
+    // The block cannot tell from the code whether the position survived
+    // (a lag error usually keeps it, an encoder error may not): drop it.
+    bHomed := FALSE;
+END_IF
 ]]></ST>
     </Implementation>
     <Method Name="M_ParamsOk" Id="{a72b3be7-0feb-428b-8be3-c7d0f5babcdc}">
@@ -277,9 +365,11 @@ M_ParamsOk :=
     ((stRun.eSearchDirection = MC_Direction.MC_Positive_Direction)
      OR (stRun.eSearchDirection = MC_Direction.MC_Negative_Direction))
     AND (stRun.fSearchVelocity > 0.0)
+    AND (stRun.fSlowVelocity >= 0.0)          // 0: single-speed search
     AND (stRun.fMoveOffVelocity > 0.0)
     AND (stRun.fDeceleration > 0.0)
-    AND (stRun.tStepTimeout > T#0S);]]></ST>
+    AND (stRun.tStepTimeout > T#0S)
+    AND (stRun.tRunTimeout > T#0S);]]></ST>
       </Implementation>
     </Method>
     <Method Name="M_Fail" Id="{f4d90d8f-966c-47f3-b37a-6a3f58b93687}">
@@ -313,7 +403,8 @@ END_VAR
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[// One step's outcome, checked in priority order: done beats an error
-// seen on the same scan, an error beats an abort, all beat the timeout.
+// seen on the same scan, an error beats an abort, all beat the timeouts,
+// and the step's own timeout beats the run's.
 // An abort means another command owns the axis now, so it never halts.
 M_StepResult := FALSE;
 IF bDone THEN
@@ -324,6 +415,8 @@ ELSIF bAborted THEN
     M_Fail(errorID := cErrAborted, bStop := FALSE);
 ELSIF fbStepTimer.Q THEN
     M_Fail(errorID := nTimeoutErr, bStop := bStop);
+ELSIF fbRunTimer.Q THEN
+    M_Fail(errorID := cErrRunTime, bStop := bStop);
 END_IF]]></ST>
       </Implementation>
     </Method>
