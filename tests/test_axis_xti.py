@@ -22,6 +22,7 @@ HOMING = os.path.join(FIX, 'spt_AxisHoming_Axis1.xti')
 EXTSEQ = os.path.join(FIX, 'spt_ExternalSequence_Axis1.xti')
 LCLS = os.path.join(FIX, 'lcls_Axis_AxisParameter_Test.xti')
 SEAL = os.path.join(FIX, 'packml_VFFS_Seal.xti')
+TWO_ENC = os.path.join(HERE, 'fixtures', 'handwritten', 'Axis_X_two_encoders.xti')
 
 AXIS = '''<?xml version="1.0"?>
 <TcSmItem TcVersion="3.1.4024.60" ClassName="{cls}" SubType="1">
@@ -231,6 +232,46 @@ class Diff(unittest.TestCase):
                       axis_xti.label('AxisPara/OtherSettings@AllowMotionCmdToExtSetGenAxis'))
 
 
+class MultiEncoder(unittest.TestCase):
+    """An axis with two encoders (hand-written fixture): Enc is sound, Enc_2 is not."""
+
+    def test_encoders_keyed_by_name(self):
+        p = axis_xti.load(TWO_ENC)['params']
+        self.assertEqual(p['Encoder[Enc]/EncPara@ScaleFactorDenominator'], '1')
+        self.assertEqual(p['Encoder[Enc_2]/EncPara@ScaleFactorDenominator'], '0')
+
+    def test_encoder_rules_run_on_every_encoder(self):
+        found = [f for f in axis_xti.lint(axis_xti.load(TWO_ENC)) if f['rule'] in ('E1', 'E2')]
+        self.assertEqual(sorted(f['rule'] for f in found), ['E1', 'E2'])
+        for f in found:
+            self.assertTrue(all(p.startswith('Encoder[Enc_2]/') for p in f['paths']), f)
+            self.assertIn('Enc_2', f['message'])
+
+    def test_single_encoder_message_unchanged(self):
+        f = axis_xti.lint(axis(encpara='ScaleFactorNumerator="0"'))[0]
+        self.assertEqual(f['paths'], ['Encoder/EncPara@ScaleFactorNumerator'])
+        self.assertTrue(f['message'].startswith('Encoder scaling numerator is 0'))
+
+    def test_diff_pairs_encoders_by_name_not_position(self):
+        with open(TWO_ENC, encoding='utf-8') as f:
+            text = f.read()
+        start, end = text.index('\t\t<Encoder Name="Enc"'), text.index('\t\t<Encoder Name="Enc_2"')
+        stop = text.index('</Encoder>', end) + len('</Encoder>\n')
+        swapped = text[:start] + text[end:stop] + text[start:end] + text[stop:]
+        d = tempfile.mkdtemp()
+        try:
+            path = os.path.join(d, 'Axis_X.xti')
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write(swapped)
+            self.assertEqual(axis_xti.diff(axis_xti.load(TWO_ENC), axis_xti.load(path)), [])
+        finally:
+            shutil.rmtree(d)
+
+    def test_labels_apply_to_named_encoders(self):
+        self.assertIn('soft limit minimum',
+                      axis_xti.label('Encoder[Enc_2]/EncPara/SoftEndMinControl@Range'))
+
+
 # Shaped like ProduceXml output as described in references/config-changes.md (root
 # TreeItem, values as element text, groups renamed to ...Param, defaults listed). Written
 # here, not captured from XAE.
@@ -436,6 +477,18 @@ class ProjectRules(unittest.TestCase):
         self.assertIn(('L1', 'WheelLeft'), found)
         self.assertIn(('L2', 'WheelLeft'), found)
         self.assertNotIn(('L1', 'WheelRight'), found)
+
+    def test_l2_second_encoder_not_linked(self):
+        self.copy('amr_demo')
+        path = self.amr('_Config/NC/Axes/WheelLeft.xti')
+        edit(path, '\t\t<Drive Name="Drive"',
+             '\t\t<Encoder Name="Enc_2" EncType="19"><EncPara/></Encoder>\n'
+             '\t\t<Drive Name="Drive"')
+        pr, found = project(self.amr())
+        self.assertIn(('L2', 'WheelLeft'), found)
+        l2 = [f for f in pr['findings'] if f['rule'] == 'L2']
+        self.assertEqual(len(l2), 1)  # Enc is linked, Enc_2 is not
+        self.assertIn('Enc_2', l2[0]['message'])
 
     def test_l1_follows_a_renamed_drive_sub_item(self):
         self.copy('geardemo')

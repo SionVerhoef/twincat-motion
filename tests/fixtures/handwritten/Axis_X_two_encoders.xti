@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<!-- Hand-written, anonymised test axis (tests/test_axis_xti.py, MultiEncoder): two encoders, Enc sound and Enc_2 with a zero scaling denominator and crossed soft limits. Not from any real machine. -->
+<TcSmItem TcVersion="3.1.4024.60" ClassName="CNcAxisDef" SubType="1">
+	<Axis Id="1" AxisType="1">
+		<Name>Axis_X</Name>
+		<AxisPara>
+			<Velo Maximum="500"/>
+		</AxisPara>
+		<Encoder Name="Enc" EncType="19">
+			<EncPara ScaleFactorNumerator="0.0001" ScaleFactorDenominator="1">
+				<SoftEndMinControl Enable="true" Range="0"/>
+				<SoftEndMaxControl Enable="true" Range="1000"/>
+			</EncPara>
+		</Encoder>
+		<Encoder Name="Enc_2" EncType="19">
+			<EncPara ScaleFactorNumerator="0.001" ScaleFactorDenominator="0">
+				<SoftEndMinControl Enable="true" Range="1000"/>
+				<SoftEndMaxControl Enable="true" Range="0"/>
+			</EncPara>
+		</Encoder>
+		<Drive Name="Drive" DrvType="16">
+			<DrvPara/>
+		</Drive>
+		<Controller Name="Ctrl" CtrType="1">
+			<CtrPara/>
+		</Controller>
+	</Axis>
+</TcSmItem>
