@@ -9,6 +9,11 @@
   or a jog) now ends with `bCommandAborted` instead of vanishing, and `eCommand` names the
   command the results belong to. Properties, not outputs, keep the block at ten parameters.
   `Halt` on a not-ready axis stays a no-op. Not yet built or run on a target.
+- `axis_xti.py` on an axis with more than one encoder: the scaling and soft-limit rules
+  (E1, E2), the simulation note (S1) and the encoder link check (L2) now run on every
+  encoder and name the one a finding is about; they used to skip such an axis and report it
+  clean. Each encoder is keyed by its Name (`Encoder[Enc_2]/...`), so `diff` pairs encoders
+  by name, not by their order in the file.
 - `axis-lifecycle.md`: disabling is no longer presented as harmless. Stop with `MC_Halt`
   before dropping the enable; the drive's disable or fault reaction (CiA 402 option codes,
   AX5000/AX8000 settings) decides what a moving or hanging axis does. New section on
