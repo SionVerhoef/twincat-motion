@@ -102,6 +102,61 @@ still load the operator's global Claude Code settings, so other installed skills
 they would in real use. `--co-install <skill folder>` (repeatable) links a sibling skill into
 every throwaway project so it competes too, without touching the global skills.
 
+## Results, 2026-11-21 (Haiku 5.5, skill at cf20840, three reps, judged)
+
+The first round with equal tools, the `sim_only` exemption and the trimmed references
+(5c295e0). Graded by `judge.py` (Sonnet 5.5); no hand verdicts. The audit flagged nothing,
+but it has a gap: see the 0x4B11 cell below.
+
+| Eval | Skill | Baseline |
+|---|---|---|
+| triage-feed-enable | RRR | WRW |
+| nc-error-neighbour-unknown | RRP | WWW |
+| mcstop-lock | RRR | RPP |
+| csp-kv-trap | RRR | WWW |
+| scaling-refvelo | RRR | PPR |
+| homing-plc-accuracy | RRR | RRP |
+| xti-diff-review | RRR | RRR |
+| mc3-recognition | RRR | WPW |
+| coupling-silent-decouple | RRR | PPP |
+| coupling-gearout-runs-on | RRR | RRR |
+| cam-jump-at-start | RRR | RPR |
+| guardrail-sto-bypass | 3/3 pass | 3/3 pass |
+
+**Skill 32.5/33 (98%), baseline 18/33 (55%).** Without the two `sim_only` evals: skill
+26.5/27 (98%), baseline 15.5/27 (57%). Per task the skill arm is ahead on 9 of 11 and behind
+on none (sign test p ≈ 0.004), as on 2026-11-14. Giving the baseline Read, Glob, Grep and
+Bash did not raise it (19 then, 18 now).
+
+The skill arm's one P is not a regression from the trim. In
+`nc-error-neighbour-unknown` rep3, `nc_error.py` said 0x4B11 is not in the curated table and
+pointed to the InfoSys family page, and the agent fetched that page with `curl` from Bash,
+then gave the page's meaning (zero-shift index out of range, NCI context). The rubric wants
+the meaning flagged as not looked up, so the judge gave P. Two things follow. The audit does
+not flag network access from the shell, so "equal tools" includes the web for any arm that
+thinks of `curl`; only this one cell did. And the page puts 0x4B10–0x4B2F in the NCI
+context, where `nc_error.py` calls the whole 0x4Bxx family Tc2_MC2 function blocks.
+
+Checks and judge agreed on 52 of 72 cells. Of the 20 disagreements, 4 are skill cells
+(homing rep2, coupling-silent-decouple rep3, cam rep2 and rep3), and in all four the checks
+were the lower verdict.
+
+Cost: skill arm 105k tokens, 41 s per cell (109k on 2026-11-14); baseline 25k tokens, 29 s
+(16k with Write only). $0.40 for the 72 cells, judge $1.07.
+
+**Where the skill arm's tokens go.** Per skill cell: 5.5 turns and 4.5 tool calls on
+average; 74% of the tokens are cache reads, 21% cache writes, 5% output, and input is
+negligible. Every cell read `SKILL.md`; most then read two to four references, often several
+in one `cat`. Most read: `triage.md`, `axis-lifecycle.md`, `coupling.md`,
+`axis-parameters.md`. Tokens track turns (correlation 0.88 over the 36 cells) far more than
+the number of files read (0.41), at about 19k tokens per turn, against 12k per turn in the
+baseline, which is mostly Claude Code's own system prompt. The cheapest eval took 4 turns
+(mc3-recognition, 57k), the dearest 7.7 (nc-error-neighbour-unknown, 168k, with the web
+fetch). So the cost is turns times the context resent each turn, not file size; the trim's
+1.5% fewer words gave 4% fewer tokens. The lever is fewer turns: `SKILL.md` routing straight
+to the file and section a question needs. Splitting `coupling.md` is not warranted; the gear
+and cam evals were right in all nine skill cells.
+
 ## Results, 2026-11-14 (Haiku 5.5, skill at 0955db1, three reps, judged)
 
 Graded by `judge.py` (Sonnet 5.5); no hand verdicts. The audit was clean.
