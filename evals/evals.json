@@ -26,13 +26,13 @@
       "category": "decode",
       "scored": "discriminating",
       "prompt": "Two axes on the same machine, TwinCAT 3.1.4024 with Tc2_MC2.\n\n- Axis_A: MC_MoveVelocity returns ErrorID 16#4225.\n- Axis_B: MC_GearIn returns ErrorID 19217.\n\nWhat does each code mean, and what should we check?",
-      "expected_output": "16#4225: the drive was not ready when the move started: the NC had controller enable but the drive did not report ready. Not 0x4223 (an enable missing). Check the drive state machine (Operation enabled? why not: cia402-motion for a CoE drive), the hardware enable / STO (never bridge it), and that the drive status is linked to the NC. 19217 decimal = 0x4B11, in the NC-PLC range (0x4Bxx, raised by the Tc2_MC2 blocks). Its exact meaning is not known here: say so and read it on the InfoSys NC-PLC error page; do not borrow the meaning of a neighbouring code such as 0x4B08 or 0x4B09.",
+      "expected_output": "16#4225: the drive was not ready when the move started: the NC had controller enable but the drive did not report ready. Not 0x4223 (an enable missing). Check the drive state machine (Operation enabled? why not: cia402-motion for a CoE drive), the hardware enable / STO (never bridge it), and that the drive status is linked to the NC. 19217 decimal = 0x4B11, in the NC-PLC range (0x4Bxx), in its NCI sub-range (0x4B10-0x4B2F), not one the Tc2_MC2 blocks raise, so it is worth confirming which block reported it. Its exact meaning is not known here: say so and read it on the InfoSys NC-PLC error page; do not borrow the meaning of a neighbouring code such as 0x4B08 or 0x4B09.",
       "traps": [
         "calls 0x4225 an enable missing (the 0x4223 meaning)",
         "gives 0x4B11 a confident specific meaning without saying it is unverified",
         "wrong decimal-to-hex conversion of 19217"
       ],
-      "grading": "right: 0x4225 as drive not ready (not the enable), 0x4B11 placed in the NC-PLC / function-block range with its meaning flagged as not looked up. partly: one of the two right. wrong: neither.",
+      "grading": "right: 0x4225 as drive not ready (not the enable), 0x4B11 placed in the NC-PLC range (or its NCI sub-range) with its meaning flagged as not looked up. partly: one of the two right. wrong: neither.",
       "sources": "nc_error.py 0x4225 0x4B11; SKILL.md rule 4"
     },
     {

@@ -21,8 +21,8 @@ snapshots the skill at `--ref` (default `HEAD`) minus `evals/`, lays the cells o
 `prepare_run.py`, runs each in its own isolated headless Claude Code session, and writes
 `REPORT.txt`: cost per arm, and an audit that flags a failed session, a read or shell
 command outside the cell (and, for the skill arm, the snapshot), a baseline cell that names
-the skill's repository, a skill cell that did not read `SKILL.md`, a write outside a cell,
-and a cell with no `answer.md`. It lists every shell command a cell ran, to be read. The run directory must be outside every git
+the skill's repository, a skill cell that did not read `SKILL.md`, a shell command that reaches the network (not
+flagged in `web_baseline`), a write outside a cell, and a cell with no `answer.md`. It lists every shell command a cell ran, to be read. The run directory must be outside every git
 repository (`~/.claude` is one on the dev server) and holds one model; rerunning the same
 command resumes. Run one round at a time: two side by side once corrupted the shared Claude
 Code config file.
@@ -105,8 +105,9 @@ every throwaway project so it competes too, without touching the global skills.
 ## Results, 2026-11-21 (Haiku 5.5, skill at cf20840, three reps, judged)
 
 The first round with equal tools, the `sim_only` exemption and the trimmed references
-(5c295e0). Graded by `judge.py` (Sonnet 5.5); no hand verdicts. The audit flagged nothing,
-but it has a gap: see the 0x4B11 cell below.
+(5c295e0). Graded by `judge.py` (Sonnet 5.5); no hand verdicts. The audit flagged nothing at
+the time; it has since learned to flag network access from the shell, which it missed in one
+cell (below).
 
 | Eval | Skill | Baseline |
 |---|---|---|
@@ -132,10 +133,14 @@ The skill arm's one P is not a regression from the trim. In
 `nc-error-neighbour-unknown` rep3, `nc_error.py` said 0x4B11 is not in the curated table and
 pointed to the InfoSys family page, and the agent fetched that page with `curl` from Bash,
 then gave the page's meaning (zero-shift index out of range, NCI context). The rubric wants
-the meaning flagged as not looked up, so the judge gave P. Two things follow. The audit does
-not flag network access from the shell, so "equal tools" includes the web for any arm that
-thinks of `curl`; only this one cell did. And the page puts 0x4B10–0x4B2F in the NCI
-context, where `nc_error.py` calls the whole 0x4Bxx family Tc2_MC2 function blocks.
+the meaning flagged as not looked up, so the judge gave P. Two things followed. The audit
+did not flag network access from the shell, so "equal tools" included the web for any arm
+that thought of `curl`; only this one cell did, and the audit now flags it
+(`NETWORK-IN-SHELL`, which a `--report-only` rerun of this round raises on that cell alone).
+And the page puts 0x4B10–0x4B2F in the NCI context, where `nc_error.py` called the whole
+0x4Bxx family Tc2_MC2 function blocks. `nc_error.py` now names the library behind each
+sub-range of 0x4Bxx, and the eval's expected answer places 0x4B11 in the NCI sub-range; the
+verdicts above were judged against the rubric as it stood.
 
 Checks and judge agreed on 52 of 72 cells. Of the 20 disagreements, 4 are skill cells
 (homing rep2, coupling-silent-decouple rep3, cam rep2 and rep3), and in all four the checks
