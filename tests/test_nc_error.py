@@ -71,6 +71,14 @@ class Lookup(unittest.TestCase):
         self.assertIn('parameter', nc_error.lookup('0x4306')['kind'])
         self.assertIn('start-up', nc_error.lookup('0x4342')['kind'])
 
+    def test_nc_plc_library_ranges(self):
+        nci = nc_error.lookup('19217')    # 0x4B11
+        self.assertFalse(nci['known'])
+        self.assertIn('NCI', nci['kind'])
+        self.assertNotIn('Tc2_MC2', nci['family'])
+        self.assertIn('Tc2_MC2', nc_error.lookup('0x4B08')['kind'])
+        self.assertIn('buffered', nc_error.lookup('0x4B62')['kind'])
+
     def test_mc3_gets_pointer(self):
         r = nc_error.lookup('0x8145')
         self.assertIn('MC3', r['family'])

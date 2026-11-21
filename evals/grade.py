@@ -162,7 +162,7 @@ def nc_error_neighbour_unknown(t, code):
                                   and not_enable,
         "0x4B11 in the NC-PLC / function-block range": has(t, hexv(0x4B11)) and has(
             t, r"NC[\s-]*PLC", r"0x4B\w\w|4Bxx|16#4B\w\w", r"function[\s-]*block\s+(error|range|famil)",
-            r"Tc2_MC2\s+(block|library|function)"),
+            r"Tc2_MC2\s+(block|library|function)", r"\bNCI\b"),
         "0x4B11 meaning flagged as not looked up": has(
             t, r"not\s+(in\s+)?(the\s+|my\s+|our\s+)?(curated|look\w*\s+up|confirm|verif|known|documented here|sure)",
             r"(could|can)\s*n[o']t\s+(\w+\s+){0,2}(confirm|verify|look|find)",

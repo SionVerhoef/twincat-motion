@@ -88,9 +88,23 @@ FAMILIES = {
                  'the slave if it went to error.',
     },
     0x4B: {
-        'name': 'NC-PLC (Tc2_MC2 function blocks)', 'page': '513151243.html',
+        'name': 'NC-PLC (PLC motion libraries)', 'page': '513151243.html',
         'action': 'Raised by the PLC library. The axis need not be in error itself. The '
                  'block output clears when Execute falls; fix the call and trigger again.',
+        # InfoSys splits the family by the library that raises the code.
+        'ranges': [(0x4B00, 0x4B0E, 'general function-block errors (Tc2_MC2 and others)'),
+                   (0x4B0F, 0x4B0F, 'shared by several libraries (TcNc, Tc2_MC2_XFC)'),
+                   (0x4B10, 0x4B2F, 'NCI context: outside this skill, and not a code '
+                                    'Tc2_MC2 blocks raise'),
+                   (0x4B30, 0x4B3F, 'cam table library (TcMcCam)'),
+                   (0x4B40, 0x4B4F, 'shared by several libraries (TcNc, Tc2_MC2_XFC)'),
+                   (0x4B50, 0x4B5F, 'cam table library (TcMcCam)'),
+                   (0x4B60, 0x4B6F, 'Tc2_MC2 buffered commands'),
+                   (0x4B70, 0x4B8F, 'PLC interpolation library (NCI): outside this skill'),
+                   (0x4B90, 0x4B9F, 'Tc3_MC2_AdvancedHoming (PLCopen homing)'),
+                   (0x4BA0, 0x4BAF, 'kinematic transformation library: outside this skill'),
+                   (0x4BB0, 0x4BBF, 'Tc2_MC2_Drive'),
+                   (0x4BC0, 0x4BCF, 'Tc3_DriveMotionControl')],
     },
     0x4C: {
         'name': 'Kinematic transformation', 'page': None,

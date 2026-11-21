@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- `nc_error.py` names the library behind each sub-range of the NC-PLC family (0x4Bxx), as
+  InfoSys splits it: 0x4B10-0x4B2F is NCI context, not a Tc2_MC2 block code, so an unknown
+  code there no longer reads as one from a Tc2_MC2 block.
+- Evals: the run audit flags a shell command that reaches the network (`NETWORK-IN-SHELL`).
 - `FB_Axis` gains a hold-to-run jog (`MC_Jog`, standard slow/fast modes, buttons in
   `ST_AxisMachineIn`), a locking stop (`Stop` / `ReleaseStop` on `MC_Stop`, refusing moves,
   jog and `Reset` while held) and status properties `fActPosition`, `fActVelocity`, `bHomed`,

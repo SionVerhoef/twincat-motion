@@ -31,8 +31,9 @@ otherwise:
     Since the skill is public, every arm is audited instead of fenced: a Read, Glob or
     Grep outside its cell (and, for with_skill, the snapshot) is flagged, so is a shell
     command that reaches outside them, and in a baseline arm a web request, shell command
-    or tool result that names the skill's repository. Every shell command is listed in
-    the report to be read.
+    or tool result that names the skill's repository. A shell command that reaches the
+    network (curl, wget, a URL) is flagged in every arm but web_baseline. Every shell
+    command is listed in the report to be read.
   * --parallel defaults to 3. Four concurrent sessions once produced a transiently
     corrupted read of the shared Claude Code config file.
 
@@ -62,6 +63,7 @@ TOOLS = {"with_skill": BASE_TOOLS, "without_skill": BASE_TOOLS,
 DENIED = ("WebFetch WebSearch Agent Task PushNotification Workflow ScheduleWakeup "
           "CronCreate RemoteTrigger SendMessage DesignSync")
 # The skill is public. A web baseline that reaches it is measuring the skill again.
+NETWORK = re.compile(r"\b(curl|wget|Invoke-WebRequest)\b|https?://|\burllib\b|\brequests\.|\bhttp\.client\b")
 SKILL_REPO = re.compile(r"(?<!lcls-)twincat-motion", re.I)  # not pcdshub/lcls-twincat-motion
 
 
@@ -262,6 +264,10 @@ def report(run: Path, skill: Path) -> str:
                for name, inp in calls if name == "Bash"
                for p in shell_paths(inp.get("command", ""), cell)):
             flags.append("SHELL-OUTSIDE-CELL")
+        # Bash reaches the web as well as WebFetch does: a skill cell once curl'd InfoSys.
+        if arm != "web_baseline" and any(NETWORK.search(inp.get("command", ""))
+                                         for name, inp in calls if name == "Bash"):
+            flags.append("NETWORK-IN-SHELL")
         if any(name in ("Write", "Edit") and not within(cell, inp.get("file_path", ""), cell)
                for name, inp in calls):
             flags.append("WROTE-OUTSIDE-CELL")
