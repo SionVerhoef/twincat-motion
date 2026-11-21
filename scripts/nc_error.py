@@ -657,6 +657,13 @@ TEMPLATE_CODES = {
                  'wiring, or bRefSwitch not passed every cycle.'),
     0x00010104: ('FB_HomePlc', 'cErrStepTime', 'Halt, set position or homed mark too slow.'),
     0x00010105: ('FB_HomePlc', 'cErrAborted', 'Another command took over the axis.'),
+    0x00010106: ('FB_HomePlc', 'cErrRunTime',
+                 'The whole run took longer than stParams.tRunTimeout, for example a '
+                 'chattering reference switch; a moving axis was halted.'),
+    0x00010107: ('FB_HomePlc', 'cErrLimit',
+                 'The search reached its limit switch a second time, after reversing '
+                 'once: the reference switch is not between the limits, or bRefSwitch '
+                 'is not wired or not passed every cycle.'),
     0x000101FF: ('FB_HomePlc', 'cErrInvalidState', 'Internal step error.'),
     0x00010201: ('FB_HomeNc', 'cErrParams', 'stParams not usable: check the values.'),
     0x00010202: ('FB_HomeNc', 'cErrTimeout',

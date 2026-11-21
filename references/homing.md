@@ -60,8 +60,17 @@ on an axis that is already homed, `ST_AxisStatus.Homed` stays TRUE after `MC_Set
 shifted reference. If your code shifts the position, clear the homed state itself
 (`MC_ResetCalibration`) or re-mark it deliberately.
 
+**Switch behind the axis.** If the search can start on the far side of the switch, it runs
+into the limit switch instead. Stop there, travel back through the switch until it releases,
+and search again: the edge is then approached from the same side as on any other run, which
+matters because a switch's two edges are not at the same place (width, hysteresis). Reverse
+once; a second limit means the switch is not between the limits.
+
 Template: `templates/FB_HomePlc.TcPOU` does steps 1–6 with the edge-accurate relative shift,
-and marks homed either way (a parameter picks which).
+and marks homed either way (a parameter picks which). Options, off by default: a two-speed
+search (fast, back off, slow), reversal at the search-side limit, and dropping its own homed
+flag on any axis error. It also bounds the whole run, not only each step, so a chattering
+switch cannot keep it cycling. The options have not yet run on any axis, simulated or real.
 
 **Hard stop instead of a switch.** Run into the stop with a reduced torque limit and detect
 the stop (lag rising, velocity zero, torque at the limit). Plan what the position-lag

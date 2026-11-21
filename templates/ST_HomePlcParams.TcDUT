@@ -3,17 +3,22 @@
   <DUT Name="ST_HomePlcParams" Id="{17b5395b-2936-4c65-a8bd-047c0d21ef11}">
     <Declaration><![CDATA[// Parameters of FB_HomePlc. Units are the axis's user units (mm, mm/s,
 // mm/s^2 for an axis scaled in mm). Read when bExecute rises; FB_HomePlc
-// refuses a run with the direction left undefined or a value <= 0.
+// refuses a run with the direction left undefined or a value <= 0
+// (fSlowVelocity may be 0: off). Fields after tStepTimeout are options
+// whose defaults keep the plain single-speed run.
 TYPE ST_HomePlcParams :
 STRUCT
     // towards the switch: MC_Positive_Direction or MC_Negative_Direction
     eSearchDirection   : MC_Direction := MC_Direction.MC_Undefined_Direction;
     fSearchVelocity    : LREAL;     // towards the switch, > 0
+    fSlowVelocity      : LREAL;     // > 0: two-speed search, slow pass
     fMoveOffVelocity   : LREAL;     // off the switch, if on it at start
     fDeceleration      : LREAL;     // every MC_Halt of the run, > 0
     fReferencePosition : LREAL;     // the position the switch edge gets
     bMarkNcHomed       : BOOL;      // TRUE: NC homed state; FALSE: own flag
     tStepTimeout       : TIME := T#30S;  // per step; size from travel
+    tRunTimeout        : TIME := T#5M;   // whole run, all steps together
+    bUnhomeOnAxisError : BOOL;      // TRUE: an axis error clears own flag
 END_STRUCT
 END_TYPE
 ]]></Declaration>
