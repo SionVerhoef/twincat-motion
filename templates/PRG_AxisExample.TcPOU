@@ -35,6 +35,9 @@ VAR
     bMoveCmd    : BOOL;
     bHaltCmd    : BOOL;
     bResetCmd   : BOOL;
+    bStopCmd    : BOOL;           // hold: locking stop (MC_Stop)
+    bJogFwdCmd  : BOOL;           // hold to run
+    bJogBwdCmd  : BOOL;
     fTarget     : LREAL;          // mm
 
     fbMoveTrig  : R_TRIG;
@@ -62,6 +65,10 @@ END_VAR
 //    stMachine.bLimitPosOk := bLimitPos;
 //    stMachine.bLimitNegOk := bLimitNeg;
 stMachine.bHomedOwn   := fbHomePlc.bHomed;
+//    Jog buttons, hold to run. Not while homing, which a jog would take
+//    over; bHoming is set in step 2, so this is last scan's.
+stMachine.bJogForward  := bJogFwdCmd AND NOT bHoming;
+stMachine.bJogBackward := bJogBwdCmd AND NOT bHoming;
 fbAxis(Axis := Axis1, bPowerOn := bPowerOn, stMachine := stMachine);
 
 // 2. Homing. Both blocks are called every scan; only one gets the
@@ -101,6 +108,14 @@ ELSIF fbMoveTrig.Q THEN
         bAccepted := fbAxis.MoveAbsolute(fPosition := fTarget,
                                          fVelocity := cMoveVelo);
     END_IF
+END_IF
+
+// A held stop locks the axis until it is released. After the release,
+// wait for fbAxis.bLocked FALSE before the next move.
+IF bStopCmd THEN
+    fbAxis.Stop(fDeceleration := cHaltDecel);
+ELSE
+    fbAxis.ReleaseStop();
 END_IF
 
 // 4. One error for the HMI; look an NC code up with nc_error.py.

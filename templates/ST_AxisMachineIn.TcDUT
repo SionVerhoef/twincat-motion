@@ -2,7 +2,8 @@
 <TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.0">
   <DUT Name="ST_AxisMachineIn" Id="{cca400b6-52cd-41f7-81e9-299b5b464d1e}">
     <Declaration><![CDATA[// What the machine tells FB_Axis that the NC does not know: its limit
-// switches and, when homing keeps its own record, whether it is homed.
+// switches, when homing keeps its own record whether it is homed, and
+// the operator's jog buttons.
 TYPE ST_AxisMachineIn :
 STRUCT
     // limit switches, NC contacts: TRUE = not at the limit. They go to
@@ -12,6 +13,12 @@ STRUCT
     // homed by the caller's own record (FB_HomePlc.bHomed with
     // bMarkNcHomed FALSE). Leave FALSE when the NC's Homed is the record.
     bHomedOwn   : BOOL;
+    // jog, hold to run. A button starts the axis on its own rising edge
+    // only; releasing it stops the axis. Both pressed: no jog.
+    bJogForward  : BOOL;
+    bJogBackward : BOOL;
+    // the axis parameters' manual velocity: FALSE slow, TRUE fast
+    bJogFast     : BOOL;
 END_STRUCT
 END_TYPE
 ]]></Declaration>

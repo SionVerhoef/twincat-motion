@@ -23,14 +23,18 @@ drive and encoder, over three runs:
 - `FB_HomeNc`: default homing completed with and without the faked cam, and the timeout
   (cam held FALSE) gave `nErrorID` 16#0001_0202 with the axis standing still.
 
+`FB_Axis`'s jog, its locking stop (`Stop` / `ReleaseStop`), its status properties and the
+aborted result for a replaced request were added after those runs and have not been built or
+run yet.
+
 They have not moved a real axis. Run them on yours at reduced velocity, acceleration and
 torque first. Nothing here is a safety function.
 
 | File | What it is |
 |---|---|
-| `FB_Axis.TcPOU` | Axis wrapper: `MC_Power`, `MC_Reset`, `MC_MoveAbsolute`, `MC_MoveRelative`, `MC_MoveVelocity`, `MC_Halt` behind methods (`MoveAbsolute`, `MoveRelative`, `MoveVelocity`, `Halt`, `Reset`, `SetDynamics`). Refreshes `Axis.Status` once per cycle; one error path (axis error before command error before power error). |
+| `FB_Axis.TcPOU` | Axis wrapper: `MC_Power`, `MC_Reset`, `MC_MoveAbsolute`, `MC_MoveRelative`, `MC_MoveVelocity`, `MC_Halt`, `MC_Stop` behind methods (`MoveAbsolute`, `MoveRelative`, `MoveVelocity`, `Halt`, `Stop`, `ReleaseStop`, `Reset`, `SetDynamics`), and `MC_Jog` hold-to-run on `stMachine`'s jog buttons. Status in properties: `fActPosition`, `fActVelocity`, `bHomed`, `bLocked`, `eCommand`. Refreshes `Axis.Status` once per cycle; one error path (axis error before command error before power error). |
 | `E_AxisCmd.TcDUT` | The commands `FB_Axis` issues. |
-| `ST_AxisMachineIn.TcDUT` | Its limit-switch inputs and the caller's own homed record. |
+| `ST_AxisMachineIn.TcDUT` | Its limit-switch inputs, the caller's own homed record and the jog buttons. |
 | `FB_HomePlc.TcPOU` | Homing option 1, PLC-based: move off the switch if on it, search, halt, `MC_SetPosition` relative so the switch edge becomes the reference, then mark homed by **your own flag** or the **NC's homed state** (`MC_ForceCalibration`), chosen by a parameter. Opt-in: two-speed search (`fSlowVelocity`), reversal at the search-side limit (`bSearchLimitOk`), own flag dropped on an axis error (`bUnhomeOnAxisError`). A step timeout and a whole-run timeout. |
 | `ST_HomePlcParams.TcDUT`, `E_HomePlcState.TcDUT` | Its parameters and steps. |
 | `FB_HomeNc.TcPOU` | Homing option 2, `MC_Home` with `MC_DefaultHoming`: cam input every cycle, a faked cam for a sync-pulse-only axis, a run timeout that halts the axis. |
@@ -53,11 +57,28 @@ torque first. Nothing here is a safety function.
   `CommandAborted` is expected and not reported.
 - **Every trigger is a real rising edge.** An instance is triggered only when it is not `Busy`
   and was given `Execute` FALSE at its last call; `Execute` is held until the block shows a result.
-- **A stop wins.** `Halt` is always accepted and replaces a move that is still waiting; while a
-  Halt waits, moves and `Reset` are refused. Moves with a velocity <= 0 are refused, and `bBusy`
-  stays TRUE while any instance runs, so a rejected retarget cannot hide a move that goes on. `MC_Halt`, not `MC_Stop`, which would lock the axis.
-  On an axis that is not ready (disabled or in error) `Halt` only drops a waiting move:
+- **A stop wins.** `Halt` and `Stop` are always accepted and replace a request that is still
+  waiting; while a Halt waits, moves, jog and `Reset` are refused. Moves with a velocity <= 0 are refused, and `bBusy`
+  stays TRUE while any instance runs, so a rejected retarget cannot hide a move that goes on.
+  `Halt` is `MC_Halt`, the ordinary stop. `Stop` is `MC_Stop`, the locking stop: held from
+  `Stop` until `ReleaseStop`, with moves, jog and `Reset` refused meanwhile (`bLocked`;
+  `MC_Reset` would release the lock), and `bLocked` stays TRUE for some cycles after the
+  release. Its `Execute` is held for as long as the stop is: the one exception to the edge rule.
+  On an axis that is not ready (disabled or in error) `Halt` only ends a waiting move:
   `MC_Halt` would be refused with an error there, so an operator stop would become an alarm.
+- **Every accepted request gets a result.** A request replaced before it was issued (by
+  `Halt`, `Stop`, `Reset` or a jog) ends with `bCommandAborted`, and the results always belong
+  to the command the `eCommand` property names. A caller waiting for its own result checks
+  that `eCommand` is still its command, because the next one can take over in the same scan.
+- **Jog is hold-to-run, never self-starting.** `stMachine.bJogForward` / `bJogBackward`
+  drive `MC_Jog` in a standard mode, so the speed is the axis's manual velocity (slow, or fast
+  with `bJogFast`), set at commissioning, not in code. A button starts the axis only on its
+  own rising edge; a press that is refused, or a jog another command takes over, needs a new
+  press. For a speed from code, use `MC_JOGMODE_CONTINOUS`, which takes `Velocity`.
+- **Status in properties, not outputs.** `fActPosition` and `fActVelocity`
+  (`Axis.NcToPlc`), `bHomed` (the state `MoveAbsolute` is gated on), `bLocked`, `eCommand`.
+  Properties keep the block at ten parameters; XAE shows them online because they carry
+  `{attribute 'monitoring' := 'call'}`.
 - **Explicit where the library is easy to misread.** The homing blocks refuse a run without
   an explicit `MC_Halt` deceleration: 0 takes the last move's deceleration (seen on a simulated
   axis), which for a homing search is not a value anyone chose. `FB_Axis.Halt` never refuses a
@@ -85,7 +106,7 @@ torque first. Nothing here is a safety function.
 - **A homed flag is not retained.** After a restart an incremental axis is not homed; an
   absolute axis is homing option 6, not these blocks.
 
-Not covered: `MC_Stop` (locking stop), `MC_Jog`, coupling, step homing, touch-probe and
+Not covered: coupling, step homing, touch-probe and
 drive-based homing. The wrapper is a starting point: add a method and an instance pair in the
 same pattern.
 

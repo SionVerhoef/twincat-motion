@@ -3,11 +3,14 @@
   <POU Name="FB_Axis" Id="{fc68b3fd-d800-4883-a625-1424c3ae007b}" SpecialFunc="None">
     <Declaration><![CDATA[FUNCTION_BLOCK FB_Axis
 (*
-    NC2 axis wrapper on Tc2_MC2: power, reset, three moves and a halt
-    behind command methods, with one status refresh and one error path.
+    NC2 axis wrapper on Tc2_MC2: power, reset, three moves, a halt, a
+    locking stop and a hold-to-run jog, with one status refresh and one
+    error path.
 
-    TEMPLATE - built and run on a simulated axis (4024.55), not on a real
-    one. Test it on your axis at reduced velocity, acceleration and torque.
+    TEMPLATE - the moves, halt and reset were built and run on a
+    simulated axis (4024.55); jog, Stop and the status properties have
+    not been built or run yet. Test it on your axis at reduced velocity,
+    acceleration and torque.
 
     CONTRACT
     - Call the body exactly once per cycle, unconditionally, before any
@@ -16,12 +19,27 @@
       scan's call if the method ran before the body, else on the next.
     - A method returns TRUE when the request was accepted, not when the
       axis has done it. bBusy / bDone / bError report that.
-    - A stop wins: Halt replaces a move still waiting to be issued, and
-      while a Halt waits, moves and Reset are refused.
+    - bDone, bCommandAborted and the command's error belong to the
+      command eCommand names. A request that was accepted but replaced
+      before it was issued (by Halt, Stop, Reset or a jog) still gets a
+      result: eCommand names it and bCommandAborted is TRUE, until the
+      next command takes over. A caller waiting for its own result
+      checks that eCommand is still its command.
+    - A stop wins: Halt and Stop replace a request still waiting to be
+      issued, and while a Halt waits, moves, jog and Reset are refused.
     - Halt on an axis that is not ready (bReady FALSE: disabled or in
-      error) returns TRUE and only drops a waiting move or halt. MC_Halt
+      error) returns TRUE and only ends a waiting move or halt. MC_Halt
       would be refused there with an error, turning an operator stop
       into an alarm, and the NC does not move a disabled axis anyway.
+    - Stop is MC_Stop, the locking stop: from Stop() until ReleaseStop()
+      the axis is stopped and held, and moves, jog and Reset are
+      refused (bLocked). MC_Reset would release the lock. For an
+      ordinary stop use Halt. Neither is a safety function.
+    - Jog is hold-to-run on stMachine.bJogForward / bJogBackward, at the
+      axis's manual velocities (slow, or fast with bJogFast). A button
+      starts the axis only on its own rising edge; releasing it stops
+      the axis. A press that is refused, or a jog that another command
+      takes over, needs a new press: the axis never starts by itself.
     - Units are the axis's user units (mm, mm/s, mm/s^2 for an axis
       scaled in mm). Dynamics of 0 mean the axis parameters' defaults.
     - bBusy is about the command, not the axis. MC_MoveVelocity stays busy
@@ -38,6 +56,9 @@
       limit) are wired. An open one stops that direction only.
     - The hardware enable of the drive is not MC_Power's; see the
       triage reference. No part of this block is a safety function.
+    - Status is in properties, not outputs: fActPosition, fActVelocity,
+      bHomed, bLocked, eCommand. They are copies made in the body, so
+      read them after it.
 
     WHY TWO INSTANCES PER MOVE
     Tc2_MC2 takes no new parameters while a move block is busy. To
@@ -51,12 +72,13 @@
     An instance is triggered only when it is not Busy and was given
     Execute FALSE at its last call: every trigger is a real rising edge,
     and its inputs, which the block latches on that edge, are the ones
-    the method recorded.
+    the method recorded. MC_Stop is the exception: its Execute is held
+    for as long as the stop is, because that is what holds the lock.
 *)
 VAR_INPUT
     bPowerOn  : BOOL;              // MC_Power software enable, both ways
     fOverride : LREAL := 100.0;    // velocity override, percent, 0..100
-    stMachine : ST_AxisMachineIn;  // limit switches, own homed record
+    stMachine : ST_AxisMachineIn;  // limit switches, homed record, jog
 END_VAR
 VAR_IN_OUT
     Axis      : AXIS_REF;          // the NC axis, linked in the I/O tree
@@ -73,14 +95,20 @@ VAR
     fbPower     : MC_Power;
     fbReset     : MC_Reset;
     fbHalt      : MC_Halt;
+    fbStop      : MC_Stop;
+    fbJog       : MC_Jog;
     aMoveAbs    : ARRAY[0..1] OF MC_MoveAbsolute;
     aMoveRel    : ARRAY[0..1] OF MC_MoveRelative;
     aMoveVel    : ARRAY[0..1] OF MC_MoveVelocity;
     fbPendTimer : TON;
+    fbStopEdge  : R_TRIG;
+    fbJogFwdEdge : R_TRIG;
+    fbJogBwdEdge : R_TRIG;
 
     // Execute of each block: TRUE from its trigger until its result
     bExecReset  : BOOL;
     bExecHalt   : BOOL;
+    bExecStop   : BOOL;            // held while the stop is
     abExecAbs   : ARRAY[0..1] OF BOOL;
     abExecRel   : ARRAY[0..1] OF BOOL;
     abExecVel   : ARRAY[0..1] OF BOOL;
@@ -99,8 +127,19 @@ VAR
     fDec        : LREAL;
     fJerk       : LREAL;
 
-    bHomedNc    : BOOL;            // Axis.Status.Homed, copied in the body for the methods
-    eCmd        : E_AxisCmd := E_AxisCmd.None;  // last issued command
+    bStopReq    : BOOL;            // from Stop() until ReleaseStop()
+    fStopDec    : LREAL;
+    bJogOk      : BOOL;            // a jog press may start now
+    bJogFwd     : BOOL;            // MC_Jog's direction inputs
+    bJogBwd     : BOOL;
+    eJogMode    : E_JogMode := E_JogMode.MC_JOGMODE_STANDARD_SLOW;
+
+    // Copied in the body: a method or property called from outside may
+    // not read the VAR_IN_OUT Axis (compiler warning).
+    bHomedNc    : BOOL;            // Axis.Status.Homed
+    fActPos     : LREAL;           // Axis.NcToPlc.ActPos
+    fActVelo    : LREAL;           // Axis.NcToPlc.ActVelo
+    eCmd        : E_AxisCmd := E_AxisCmd.None;  // what results belong to
     bCmdError   : BOOL;            // its error, latched to the next one
     nCmdErrorID : UDINT;
 END_VAR
@@ -113,11 +152,50 @@ END_VAR
     <Implementation>
       <ST><![CDATA[// 1. Sensors first. Tc2_MC2 refreshes Axis.Status only when asked.
 Axis.ReadStatus();
-// A method called from outside may not read the VAR_IN_OUT Axis (compiler
-// warning), so it reads this copy, one scan old at most, like bReady.
+// Copies for the methods and properties, one scan old at most when they
+// are called before the body, like bReady.
 bHomedNc := Axis.Status.Homed;
+fActPos  := Axis.NcToPlc.ActPos;
+fActVelo := Axis.NcToPlc.ActVelo;
 
-// 2. Issue a recorded request once its block can see a real rising edge.
+// 2. Stop and jog follow levels, so they start here, not in M_Issue.
+//    MC_Stop runs only on a ready axis: on any other it would only raise
+//    an error. It starts again when the axis becomes ready with the stop
+//    still held. Its Execute rises only on a block that is not Busy (it
+//    stays Busy some cycles after a release); once up, it is held.
+bExecStop := bStopReq AND bReady AND (bExecStop OR NOT fbStop.Busy);
+fbStopEdge(CLK := bExecStop);
+IF fbStopEdge.Q THEN
+    M_Start(eNew := E_AxisCmd.Stop);
+END_IF
+
+//    Jog starts on a button's own rising edge, on a ready axis that no
+//    stop holds and no halt or reset waits for. Releasing the button,
+//    pressing both, or any of those conditions ending, drops MC_Jog's
+//    input, and MC_Jog stops the axis itself.
+fbJogFwdEdge(CLK := stMachine.bJogForward);
+fbJogBwdEdge(CLK := stMachine.bJogBackward);
+bJogOk := bReady AND NOT bLocked
+          AND (ePending <> E_AxisCmd.Halt)
+          AND (ePending <> E_AxisCmd.Reset);
+IF NOT bJogOk
+   OR (stMachine.bJogForward AND stMachine.bJogBackward) THEN
+    bJogFwd := FALSE;
+    bJogBwd := FALSE;
+ELSIF fbJogFwdEdge.Q OR fbJogBwdEdge.Q THEN
+    bJogFwd := fbJogFwdEdge.Q;
+    bJogBwd := fbJogBwdEdge.Q;
+    M_Start(eNew := E_AxisCmd.Jog);   // a waiting move ends aborted
+END_IF
+bJogFwd := bJogFwd AND stMachine.bJogForward;
+bJogBwd := bJogBwd AND stMachine.bJogBackward;
+IF stMachine.bJogFast THEN
+    eJogMode := E_JogMode.MC_JOGMODE_STANDARD_FAST;
+ELSE
+    eJogMode := E_JogMode.MC_JOGMODE_STANDARD_SLOW;
+END_IF
+
+// 3. Issue a recorded request once its block can see a real rising edge.
 //    The timer runs after the attempt, so it only counts a request that
 //    is still waiting, never one issued this scan.
 IF ePending <> E_AxisCmd.None THEN
@@ -125,12 +203,12 @@ IF ePending <> E_AxisCmd.None THEN
 END_IF
 fbPendTimer(IN := (ePending <> E_AxisCmd.None), PT := cPendTimeout);
 IF fbPendTimer.Q THEN
-    ePending    := E_AxisCmd.None;
+    M_Accept();                 // the waiting request gets its own result
     bCmdError   := TRUE;
     nCmdErrorID := cErrNotIssued;
 END_IF
 
-// 3. Every block, every cycle, unconditionally. Only Execute changes.
+// 4. Every block, every cycle, unconditionally. Only Execute changes.
 fbPower(Axis := Axis,
         Enable := bPowerOn,
         Enable_Positive := bPowerOn AND stMachine.bLimitPosOk,
@@ -139,6 +217,12 @@ fbPower(Axis := Axis,
 fbReset(Axis := Axis, Execute := bExecReset);
 fbHalt(Axis := Axis, Execute := bExecHalt,
        Deceleration := fReqHaltDec, Jerk := fJerk);
+fbStop(Axis := Axis, Execute := bExecStop,
+       Deceleration := fStopDec, Jerk := fJerk);
+// Standard modes take velocity and dynamics from the axis's manual
+// motion parameters and ignore the block's inputs for them.
+fbJog(Axis := Axis, JogForward := bJogFwd, JogBackwards := bJogBwd,
+      Mode := eJogMode);
 FOR i := 0 TO 1 DO
     aMoveAbs[i](Axis := Axis, Execute := abExecAbs[i],
                 Position := fReqValue, Velocity := fReqVelo,
@@ -151,7 +235,7 @@ FOR i := 0 TO 1 DO
                 Acceleration := fAcc, Deceleration := fDec, Jerk := fJerk);
 END_FOR
 
-// 4. Results. Drop Execute once a block shows its result, so its next
+// 5. Results. Drop Execute once a block shows its result, so its next
 //    trigger is a rising edge; keep the result of the current command.
 IF bExecReset AND (fbReset.Done OR fbReset.Error) THEN
     bExecReset := FALSE;
@@ -167,6 +251,23 @@ THEN
         M_Result(bOk := fbHalt.Done, bAborted := fbHalt.CommandAborted,
                  bErr := fbHalt.Error, nErr := fbHalt.ErrorID);
     END_IF
+END_IF
+// Stop keeps Execute while it is held: Done is "stands, and locked".
+IF eCmd = E_AxisCmd.Stop
+   AND (fbStop.Done OR fbStop.Error OR fbStop.CommandAborted) THEN
+    M_Result(bOk := fbStop.Done, bAborted := fbStop.CommandAborted,
+             bErr := fbStop.Error, nErr := fbStop.ErrorID);
+END_IF
+// Jog is done once the button is released and the axis stands. A jog
+// that ended otherwise needs a new press, so its input drops here.
+IF eCmd = E_AxisCmd.Jog
+   AND (fbJog.Done OR fbJog.Error OR fbJog.CommandAborted) THEN
+    M_Result(bOk := fbJog.Done, bAborted := fbJog.CommandAborted,
+             bErr := fbJog.Error, nErr := fbJog.ErrorID);
+END_IF
+IF fbJog.Error OR fbJog.CommandAborted THEN
+    bJogFwd := FALSE;
+    bJogBwd := FALSE;
 END_IF
 FOR i := 0 TO 1 DO
     IF abExecAbs[i] AND (aMoveAbs[i].Done OR aMoveAbs[i].Error
@@ -207,11 +308,13 @@ FOR i := 0 TO 1 DO
     END_IF
 END_FOR
 
-// 5. Outputs. An axis error outranks the command's own error.
+// 6. Outputs. An axis error outranks the command's own error.
 bReady := fbPower.Status;
 // Busy while any instance still runs, not only the current one: a
 // rejected retarget must not hide the previous move, which goes on.
-bBusy := bExecReset OR bExecHalt OR (ePending <> E_AxisCmd.None);
+bBusy := bExecReset OR bExecHalt OR (ePending <> E_AxisCmd.None)
+         OR bExecStop OR fbStop.Busy
+         OR bJogFwd OR bJogBwd OR fbJog.Busy;
 FOR i := 0 TO 1 DO
     bBusy := bBusy OR abExecAbs[i] OR abExecRel[i] OR abExecVel[i];
 END_FOR
@@ -235,12 +338,13 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[// Accepted while the axis is ready and no stop waits to be issued.
+        <ST><![CDATA[// Accepted while the axis is ready, no stop holds it and no halt waits.
 // A velocity <= 0 is refused here: the block would reject it with an
 // error while the previous move keeps running. Other bad values are
 // reported by the block as an error.
 // An absolute target needs a homed axis: refused until it is.
-MoveAbsolute := bReady AND (ePending <> E_AxisCmd.Halt)
+MoveAbsolute := bReady AND NOT bLocked
+                AND (ePending <> E_AxisCmd.Halt)
                 AND (fVelocity > 0.0)
                 AND (bHomedNc OR stMachine.bHomedOwn);
 IF MoveAbsolute THEN
@@ -258,8 +362,9 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[// Accepted while the axis is ready and no stop waits to be issued.
-MoveRelative := bReady AND (ePending <> E_AxisCmd.Halt)
+        <ST><![CDATA[// Accepted while the axis is ready, no stop holds it and no halt waits.
+MoveRelative := bReady AND NOT bLocked
+                AND (ePending <> E_AxisCmd.Halt)
                 AND (fVelocity > 0.0);
 IF MoveRelative THEN
     fReqValue := fDistance;
@@ -276,10 +381,11 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[// Accepted while the axis is ready and no stop waits to be issued.
+        <ST><![CDATA[// Accepted while the axis is ready, no stop holds it and no halt waits.
 // Calling it again while one runs changes the speed: the other instance
 // takes over. The axis runs until Halt or another move.
-MoveVelocity := bReady AND (ePending <> E_AxisCmd.Halt)
+MoveVelocity := bReady AND NOT bLocked
+                AND (ePending <> E_AxisCmd.Halt)
                 AND (fVelocity > 0.0);
 IF MoveVelocity THEN
     fReqVelo := fVelocity;
@@ -296,27 +402,64 @@ END_VAR
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[// Always accepted: a stop request is never refused. When the axis is not
-// ready there is nothing to stop, and MC_Halt would only raise an error,
-// so Halt just drops a waiting move or halt (a waiting Reset stays).
+// ready there is nothing to stop, and MC_Halt would only raise an error;
+// while Stop holds it, it is stopped already. Then Halt only ends a
+// waiting move or halt as aborted (a waiting Reset stays).
 // MC_Halt, not MC_Stop: it does not lock the axis against the next move.
 // Pass an explicit deceleration. For a value <= 0 the Tc2_MC2 manual
 // says the last move's deceleration is used; not verified on a target.
 // Only a Halt that is still the current command and still running is
-// left to finish; then any request waiting behind it is dropped. In
-// every other case a new Halt is recorded and replaces whatever waits,
-// and M_Issue triggers it as soon as the halt block is free again
-// (an older halt being taken over by a move frees it within cycles).
-IF NOT bReady THEN
+// left to finish; a request waiting behind it is dropped, and eCommand
+// stays Halt, the command that does run. In every other case a new Halt
+// is recorded and replaces whatever waits, which ends aborted, and
+// M_Issue triggers it as soon as the halt block is free again (an older
+// halt being taken over by a move frees it within cycles).
+IF NOT bReady OR bLocked THEN
     IF ePending <> E_AxisCmd.Reset THEN
-        ePending := E_AxisCmd.None;
+        M_AbortWaiting();
     END_IF
 ELSIF (eCmd = E_AxisCmd.Halt) AND (bExecHalt OR fbHalt.Busy) THEN
     ePending := E_AxisCmd.None;
 ELSE
+    M_AbortWaiting();
     fReqHaltDec := fDeceleration;
     ePending    := E_AxisCmd.Halt;
 END_IF
 Halt := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Stop" Id="{86f6fa68-2ee4-4ec4-a8a8-c0b0e0e0a2bf}">
+      <Declaration><![CDATA[METHOD Stop : BOOL
+VAR_INPUT
+    fDeceleration : LREAL;   // > 0, user units/s^2; <= 0: last move's
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// The locking stop, MC_Stop. Always accepted. The stop is held until
+// ReleaseStop: the axis ramps to a stand and stays locked, and moves,
+// jog and Reset are refused meanwhile (bLocked). A new stop ends
+// whatever still waits to be issued as aborted: a stop wins. Calling it
+// again while held changes nothing, so it may be called every cycle
+// from a held button: the running stop keeps its deceleration, and a
+// Reset of an axis in error under the held stop is not undone.
+// Use Halt for an ordinary stop; holding MC_Stop is the classic "the
+// axis won't move again" bug. A software stop is not a safety stop.
+IF NOT bStopReq THEN
+    M_AbortWaiting();
+    fStopDec := fDeceleration;
+END_IF
+bStopReq := TRUE;
+Stop     := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ReleaseStop" Id="{3ab69ab5-5bf3-4f1e-a934-bbecefa4f838}">
+      <Declaration><![CDATA[METHOD ReleaseStop
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Ends the hold: MC_Stop's Execute falls at the next call of the body.
+// The block stays Busy, and the axis locked, for some cycles after
+// that, so wait for bLocked FALSE before the next move or jog.
+bStopReq := FALSE;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Reset" Id="{e56054b0-7d6b-465a-90c6-1868a5623f01}">
@@ -324,11 +467,18 @@ Halt := TRUE;]]></ST>
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[// MC_Reset clears an axis error (and often the drive's). Refused while
-// a stop waits to be issued, so a reset never swallows a Halt. While a
-// reset already runs, TRUE means "that reset covers it": no second one.
+// a stop waits to be issued, so a reset never swallows a Halt, and
+// while MC_Stop holds the axis, because MC_Reset would release the lock.
+// A Stop held on an axis in error is not running: Reset goes through,
+// and MC_Stop locks the axis again once it is ready.
+// While a reset already runs or waits, TRUE means "that reset covers
+// it": no second one. A move still waiting is replaced, and ends
+// aborted rather than vanishing.
 // Find the cause first: resetting a repeating error hides it.
-Reset := (ePending <> E_AxisCmd.Halt);
-IF Reset AND NOT (bExecReset OR fbReset.Busy) THEN
+Reset := (ePending <> E_AxisCmd.Halt) AND NOT (bExecStop OR fbStop.Busy);
+IF Reset AND NOT (bExecReset OR fbReset.Busy)
+   AND (ePending <> E_AxisCmd.Reset) THEN
+    M_AbortWaiting();
     ePending := E_AxisCmd.Reset;
 END_IF]]></ST>
       </Implementation>
@@ -369,9 +519,10 @@ CASE ePending OF
         END_IF
 
     E_AxisCmd.Halt:
-        // Recorded while ready, but the axis dropped out since: see Halt.
-        IF NOT bReady THEN
-            ePending := E_AxisCmd.None;
+        // Recorded while ready, but the axis dropped out or a stop holds
+        // it since: see Halt.
+        IF NOT bReady OR bLocked THEN
+            M_AbortWaiting();
         ELSIF NOT (bExecHalt OR fbHalt.Execute OR fbHalt.Busy) THEN
             bExecHalt := TRUE;
             M_Accept();
@@ -405,6 +556,7 @@ CASE ePending OF
         END_IF
 
 ELSE
+    // Stop and Jog never wait: they start in the body (M_Start).
     ePending := E_AxisCmd.None;
 END_CASE]]></ST>
       </Implementation>
@@ -413,14 +565,42 @@ END_CASE]]></ST>
       <Declaration><![CDATA[METHOD PRIVATE M_Accept
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[// The pending request becomes the current command; the previous
-// command's result no longer applies.
+        <ST><![CDATA[// The pending request becomes the command the results belong to; the
+// previous command's result no longer applies.
 eCmd            := ePending;
 ePending        := E_AxisCmd.None;
 bDone           := FALSE;
 bCommandAborted := FALSE;
 bCmdError       := FALSE;
 nCmdErrorID     := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_AbortWaiting" Id="{316580ad-63cf-4239-be0b-de411cb13581}">
+      <Declaration><![CDATA[METHOD PRIVATE M_AbortWaiting
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// A request that was accepted (its method returned TRUE) but will not
+// be issued still gets a result: it becomes the command eCommand names,
+// ended with bCommandAborted. Its caller is never left waiting, nor
+// reads the next command's result as its own.
+IF ePending <> E_AxisCmd.None THEN
+    M_Accept();
+    bCommandAborted := TRUE;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="M_Start" Id="{1d6525ee-416d-4333-a404-8166d26bd4ff}">
+      <Declaration><![CDATA[METHOD PRIVATE M_Start
+VAR_INPUT
+    eNew : E_AxisCmd;    // Stop or Jog
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Stop and jog start in the body from a level, not from a request.
+// Whatever still waits ends aborted; then eNew is the current command.
+M_AbortWaiting();
+ePending := eNew;
+M_Accept();]]></ST>
       </Implementation>
     </Method>
     <Method Name="M_Result" Id="{fc1e80d4-31b8-4457-a451-822f1ad61d36}">
@@ -442,5 +622,78 @@ IF bErr THEN
 END_IF]]></ST>
       </Implementation>
     </Method>
+    <Property Name="fActPosition" Id="{0d48a638-dd66-4aa1-ac1f-02abe27fe1b7}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY fActPosition : LREAL
+]]></Declaration>
+      <Get Name="Get" Id="{8ddd241f-ad26-48d9-8ea3-cdb993cbd308}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[// Actual position, user units: Axis.NcToPlc.ActPos.
+fActPosition := fActPos;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="fActVelocity" Id="{7f6eccf1-1c9c-4e67-9c06-3b3f62969455}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY fActVelocity : LREAL
+]]></Declaration>
+      <Get Name="Get" Id="{970ec7a9-0a33-4127-b04a-1bb782fb891d}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[// Actual velocity, user units/s, signed: Axis.NcToPlc.ActVelo.
+fActVelocity := fActVelo;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="bHomed" Id="{34fe1738-d2ef-4afc-9d4f-60939a66e397}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY bHomed : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{904f8192-d51a-4244-95f8-040ba8dcb5bf}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[// The homed state MoveAbsolute is gated on: the NC's Axis.Status.Homed,
+// or the caller's own record in stMachine.bHomedOwn.
+bHomed := bHomedNc OR stMachine.bHomedOwn;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="bLocked" Id="{c5c3ac28-f323-4f85-8f65-85afd1e303f9}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY bLocked : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{4dcc33af-5bc0-432c-a4e9-eb2b295ab01f}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[// Stop holds the axis, or its MC_Stop has not released it yet: moves,
+// jog and Reset are refused.
+bLocked := bStopReq OR fbStop.Busy;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="eCommand" Id="{b1146b60-91ad-42ee-88e7-5da549863dec}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY eCommand : E_AxisCmd
+]]></Declaration>
+      <Get Name="Get" Id="{87517a25-64cb-44a4-8a48-34aed36c0dae}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[// The command bDone, bCommandAborted and the command error belong to:
+// the last one issued, or a waiting one that ended without being issued.
+eCommand := eCmd;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
   </POU>
 </TcPlcObject>

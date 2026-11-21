@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `FB_Axis` gains a hold-to-run jog (`MC_Jog`, standard slow/fast modes, buttons in
+  `ST_AxisMachineIn`), a locking stop (`Stop` / `ReleaseStop` on `MC_Stop`, refusing moves,
+  jog and `Reset` while held) and status properties `fActPosition`, `fActVelocity`, `bHomed`,
+  `bLocked` and `eCommand`. A request replaced before it was issued (by `Reset`, `Halt`, `Stop`
+  or a jog) now ends with `bCommandAborted` instead of vanishing, and `eCommand` names the
+  command the results belong to. Properties, not outputs, keep the block at ten parameters.
+  `Halt` on a not-ready axis stays a no-op. Not yet built or run on a target.
 - `FB_HomePlc` options, all off by default so existing calls run as before: a two-speed
   search (`stParams.fSlowVelocity` > 0: fast approach, move off, slow approach), reversal
   when the search reaches its limit switch (`bSearchLimitOk` input; once per run, then
